@@ -1,11 +1,13 @@
 # Tacklebox for Android
 
+[![Android CI](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/android.yml/badge.svg)](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/android.yml)
+
 Tacklebox is a private, dark-only fishing journal for Android. It stores the angler's waters, sessions, catches, conditions, gear and presets locally with Room; there are no accounts, advertisements, analytics, subscriptions or in-app purchases.
 
 ## Requirements
 
 - Android Studio Ladybug or newer
-- JDK 17
+- JDK 21
 - Android SDK 35
 - Internet access for the first dependency download and optional live conditions
 
