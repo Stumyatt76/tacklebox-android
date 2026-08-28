@@ -8,3 +8,8 @@ build/
 captures/
 .DS_Store
 .gradle-local/
+
+# Release signing — never commit key material
+keystore.properties
+*.jks
+*.keystore
