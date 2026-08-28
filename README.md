@@ -12,7 +12,7 @@ Tacklebox is a private, dark-only fishing journal for Android. It stores the ang
 - Android SDK 35
 - Internet access for the first dependency download and optional live conditions
 
-The project pins Android Gradle Plugin 8.7.3, Gradle 8.11.1, Kotlin 2.0.21 and the Compose 2024.12 BOM. Minimum Android version is API 26 and compile/target SDK is 35.
+The project pins Android Gradle Plugin 8.7.3, Gradle 8.11.1, Kotlin 2.0.21 and the Compose 2024.12 BOM. Minimum Android version is API 26 and compile/target SDK is 35. Current app version is 1.2 (versionCode 3).
 
 ## Run
 
