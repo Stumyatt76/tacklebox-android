@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0E1A1E"/>
+  <rect x="48" y="48" width="416" height="416" rx="104" fill="#15272D"/>
+  <rect x="48" y="48" width="416" height="416" rx="104" fill="none" stroke="#1C343B" stroke-width="2"/>
+  <!-- fish, centred ~256,244 -->
+  <g>
+    <!-- tail -->
+    <path d="M182,244 L120,196 Q150,244 120,292 Z" fill="#C9A24B"/>
+    <!-- body -->
+    <path d="M182,244 Q292,150 396,244 Q292,338 182,244 Z" fill="#C9A24B"/>
+    <!-- dorsal fin -->
+    <path d="M256,182 Q292,138 328,178 Q292,192 256,182 Z" fill="#E2C890"/>
+    <!-- eye -->
+    <circle cx="352" cy="228" r="10" fill="#0E1A1E"/>
+    <!-- gill line -->
+    <path d="M312,196 Q300,244 312,292" stroke="#0E1A1E" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.55"/>
+  </g>
+  <!-- waterline -->
+  <path d="M150,330 Q256,366 362,330" stroke="#57B3A6" stroke-width="11" fill="none" stroke-linecap="round"/>
+  <path d="M188,356 Q256,380 324,356" stroke="#57B3A6" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.6"/>
+</svg>
