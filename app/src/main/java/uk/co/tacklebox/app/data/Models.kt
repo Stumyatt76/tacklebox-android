@@ -43,7 +43,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Insert suspend fun addWaters(values: List<Water>)
     @Query("SELECT COUNT(*) FROM Water") suspend fun waterCount(): Int
     @Transaction @Query("SELECT * FROM Catch ORDER BY caughtAt DESC") fun catches(): Flow<List<CatchRow>>
-    @Transaction @Query("SELECT * FROM Catch WHERE id=:id") fun catch(id:Long): Flow<CatchRow?>
+    @Transaction @Query("SELECT * FROM Catch WHERE id=:id") fun catchById(id:Long): Flow<CatchRow?>
     @Insert suspend fun addCatch(value: Catch): Long
     @Insert suspend fun addConditions(value: ConditionsSnapshot)
     @Transaction @Query("SELECT * FROM FishingSession ORDER BY startAt DESC") fun sessions(): Flow<List<SessionRow>>

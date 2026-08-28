@@ -30,7 +30,7 @@ class TackleboxRepository(context: Context) {
     suspend fun stopSession(id:Long)=dao.stopSession(id)
     suspend fun addGear(v:GearItem)=dao.addGear(v)
     suspend fun addPreset(v:TacklePreset)=dao.addPreset(v)
-    fun species(id:Long)=dao.species(id); fun water(id:Long)=dao.water(id); fun catch(id:Long)=dao.catch(id)
+    fun species(id:Long)=dao.species(id); fun water(id:Long)=dao.water(id); fun catchById(id:Long)=dao.catchById(id)
     suspend fun deleteAllUserData() { dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
     companion object { val seedSpecies=listOf(
         Species(name="Common carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="Powerful, adaptable and endlessly individual."),
