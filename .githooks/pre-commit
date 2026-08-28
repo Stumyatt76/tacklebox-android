@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Pre-commit hook: block commits that add/modify a Kotlin source file without
+# the proprietary copyright header. Checks the STAGED content, not the worktree.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+set -euo pipefail
+
+MARKER="All rights reserved"
+missing=()
+
+while IFS= read -r f; do
+  case "$f" in
+    *.kt) ;;
+    *) continue ;;
+  esac
+  # read the staged version of the file (":$f") — that's what's being committed
+  if ! git show ":$f" 2>/dev/null | head -n 5 | grep -q "$MARKER"; then
+    missing+=("$f")
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACM)
+
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "✗ pre-commit: missing copyright header in staged Kotlin file(s):" >&2
+  printf '  %s\n' "${missing[@]}" >&2
+  echo >&2
+  echo "Add above the package declaration:" >&2
+  echo "  /*" >&2
+  echo "   * Copyright (c) 2026 Stuart Myatt. All rights reserved." >&2
+  echo "   * Proprietary — source is public for reference only. See LICENSE at the repository root." >&2
+  echo "   */" >&2
+  echo >&2
+  echo "(To bypass in an emergency: git commit --no-verify)" >&2
+  exit 1
+fi

@@ -57,3 +57,11 @@ Photos are selected through Android's document picker and stored as local conten
 ## License
 
 Proprietary — Copyright (c) 2026 Stuart Myatt. All rights reserved. The source is public for reference only and is not open-source; see [LICENSE](LICENSE). No use, building, or redistribution is permitted without written permission.
+
+## Development
+
+Enable the shared git hooks once per clone so commits are checked for the copyright header locally (mirrors CI):
+
+```bash
+git config core.hooksPath .githooks
+```
