@@ -1,0 +1,61 @@
+name: Tester feedback
+description: Report a bug or share feedback from testing Tacklebox
+title: "[Feedback]: "
+labels: ["tester-feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for testing Tacklebox! A few quick details help a lot.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+      placeholder: On the Log screen, saving a catch without a weight showed…
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app
+        2. Tap the + to log a catch
+        3. …
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Vault / home
+        - Log a catch
+        - Bite windows (solunar)
+        - Waters / River / Tides
+        - Sessions
+        - Insights / Year on the Water
+        - My Tacklebox
+        - Settings
+        - Onboarding
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Phone & Android version
+      placeholder: e.g. Pixel 7, Android 15
+    validations:
+      required: false
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How much did it get in the way?
+      options:
+        - Just a suggestion
+        - Minor annoyance
+        - Made a feature hard to use
+        - Crash or data loss
+    validations:
+      required: true
