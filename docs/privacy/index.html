@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tacklebox — Privacy Policy</title>
+<style>
+  :root{
+    --bg:#0E1A1E; --surface:#15272D; --inset:#1C343B; --ink:#F3EEE4;
+    --muted:#9BB0B3; --brass:#C9A24B; --brass-soft:#E2C890; --teal:#57B3A6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;font-size:17px}
+  .wrap{max-width:760px;margin:0 auto;padding:48px 22px 96px}
+  header{border-bottom:1px solid var(--inset);padding-bottom:24px;margin-bottom:8px}
+  .eyebrow{color:var(--brass);letter-spacing:.14em;text-transform:uppercase;font-size:13px;font-weight:700;margin:0 0 10px}
+  h1{font-family:Georgia,"Times New Roman",serif;font-size:38px;line-height:1.1;margin:0 0 8px;font-weight:600}
+  h2{font-family:Georgia,"Times New Roman",serif;font-size:23px;margin:40px 0 10px;font-weight:600;color:var(--brass-soft)}
+  h3{font-size:17px;margin:22px 0 6px;color:var(--teal)}
+  p,li{color:var(--ink)}
+  .muted{color:var(--muted)}
+  a{color:var(--brass-soft)}
+  ul{padding-left:20px}
+  li{margin:6px 0}
+  .card{background:var(--surface);border-radius:16px;padding:18px 20px;margin:18px 0}
+  .tldr{background:var(--inset);border-radius:16px;padding:18px 20px;margin:20px 0}
+  code{background:var(--inset);padding:1px 6px;border-radius:6px;font-size:.9em}
+  footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--inset);color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Tacklebox for Android</p>
+  <h1>Privacy Policy</h1>
+  <p class="muted">Effective 28 August 2026</p>
+</header>
+
+<div class="tldr">
+  <strong>In short:</strong> Tacklebox is a private, offline-first fishing journal.
+  There are no accounts, no advertising, no analytics, and no tracking. Your catches,
+  photos, waters, sessions and gear are stored only on your device. The app connects to
+  the internet only when you ask for live conditions, and only shares what is needed to
+  fetch that data.
+</div>
+
+<h2>Who we are</h2>
+<p>Tacklebox for Android (“the app”) is developed by Stuart Myatt (“we”, “us”). This policy
+explains what data the app handles and why. It applies to the app only.</p>
+
+<h2>Our approach</h2>
+<ul>
+  <li>No account and no sign-in. The app does not create a user profile.</li>
+  <li>No advertising, no analytics SDKs, and no third-party tracking.</li>
+  <li>We do not sell, rent, or share your personal data for marketing.</li>
+  <li>Your journal data lives on your device. Every core feature works fully offline.</li>
+</ul>
+
+<h2>Data the app handles</h2>
+
+<h3>On-device journal data</h3>
+<p>Your catches, photos, waters, fishing sessions, gear, presets, and settings are stored
+locally on your device using the app’s database. This data is not transmitted to us or to
+any server. It stays on your device unless you choose to back it up (see below).</p>
+
+<h3>Location</h3>
+<p>If you enable live conditions, the app requests location permission and uses your
+approximate location <em>only at that moment</em> to fetch nearby weather, marine, tide,
+and river information. Your location is used to make those requests and is not stored as a
+precise fishing spot, and is not shared with us. When a catch records conditions, only the
+resulting weather summary (for example air temperature or moon phase) is saved on your
+device — not your coordinates.</p>
+
+<h3>Camera and photos</h3>
+<p>You can attach photos to catches from your camera or photo library. These images are
+stored locally on your device. They are not uploaded anywhere unless you use the optional
+features described below.</p>
+
+<h3>Optional cloud backup (off by default)</h3>
+<p>You may turn on backup to <strong>your own Google Drive</strong> (app-data scope). When
+enabled, a copy of your app data is stored in your personal Google Drive account, which you
+control. We do not receive or have access to it. This option is off unless you turn it on.</p>
+
+<h3>Optional AI species identification (opt-in)</h3>
+<p>If you add your own image-recognition API token in Settings and choose to identify a
+species from a photo, that photo is sent to the third-party recognition service you have
+configured, in order to return a suggested species. This happens only when you actively use
+the feature. We do not operate that service and do not receive the image.</p>
+
+<h2>Third-party services</h2>
+<p>When you use live conditions or optional features, requests go directly from your device
+to the relevant provider. Depending on which features you use, these may include:</p>
+<ul>
+  <li><strong>Open-Meteo</strong> — weather and marine/tide conditions (receives approximate coordinates).</li>
+  <li><strong>Environment Agency (UK) real-time flood-monitoring</strong> — river gauge data (receives approximate coordinates).</li>
+  <li><strong>An image-recognition provider you configure</strong> — only if you use species identification (receives the photo you choose).</li>
+  <li><strong>Google Drive</strong> — only if you enable backup (stores data in your own account).</li>
+</ul>
+<p class="muted">These providers handle any data they receive under their own privacy policies.
+The app sends them only what is needed for the requested feature, and no account identifiers.</p>
+
+<h2>Permissions</h2>
+<div class="card">
+  <p style="margin:0 0 6px"><strong>Location</strong> — used only to fetch live weather, marine, tide, and river conditions when you request them.</p>
+  <p style="margin:0"><strong>Camera / Photos</strong> — used only to attach a photo to a catch, at your choice.</p>
+</div>
+<p class="muted">You can grant or deny these at any time in your device settings. Denying them
+does not affect the app’s offline journaling features.</p>
+
+<h2>Keeping and deleting your data</h2>
+<p>Because your data is stored on your device, you are in control of it. You can delete your
+catches, waters, sessions, gear and presets from within the app (Settings → delete), or
+remove everything by uninstalling the app. If you enabled Google Drive backup, manage or
+delete that copy from your Google Drive account.</p>
+
+<h2>Children</h2>
+<p>Tacklebox is not directed to children under 13, and we do not knowingly collect personal
+information from children.</p>
+
+<h2>Changes to this policy</h2>
+<p>We may update this policy from time to time. Material changes will be reflected here with a
+new effective date.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy or your privacy? Contact
+<a href="mailto:myattstuart1976@gmail.com">myattstuart1976@gmail.com</a>.</p>
+
+<footer>
+  © 2026 Stuart Myatt. Tacklebox for Android. This page is the app’s official privacy policy.
+</footer>
+</div>
+</body>
+</html>
