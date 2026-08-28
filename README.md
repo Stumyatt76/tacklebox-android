@@ -53,3 +53,7 @@ Navigation covers onboarding, Vault, catch logging/details, species records, Wat
 All journal features work offline. Open-Meteo marine/weather and Environment Agency gauge requests fail into retryable UI states. Solunar calculations are local. The species-identification affordance remains disabled until the user supplies a token. The Google Drive backup preference is off by default; a production distributor must configure its own OAuth client before connecting the app-data implementation. User location is requested only for live conditions and is not persisted.
 
 Photos are selected through Android's document picker and stored as local content references. Missing images use the app's fish-glyph treatment.
+
+## License
+
+Proprietary — Copyright (c) 2026 Stuart Myatt. All rights reserved. The source is public for reference only and is not open-source; see [LICENSE](LICENSE). No use, building, or redistribution is permitted without written permission.
