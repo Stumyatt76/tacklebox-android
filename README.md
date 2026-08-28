@@ -1,6 +1,7 @@
 # Tacklebox for Android
 
 [![Android CI](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/android.yml/badge.svg)](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/android.yml)
+[![Release](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/release.yml/badge.svg)](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/release.yml)
 
 Tacklebox is a private, dark-only fishing journal for Android. It stores the angler's waters, sessions, catches, conditions, gear and presets locally with Room; there are no accounts, advertisements, analytics, subscriptions or in-app purchases.
 
