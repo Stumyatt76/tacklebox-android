@@ -44,7 +44,10 @@ gh secret set KEY_PASSWORD      --repo Stumyatt76/tacklebox-android   # prompts 
 
 ## Cutting a release
 
-1. Bump the version in `app/build.gradle.kts`:
+1. Bump the version. Either edit `app/build.gradle.kts` by hand, or run the helper (sets `versionName`, auto-increments `versionCode`, and commits):
+   ```bash
+   ./scripts/bump-version.sh 1.6
+   ```
    - `versionName` — the human-facing string (e.g. `"1.2"`).
    - `versionCode` — the integer Play uses to order updates; **must increase** every upload.
 2. Commit and push to `main`.
