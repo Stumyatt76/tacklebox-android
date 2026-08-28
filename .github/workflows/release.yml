@@ -52,23 +52,35 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --stacktrace
 
+      - name: Name release artifacts
+        id: artifacts
+        env:
+          TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          version="${TAG#v}"                        # v1.6 -> 1.6
+          apk="tacklebox-${version}.apk"
+          aab="tacklebox-${version}.aab"
+          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          cp app/build/outputs/bundle/release/app-release.aab "$aab"
+          echo "apk=$apk" >> "$GITHUB_OUTPUT"
+          echo "aab=$aab" >> "$GITHUB_OUTPUT"
+
       - name: Publish artifacts to the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ env.RELEASE_TAG }}
+          APK: ${{ steps.artifacts.outputs.apk }}
+          AAB: ${{ steps.artifacts.outputs.aab }}
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --title "Tacklebox $TAG" --generate-notes
-          gh release upload "$TAG" \
-            app/build/outputs/apk/release/app-release.apk \
-            app/build/outputs/bundle/release/app-release.aab \
-            --clobber
+          gh release upload "$TAG" "$APK" "$AAB" --clobber
 
       - name: Upload artifacts to the workflow run
         uses: actions/upload-artifact@v7
         with:
           name: tacklebox-release
           path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/bundle/release/app-release.aab
+            ${{ steps.artifacts.outputs.apk }}
+            ${{ steps.artifacts.outputs.aab }}
           if-no-files-found: error
