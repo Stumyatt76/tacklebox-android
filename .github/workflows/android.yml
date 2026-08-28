@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Check license headers
+        run: ./scripts/check-license-headers.sh
+
       - name: Set up JDK 21
         uses: actions/setup-java@v6
         with:
