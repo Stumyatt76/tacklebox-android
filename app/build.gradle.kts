@@ -21,13 +21,13 @@ val hasReleaseSigning = releaseStoreFile != null
 
 android {
     namespace = "uk.co.tacklebox.app"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "uk.co.tacklebox.app"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 9
-        versionName = "1.8"
+        targetSdk = 36
+        versionCode = 10
+        versionName = "1.9"
     }
     signingConfigs {
         create("release") {
