@@ -54,6 +54,10 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Insert suspend fun addSpecies(value: Species): Long
     @Insert suspend fun addSpecies(values: List<Species>)
     @Query("SELECT COUNT(*) FROM Species") suspend fun speciesCount(): Int
+    @Query("SELECT * FROM Species") suspend fun speciesOnce(): List<Species>
+    @Query("SELECT * FROM Water") suspend fun watersOnce(): List<Water>
+    @Query("SELECT * FROM GearItem") suspend fun gearOnce(): List<GearItem>
+    @Query("SELECT * FROM TacklePreset") suspend fun presetsOnce(): List<TacklePreset>
     @Query("SELECT * FROM Water ORDER BY name") fun waters(): Flow<List<Water>>
     @Query("SELECT * FROM Water WHERE id=:id") fun water(id:Long): Flow<Water?>
     @Insert suspend fun addWater(value: Water): Long

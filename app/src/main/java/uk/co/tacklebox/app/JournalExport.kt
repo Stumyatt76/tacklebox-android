@@ -20,12 +20,14 @@ import java.time.Instant
  * presets. Photos are referenced by URI rather than embedded — the images stay wherever the user already keeps them.
  */
 object JournalExport {
+    /** Bumped only when the shape changes in a way an older importer could misread. */
+    const val SCHEMA = 1
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun write(context:Context, state:AppState):Uri {
         val payload = mapOf(
             "app" to "Tacklebox",
-            "schema" to 1,
+            "schema" to SCHEMA,
             "exportedAt" to Instant.now().toString(),
             "units" to state.settings.unitSystem.name,
             "catches" to state.catches.map { row -> mapOf(
@@ -47,7 +49,9 @@ object JournalExport {
                     "pressureHpa" to it.pressureHpa, "pressureTrend" to it.pressureTrend, "moonPhase" to it.moonPhase) }
             ) },
             "waters" to state.waters.map { mapOf("name" to it.name,"type" to it.type.name,"region" to it.region,"swimNotes" to it.swimNotes) },
-            "sessions" to state.sessions.map { mapOf("startAt" to it.item.startAt.toString(),"endAt" to it.item.endAt?.toString(),"water" to it.water?.name,"catches" to it.catches.size,"notes" to it.item.notes) },
+            // The id must be published: catches carry "sessionId", and without the matching id here an importer cannot
+            // reconnect a catch to its session. Round-tripping a real export into the iOS app is how this was found.
+            "sessions" to state.sessions.map { mapOf("id" to it.item.id,"startAt" to it.item.startAt.toString(),"endAt" to it.item.endAt?.toString(),"water" to it.water?.name,"catches" to it.catches.size,"notes" to it.item.notes) },
             "gear" to state.gear.map { mapOf("name" to it.name,"category" to it.category.name,"notes" to it.notes) },
             "presets" to state.presets.map { mapOf("name" to it.name,"kind" to it.kind.name) }
         )

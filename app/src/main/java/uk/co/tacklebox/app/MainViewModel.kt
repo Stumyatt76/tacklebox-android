@@ -27,6 +27,8 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     val suggestions=MutableStateFlow<LiveState<List<SpeciesSuggestion>>>(LiveState.Idle)
     val exported=MutableStateFlow<Uri?>(null)
     val notice=MutableStateFlow<String?>(null)
+    val importPlan=MutableStateFlow<JournalImport.Plan?>(null)
+    val importResult=MutableStateFlow<JournalImport.Result?>(null)
 
     fun seed(samples:Boolean)=viewModelScope.launch{repo.seed(samples)}
     fun settings(v:AppSettings)=viewModelScope.launch{repo.saveSettings(v)}
@@ -106,6 +108,26 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     }
     fun clearExport(){exported.value=null}
     fun clearNotice(){notice.value=null}
+
+    /** Parses a picked file and works out what importing it would do, writing nothing until the user confirms. */
+    fun planImport(uri:Uri)=viewModelScope.launch{
+        runCatching{
+            val json=getApplication<Application>().contentResolver.openInputStream(uri)?.use{it.readBytes().decodeToString()}
+                ?: throw JournalImport.Failure("That file could not be opened.")
+            JournalImport.plan(json, JournalImport.ExistingVault.from(state.value))
+        }.onSuccess{plan->
+            if(plan.isEmpty)notice.value="That journal has nothing in it to import." else importPlan.value=plan
+        }.onFailure{notice.value=it.message ?: "That file could not be read."}
+    }
+    fun cancelImport(){importPlan.value=null}
+    fun clearImportResult(){importResult.value=null}
+
+    /** Merges the plan into the vault. Existing records are matched by name and reused, never replaced. */
+    fun confirmImport()=viewModelScope.launch{
+        val plan=importPlan.value ?: return@launch
+        importPlan.value=null
+        importResult.value=repo.applyImport(plan)
+    }
 
     fun deleteData()=viewModelScope.launch{repo.deleteAllUserData()}
 }
