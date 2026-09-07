@@ -20,11 +20,15 @@ class TackleboxRepository(context: Context) {
     val sessions = dao.sessions()
     val gear = dao.gear()
     val presets = dao.presets()
-    private fun defaults() = AppSettings(unitSystem=if(Locale.getDefault().country in listOf("US","GB")) UnitSystem.IMPERIAL else UnitSystem.METRIC)
+    // Only the US is an imperial-first market, and the AppSettings default is METRIC. Including "GB" here made a UK
+    // device disagree with its own model default and with iOS, which keys off Locale.measurementSystem (TB-A-14).
+    internal fun defaults() = AppSettings(unitSystem=if(Locale.getDefault().country=="US") UnitSystem.IMPERIAL else UnitSystem.METRIC)
     suspend fun seed(samples:Boolean) {
         if (dao.speciesCount()==0) dao.addSpecies(seedSpecies)
         if (samples && dao.waterCount()==0) dao.addWaters(listOf(Water(name="Willow Mere",type=WaterType.LAKE,region="Norfolk",disciplines=listOf("COARSE"),swimNotes="Reeds on the west bank fish well at dusk."), Water(name="Upper Avon",type=WaterType.RIVER,region="Wiltshire",disciplines=listOf("GAME","COARSE"),swimNotes="Travel light; watch the level after rain.")))
-        dao.saveSettings(defaults().copy(onboardingComplete=true))
+        // Merge onto what is already stored. saveSettings is REPLACE on id=1, so writing defaults() wholesale
+        // discarded any unit choice, the species-ID token and the backup flag (TB-A-14).
+        dao.saveSettings((dao.settings().first() ?: defaults()).copy(onboardingComplete=true))
     }
     suspend fun saveSettings(v:AppSettings)=dao.saveSettings(v)
     suspend fun addSpecies(name:String):Long=dao.addSpecies(Species(name=name, discipline=Discipline.COARSE))
@@ -33,7 +37,14 @@ class TackleboxRepository(context: Context) {
     suspend fun startSession(waterId:Long?)=dao.addSession(FishingSession(waterId=waterId))
     suspend fun stopSession(id:Long)=dao.stopSession(id)
     suspend fun addGear(v:GearItem)=dao.addGear(v)
+    suspend fun deleteGear(v:GearItem)=dao.deleteGear(v)
     suspend fun addPreset(v:TacklePreset)=dao.addPreset(v)
+    suspend fun deletePreset(v:TacklePreset)=dao.deletePreset(v)
+    suspend fun saveWater(v:Water)=dao.updateWater(v)
+    suspend fun openSession():FishingSession?=dao.openSession()
+    suspend fun deleteCatch(id:Long){ dao.deleteConditionsFor(id); dao.deleteCatch(id) }
+    /** Deleting a water keeps its catches and sessions; there are no foreign keys, so detach them explicitly. */
+    suspend fun deleteWater(id:Long){ dao.detachCatchesFromWater(id); dao.detachSessionsFromWater(id); dao.deleteWater(id) }
     fun species(id:Long)=dao.species(id); fun water(id:Long)=dao.water(id); fun catchById(id:Long)=dao.catchById(id)
     suspend fun deleteAllUserData() { dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
     companion object { val seedSpecies=listOf(

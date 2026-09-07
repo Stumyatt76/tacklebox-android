@@ -28,6 +28,7 @@ android {
         targetSdk = 36
         versionCode = 10
         versionName = "1.9"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
         create("release") {
@@ -77,6 +78,23 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    // The dependency set could not compile a Compose UI test at all: no ui-test-junit4, no ui-test-manifest,
+    // no androidx.test.ext:junit, no room-testing (TB-A-20, and brief §7).
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation("androidx.room:room-testing:2.6.1")
 }
 
-kapt { correctErrorTypes = true }
+android { testOptions { unitTests { isIncludeAndroidResources = true } } }
+
+kapt {
+    correctErrorTypes = true
+    // Room was on version 1 with exportSchema off and no migrations: the first entity change would have been a
+    // crash-on-upgrade for every existing tester, with no way to write a migration test (TB-A-20).
+    arguments { arg("room.schemaLocation", "$projectDir/schemas") }
+}

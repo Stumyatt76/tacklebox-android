@@ -35,7 +35,7 @@ Fill each section using `marketing/play-data-safety.md`:
 - Paid app → set up a **payments/merchant profile** first (required for paid apps), then set the price.
 
 ## 5. Production release  (Release → Production → Create new release)
-- Upload **`tacklebox-1.8.aab`** (from the v1.8 GitHub release)
+- Upload **`tacklebox-1.9.aab`** (from the v1.9 GitHub release)
 - Release name: `1.8 (9)` ; add release notes
 - Review and roll out
 
