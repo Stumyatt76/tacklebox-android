@@ -37,13 +37,14 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      * passports and session catch counts were permanently zero (TB-A-02, TB-A-03); and only the moon phase was
      * recorded, while the detail screen blamed the network for the rest (TB-A-09).
      */
-    fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photo:String?,notes:String="",caughtAt:Instant=Instant.now(),onDone:(Long)->Unit)=viewModelScope.launch{
+    fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),onDone:(Long)->Unit)=viewModelScope.launch{
         val openSession=repo.openSession()
         val conditions=captureConditions()
         val id=repo.addCatch(
             Catch(speciesId=speciesId,weightGrams=weight,lengthCm=length,rig=rig?.ifBlank{null},bait=bait?.ifBlank{null},returned=returned,
-                  waterId=waterId ?: openSession?.waterId, sessionId=openSession?.id, photoUri=photo, caughtAt=caughtAt, notes=notes.trim()),
+                  waterId=waterId ?: openSession?.waterId, sessionId=openSession?.id, photoUri=photos.firstOrNull(), caughtAt=caughtAt, notes=notes.trim()),
             conditions)
+        repo.savePhotos(id, photos)
         onDone(id)
     }
 
@@ -66,7 +67,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
 
     fun addWater(name:String,type:WaterType,region:String)=viewModelScope.launch{repo.addWater(Water(name=name,type=type,region=region))}
     fun updateWater(v:Water)=viewModelScope.launch{repo.saveWater(v)}
-    fun updateCatch(v:Catch)=viewModelScope.launch{repo.saveCatch(v)}
+    fun updateCatch(v:Catch,photos:List<String>?=null)=viewModelScope.launch{repo.saveCatch(v);photos?.let{repo.savePhotos(v.id,it)}}
     fun addSpecies(name:String)=viewModelScope.launch{repo.addSpecies(name)}
     fun startSession(water:Long?)=viewModelScope.launch{repo.startSession(water)}
     fun stopSession(id:Long)=viewModelScope.launch{repo.stopSession(id)}

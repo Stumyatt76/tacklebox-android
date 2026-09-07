@@ -12,6 +12,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import uk.co.tacklebox.app.data.MIGRATION_1_2
+import uk.co.tacklebox.app.data.MIGRATION_2_3
 import uk.co.tacklebox.app.data.TackleboxDatabase
 
 /**
@@ -53,6 +54,53 @@ class MigrationTest {
             assertEquals(2L, cursor.getLong(3))
             // NOT NULL with a default, so old rows arrive valid without a backfill pass.
             assertEquals("", cursor.getString(4))
+        }
+    }
+
+    /**
+     * Extra photos. An existing catch keeps its single `photoUri` as the cover and simply has no rows in the new
+     * table, so there is nothing to backfill and no chance of losing an image.
+     */
+    @Test
+    fun migrate2To3_addsThePhotoTableAndKeepsTheExistingCover() {
+        helper.createDatabase(name, 1).apply {
+            execSQL(
+                """INSERT INTO Catch (id, speciesId, weightGrams, lengthCm, returned, photoUri, rig, bait, caughtAt, sessionId, waterId)
+                   VALUES (1, 7, 2400.0, NULL, 1, 'content://photos/42', NULL, NULL, 1757000000000, NULL, NULL)"""
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(name, 3, true, MIGRATION_1_2, MIGRATION_2_3)
+
+        db.query("SELECT photoUri FROM Catch").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("the cover photo must survive", "content://photos/42", cursor.getString(0))
+        }
+        db.query("SELECT count(*) FROM CatchPhoto").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("an upgraded catch starts with no extras", 0, cursor.getInt(0))
+        }
+    }
+
+    /** Straight from a version-1 install, skipping no steps. */
+    @Test
+    fun migrate1To3_runsBothStepsInSequence() {
+        helper.createDatabase(name, 1).apply {
+            execSQL(
+                """INSERT INTO Catch (id, speciesId, weightGrams, lengthCm, returned, photoUri, rig, bait, caughtAt, sessionId, waterId)
+                   VALUES (1, 7, 2400.0, NULL, 1, NULL, 'Method feeder', 'Sweetcorn', 1757000000000, NULL, 2)"""
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(name, 3, true, MIGRATION_1_2, MIGRATION_2_3)
+
+        db.query("SELECT bait, notes FROM Catch").use { cursor ->
+            assertEquals(1, cursor.count)
+            cursor.moveToFirst()
+            assertEquals("Sweetcorn", cursor.getString(0))
+            assertEquals("", cursor.getString(1))
         }
     }
 

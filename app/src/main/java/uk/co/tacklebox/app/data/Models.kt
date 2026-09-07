@@ -29,10 +29,21 @@ class Converters {
 @Entity(indices = [Index("waterId")]) data class FishingSession(@PrimaryKey(autoGenerate = true) val id: Long = 0, val waterId: Long? = null, val startAt: Instant = Instant.now(), val endAt: Instant? = null, val notes: String = "")
 @Entity(indices = [Index("speciesId"), Index("sessionId"), Index("waterId")]) data class Catch(@PrimaryKey(autoGenerate = true) val id: Long = 0, val speciesId: Long? = null, val weightGrams: Double? = null, val lengthCm: Double? = null, val returned: Boolean = true, val photoUri: String? = null, val rig: String? = null, val bait: String? = null, val caughtAt: Instant = Instant.now(), val sessionId: Long? = null, val waterId: Long? = null, val notes: String = "")
 @Entity(indices = [Index(value=["catchId"], unique=true)]) data class ConditionsSnapshot(@PrimaryKey(autoGenerate = true) val id: Long = 0, val catchId: Long, val airTempC: Double? = null, val windDirection: String? = null, val windSpeedKph: Double? = null, val pressureHpa: Double? = null, val pressureTrend: String? = null, val moonPhase: String? = null)
+/**
+ * One of a catch's extra photos.
+ *
+ * `Catch.photoUri` stays the cover, so every existing surface — the Vault hero, the list thumbnail, the detail
+ * image — keeps reading it untouched, records created before this existed need no backfill, and the cover is never
+ * stored twice.
+ */
+@Entity(indices = [Index("catchId")]) data class CatchPhoto(@PrimaryKey(autoGenerate = true) val id: Long = 0, val catchId: Long, val uri: String, val order: Int = 0)
 @Entity data class GearItem(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val category: GearCategory, val notes: String = "")
 @Entity data class TacklePreset(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val kind: PresetKind)
 
-data class CatchRow(@Embedded val item: Catch, @Relation(parentColumn="speciesId", entityColumn="id") val species: Species?, @Relation(parentColumn="waterId", entityColumn="id") val water: Water?, @Relation(parentColumn="id", entityColumn="catchId") val conditions: ConditionsSnapshot?)
+data class CatchRow(@Embedded val item: Catch, @Relation(parentColumn="speciesId", entityColumn="id") val species: Species?, @Relation(parentColumn="waterId", entityColumn="id") val water: Water?, @Relation(parentColumn="id", entityColumn="catchId") val conditions: ConditionsSnapshot?, @Relation(parentColumn="id", entityColumn="catchId") val extraPhotos: List<CatchPhoto> = emptyList()) {
+    /** Every photo, cover first, then the extras in the order the angler arranged them. */
+    val allPhotoUris: List<String> get() = listOfNotNull(item.photoUri) + extraPhotos.sortedBy { it.order }.map { it.uri }
+}
 data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn="waterId", entityColumn="id") val water: Water?, @Relation(parentColumn="id", entityColumn="sessionId", entity=Catch::class) val catches: List<Catch>)
 
 @Dao interface TackleboxDao {
@@ -63,12 +74,15 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Delete suspend fun deletePreset(value:TacklePreset)
     @Update suspend fun updateWater(value:Water)
     @Update suspend fun updateCatch(value:Catch)
+    @Insert suspend fun addPhotos(values:List<CatchPhoto>)
+    @Query("DELETE FROM CatchPhoto WHERE catchId=:id") suspend fun clearPhotosFor(id:Long)
     /** The session a catch should be attached to: the most recently started one that has not been finished. */
     @Query("SELECT * FROM FishingSession WHERE endAt IS NULL ORDER BY startAt DESC LIMIT 1") suspend fun openSession(): FishingSession?
     // Per-item deletes. Only "delete everything" existed, and Room declares no foreign keys, so the child rows and
     // the orphaned references have to be cleared by hand.
     @Query("DELETE FROM ConditionsSnapshot WHERE catchId=:id") suspend fun deleteConditionsFor(id:Long)
     @Query("DELETE FROM Catch WHERE id=:id") suspend fun deleteCatch(id:Long)
+    @Query("DELETE FROM CatchPhoto") suspend fun clearPhotos()
     @Query("DELETE FROM Water WHERE id=:id") suspend fun deleteWater(id:Long)
     @Query("UPDATE Catch SET waterId=NULL WHERE waterId=:id") suspend fun detachCatchesFromWater(id:Long)
     @Query("UPDATE FishingSession SET waterId=NULL WHERE waterId=:id") suspend fun detachSessionsFromWater(id:Long)
@@ -79,7 +93,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM TacklePreset") suspend fun clearPresets()
 }
 
-@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=2, exportSchema=true)
+@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=3, exportSchema=true)
 @TypeConverters(Converters::class)
 abstract class TackleboxDatabase: RoomDatabase() { abstract fun dao(): TackleboxDao }
 
@@ -93,5 +107,16 @@ abstract class TackleboxDatabase: RoomDatabase() { abstract fun dao(): Tacklebox
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `Catch` ADD COLUMN `notes` TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+/**
+ * Extra photos. Existing catches keep their single `photoUri` as the cover and simply have no rows here, so there
+ * is nothing to backfill and no chance of losing an image.
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `CatchPhoto` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `catchId` INTEGER NOT NULL, `uri` TEXT NOT NULL, `order` INTEGER NOT NULL)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_CatchPhoto_catchId` ON `CatchPhoto` (`catchId`)")
     }
 }

@@ -41,6 +41,7 @@ object JournalExport {
                 "bait" to row.item.bait,
                 "notes" to row.item.notes.ifBlank { null },
                 "photoUri" to row.item.photoUri,
+                "photoCount" to row.allPhotoUris.size,
                 "conditions" to row.conditions?.let { mapOf(
                     "airTempC" to it.airTempC, "windDirection" to it.windDirection, "windSpeedKph" to it.windSpeedKph,
                     "pressureHpa" to it.pressureHpa, "pressureTrend" to it.pressureTrend, "moonPhase" to it.moonPhase) }
