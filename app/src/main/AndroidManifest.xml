@@ -3,12 +3,33 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <application android:name=".TackleboxApp" android:allowBackup="true" android:label="Tacklebox" android:theme="@style/Theme.Tacklebox">
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!--
+      allowBackup is off deliberately. With it on and no extraction rules, Android Auto Backup silently copied the
+      Room database to the user's Google account, which contradicts the published privacy policy and the in-app
+      promise that the journal stays on the device (TB-A-17). Settings offers an explicit JSON export instead.
+    -->
+    <application
+        android:name=".TackleboxApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Tacklebox">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

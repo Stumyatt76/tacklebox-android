@@ -58,6 +58,17 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Delete suspend fun deleteGear(value:GearItem)
     @Query("SELECT * FROM TacklePreset ORDER BY kind,name") fun presets(): Flow<List<TacklePreset>>
     @Insert suspend fun addPreset(value:TacklePreset)
+    @Delete suspend fun deletePreset(value:TacklePreset)
+    @Update suspend fun updateWater(value:Water)
+    /** The session a catch should be attached to: the most recently started one that has not been finished. */
+    @Query("SELECT * FROM FishingSession WHERE endAt IS NULL ORDER BY startAt DESC LIMIT 1") suspend fun openSession(): FishingSession?
+    // Per-item deletes. Only "delete everything" existed, and Room declares no foreign keys, so the child rows and
+    // the orphaned references have to be cleared by hand.
+    @Query("DELETE FROM ConditionsSnapshot WHERE catchId=:id") suspend fun deleteConditionsFor(id:Long)
+    @Query("DELETE FROM Catch WHERE id=:id") suspend fun deleteCatch(id:Long)
+    @Query("DELETE FROM Water WHERE id=:id") suspend fun deleteWater(id:Long)
+    @Query("UPDATE Catch SET waterId=NULL WHERE waterId=:id") suspend fun detachCatchesFromWater(id:Long)
+    @Query("UPDATE FishingSession SET waterId=NULL WHERE waterId=:id") suspend fun detachSessionsFromWater(id:Long)
     @Query("DELETE FROM Catch") suspend fun clearCatches()
     @Query("DELETE FROM FishingSession") suspend fun clearSessions()
     @Query("DELETE FROM Water") suspend fun clearWaters()
@@ -65,6 +76,6 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM TacklePreset") suspend fun clearPresets()
 }
 
-@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=1, exportSchema=false)
+@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=1, exportSchema=true)
 @TypeConverters(Converters::class)
 abstract class TackleboxDatabase: RoomDatabase() { abstract fun dao(): TackleboxDao }

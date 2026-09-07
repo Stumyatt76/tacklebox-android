@@ -30,6 +30,14 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      # The only gate used to be the licence-header script: CI assembled the APK and ran no tests and no lint, so a
+      # green tick said nothing about whether the app worked.
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Android Lint
+        run: ./gradlew :app:lintDebug --no-daemon --stacktrace
+
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
@@ -39,3 +47,13 @@ jobs:
           name: tacklebox-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tacklebox-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore

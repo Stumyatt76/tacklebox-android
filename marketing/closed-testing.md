@@ -4,7 +4,7 @@ Everything to run the Play closed test and clear the **12 testers × 14 days** r
 for a new individual developer account.
 
 ## How the requirement works
-- Create a **Closed testing** track in Play Console and upload `tacklebox-1.8.aab`.
+- Create a **Closed testing** track in Play Console and upload `tacklebox-1.9.aab`.
 - Add testers by email (a Google Group, or an email list). You need **at least 12 testers
   opted in and staying opted in for 14 continuous days**.
 - Each tester opens your **opt-in link**, accepts, installs from Google Play, and **keeps the
