@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.Locale
 
 class TackleboxRepository(context: Context) {
-    private val db = Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db").addMigrations(MIGRATION_1_2).build()
+    private val db = Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
     private val dao = db.dao()
     val settings = dao.settings().map { it ?: defaults() }.distinctUntilChanged()
     val species = dao.species()
@@ -42,12 +42,17 @@ class TackleboxRepository(context: Context) {
     suspend fun deletePreset(v:TacklePreset)=dao.deletePreset(v)
     suspend fun saveWater(v:Water)=dao.updateWater(v)
     suspend fun saveCatch(v:Catch)=dao.updateCatch(v)
+    /** Replaces a catch's photos: the first is the cover on the row itself, the rest become CatchPhoto records. */
+    suspend fun savePhotos(catchId:Long, uris:List<String>) {
+        dao.clearPhotosFor(catchId)
+        if (uris.size > 1) dao.addPhotos(uris.drop(1).mapIndexed { index, uri -> CatchPhoto(catchId=catchId, uri=uri, order=index) })
+    }
     suspend fun openSession():FishingSession?=dao.openSession()
-    suspend fun deleteCatch(id:Long){ dao.deleteConditionsFor(id); dao.deleteCatch(id) }
+    suspend fun deleteCatch(id:Long){ dao.deleteConditionsFor(id); dao.clearPhotosFor(id); dao.deleteCatch(id) }
     /** Deleting a water keeps its catches and sessions; there are no foreign keys, so detach them explicitly. */
     suspend fun deleteWater(id:Long){ dao.detachCatchesFromWater(id); dao.detachSessionsFromWater(id); dao.deleteWater(id) }
     fun species(id:Long)=dao.species(id); fun water(id:Long)=dao.water(id); fun catchById(id:Long)=dao.catchById(id)
-    suspend fun deleteAllUserData() { dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
+    suspend fun deleteAllUserData() { dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
     companion object { val seedSpecies=listOf(
         Species(name="Common carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="Powerful, adaptable and endlessly individual."),
         Species(name="Mirror carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="A distinctive scaled form of common carp."),

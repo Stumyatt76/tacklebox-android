@@ -16,6 +16,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -159,30 +161,19 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
     var returned by rememberSaveable{mutableStateOf(true)}
     var notes by rememberSaveable{mutableStateOf("")}
     var caughtAt by rememberSaveable{mutableStateOf(System.currentTimeMillis())}
-    var photo by rememberSaveable{mutableStateOf<String?>(null)}
+    var photos by rememberSaveable{mutableStateOf(listOf<String>())}
     var water by rememberSaveable{mutableStateOf(openSession?.water?.id)}
     var newSpecies by rememberSaveable{mutableStateOf("")}; var addingSpecies by rememberSaveable{mutableStateOf(false)}
     val suggestions by vm.suggestions.collectAsStateWithLifecycle()
     val context=LocalContext.current
-    val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){photo=it?.toString()}
-    var pendingPhoto by remember{mutableStateOf<Uri?>(null)}
-    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->if(ok)photo=pendingPhoto?.toString()}
-    val cameraPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->if(granted){pendingPhoto=CapturePhoto.destination(context);camera.launch(pendingPhoto!!)}}
-    fun capture(){ if(CapturePhoto.permitted(context)){pendingPhoto=CapturePhoto.destination(context);camera.launch(pendingPhoto!!)} else cameraPermission.launch(Manifest.permission.CAMERA) }
 
     Screen("Log a catch","A quiet record of the moment"){
-        item{HeritageCard{
-            Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(14.dp)).background(Inset).clickable{picker.launch("image/*")},contentAlignment=Alignment.Center){
-                if(photo==null)Column(horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.AddAPhoto,null,tint=Brass);Text("Add photo",color=Muted)}
-                else AsyncImage(photo,"Photo of this catch",Modifier.fillMaxSize(),contentScale=ContentScale.Crop)}
-            Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                OutlinedButton({picker.launch("image/*")},Modifier.weight(1f)){Icon(Icons.Default.PhotoLibrary,null);Text(" Library")}
-                OutlinedButton({capture()},Modifier.weight(1f)){Icon(Icons.Default.PhotoCamera,null);Text(" Camera")}}}}
+        item{PhotoStrip(photos){photos=it}}
         item{Text("Species",style=MaterialTheme.typography.titleLarge)
             LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 items(s.species){sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours())}
                 item{FilterChip(false,{addingSpecies=true},{Text("＋ Add species")},colors=brassChipColours())}}}
-        item{SpeciesIdRow(s,vm,photo,suggestions,onPick={name->s.species.firstOrNull{it.name.equals(name,true)}?.let{species=it.id} ?: vm.addSpecies(name);vm.clearSuggestions()})}
+        item{SpeciesIdRow(s,vm,photos.firstOrNull(),suggestions,onPick={name->s.species.firstOrNull{it.name.equals(name,true)}?.let{species=it.id} ?: vm.addSpecies(name);vm.clearSuggestions()})}
         item{Text("Water",style=MaterialTheme.typography.titleLarge)
             if(s.waters.isEmpty())Text("Add a water on the Waters tab to record where this fish came from.",color=Muted)
             else LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.waters){w->FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours())}}}
@@ -204,7 +195,7 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         item{Button(onClick={
                 val weightGrams=if(metric) grams.toDoubleOrNull() else Weights.fromPoundsAndOunces(pounds,ounces)
                 val lengthCm=length.toDoubleOrNull()?.let{if(metric)it else it*2.54}
-                vm.addCatch(species,weightGrams,lengthCm,rig,bait,returned,water,photo,notes,Instant.ofEpochMilli(caughtAt)){nav.navigate("catch/$it"){popUpTo("vault")}}
+                vm.addCatch(species,weightGrams,lengthCm,rig,bait,returned,water,photos,notes,Instant.ofEpochMilli(caughtAt)){nav.navigate("catch/$it"){popUpTo("vault")}}
             },modifier=Modifier.fillMaxWidth().testTag("saveCatch"),enabled=species!=null){Text("Save catch")}}
     }
     if(addingSpecies)AlertDialog(onDismissRequest={addingSpecies=false},title={Text("Add a species")},
@@ -270,7 +261,9 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
     var confirmDelete by rememberSaveable{mutableStateOf(false)}
     val context=LocalContext.current
     Screen(c?.species?.name?:"Catch detail",c?.item?.caughtAt?.pretty()){
-        item{Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(22.dp)).background(Inset),contentAlignment=Alignment.Center){if(c?.item?.photoUri!=null)AsyncImage(c.item.photoUri,"Photo of this catch",Modifier.fillMaxSize(),contentScale=ContentScale.Crop)else Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(72.dp))}}
+        item{val gallery=c?.allPhotoUris.orEmpty()
+            if(gallery.isNotEmpty())PhotoGallery(gallery)
+            else Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(22.dp)).background(Inset),contentAlignment=Alignment.Center){Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(72.dp))}}
         item{HeritageCard{Text(c?.item?.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",style=MaterialTheme.typography.headlineMedium)
             c?.item?.lengthCm?.let{Text(if(s.settings.unitSystem==UnitSystem.METRIC)"%.0f cm".format(it) else "%.1f in".format(it/2.54),color=Muted)}
             Text("${c?.water?.name?:"Water not recorded"} · ${if(c?.item?.returned==true)"Returned" else "Kept"}",color=Muted)}}
@@ -443,8 +436,10 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
     var notes by rememberSaveable{mutableStateOf(original.notes)}
     var water by rememberSaveable{mutableStateOf(original.waterId)}
     var caughtAt by rememberSaveable{mutableStateOf(original.caughtAt.toEpochMilli())}
+    var photos by rememberSaveable{mutableStateOf(row.allPhotoUris)}
 
     Screen("Edit catch",row.species?.name){
+        item{PhotoStrip(photos){photos=it}}
         item{Text("Species",style=MaterialTheme.typography.titleLarge)
             LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.species){sp->
                 FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours())}}}
@@ -466,8 +461,67 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
                 val lengthCm=length.toDoubleOrNull()?.let{if(metric)it else it*2.54}
                 vm.updateCatch(original.copy(speciesId=species,weightGrams=weightGrams,lengthCm=lengthCm,
                     rig=rig.ifBlank{null},bait=bait.ifBlank{null},returned=returned,notes=notes.trim(),
-                    waterId=water,caughtAt=Instant.ofEpochMilli(caughtAt)))
+                    waterId=water,caughtAt=Instant.ofEpochMilli(caughtAt),photoUri=photos.firstOrNull()),photos)
                 nav.popBackStack()
             },Modifier.fillMaxWidth().testTag("saveEdit"),enabled=species!=null){Text("Save changes")}}
     }
 }
+
+// --- Multiple photos per catch ----------------------------------------------------------------------------------
+/**
+ * The photo editor used by both the capture and edit screens. One photo per catch with no gallery was the biggest
+ * thing the app under-used — anglers take three or four shots of a good fish. The first image is the cover, which
+ * is what the Vault hero and list thumbnails show, so the first slot is labelled.
+ */
+@Composable fun PhotoStrip(photos:List<String>,onChange:(List<String>)->Unit){
+    val limit=8
+    val context=LocalContext.current
+    val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()){uris->
+        if(uris.isNotEmpty())onChange((photos+uris.map{it.toString()}).take(limit))}
+    var pending by remember{mutableStateOf<Uri?>(null)}
+    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->
+        if(ok)pending?.let{onChange((photos+it.toString()).take(limit))}}
+    val cameraPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->
+        if(granted){pending=CapturePhoto.destination(context);camera.launch(pending!!)}}
+
+    HeritageCard{
+        if(photos.isEmpty()){
+            Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedRectangle14).background(Inset).clickable{picker.launch("image/*")},contentAlignment=Alignment.Center){
+                Column(horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.AddAPhoto,null,tint=Brass);Text("Add photos",color=Muted)}}
+        } else {
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                itemsIndexed(photos){index,uri->
+                    Box(Modifier.size(112.dp)){
+                        AsyncImage(uri,if(index==0)"Cover photo" else "Photo ${index+1}",
+                            Modifier.fillMaxSize().clip(RoundedRectangle14)
+                                .border(if(index==0)2.dp else 1.dp,if(index==0)Brass else Muted.copy(alpha=.4f),RoundedRectangle14),
+                            contentScale=ContentScale.Crop)
+                        IconButton({onChange(photos.filterIndexed{i,_->i!=index})},Modifier.align(Alignment.TopEnd)){
+                            Icon(Icons.Default.Cancel,"Remove photo ${index+1}",tint=Ink)}
+                        if(index==0)Text("COVER",color=Background,style=MaterialTheme.typography.bodyMedium,
+                            modifier=Modifier.align(Alignment.BottomStart).padding(4.dp).background(Brass,RoundedCornerShape(6.dp)).padding(horizontal=5.dp))}}}
+        }
+        Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            OutlinedButton({picker.launch("image/*")},Modifier.weight(1f),enabled=photos.size<limit){
+                Icon(Icons.Default.PhotoLibrary,null);Text(if(photos.isEmpty())" Library" else " Add more")}
+            OutlinedButton({if(CapturePhoto.permitted(context)){pending=CapturePhoto.destination(context);camera.launch(pending!!)}
+                            else cameraPermission.launch(Manifest.permission.CAMERA)},Modifier.weight(1f),enabled=photos.size<limit){
+                Icon(Icons.Default.PhotoCamera,null);Text(" Camera")}}
+        if(photos.size>=limit)Text("That's the limit of $limit photos for one catch.",color=Muted,style=MaterialTheme.typography.bodyMedium)
+        else if(photos.size>1)Text("The first photo is the one that appears on your board.",color=Muted,style=MaterialTheme.typography.bodyMedium)
+    }
+}
+
+/** A swipeable gallery for the catch detail. A single photo looks exactly as it did before. */
+@Composable fun PhotoGallery(photos:List<String>){
+    val pager=rememberPagerState(pageCount={photos.size})
+    Column(horizontalAlignment=Alignment.CenterHorizontally){
+        HorizontalPager(pager,Modifier.fillMaxWidth().height(220.dp)){page->
+            AsyncImage(photos[page],"Photo ${page+1} of ${photos.size}",
+                Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp)),contentScale=ContentScale.Crop)}
+        if(photos.size>1)Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){
+            repeat(photos.size){i->Box(Modifier.size(7.dp).clip(CircleShape).background(if(i==pager.currentPage)Brass else Muted.copy(alpha=.35f)))}}
+    }
+}
+
+val RoundedRectangle14=RoundedCornerShape(14.dp)
