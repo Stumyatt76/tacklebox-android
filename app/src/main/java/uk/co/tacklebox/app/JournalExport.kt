@@ -39,6 +39,7 @@ object JournalExport {
                 "sessionId" to row.item.sessionId,
                 "rig" to row.item.rig,
                 "bait" to row.item.bait,
+                "notes" to row.item.notes.ifBlank { null },
                 "photoUri" to row.item.photoUri,
                 "conditions" to row.conditions?.let { mapOf(
                     "airTempC" to it.airTempC, "windDirection" to it.windDirection, "windSpeedKph" to it.windSpeedKph,

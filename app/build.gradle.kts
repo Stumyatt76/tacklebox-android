@@ -48,6 +48,8 @@ android {
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
         }
     }
+    // MigrationTestHelper reads the exported schemas from the test APK's assets.
+    sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
     kotlinOptions { jvmTarget = "21" }

@@ -5,6 +5,8 @@
 package uk.co.tacklebox.app.data
 
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -25,7 +27,7 @@ class Converters {
 @Entity data class Species(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val discipline: Discipline, val scientificName: String? = null, val commonName: String? = null, val about: String? = null, val referencePhotoUrl: String? = null, val photoAttribution: String? = null)
 @Entity data class Water(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val type: WaterType, val region: String, val disciplines: List<String> = emptyList(), val swimNotes: String = "")
 @Entity(indices = [Index("waterId")]) data class FishingSession(@PrimaryKey(autoGenerate = true) val id: Long = 0, val waterId: Long? = null, val startAt: Instant = Instant.now(), val endAt: Instant? = null, val notes: String = "")
-@Entity(indices = [Index("speciesId"), Index("sessionId"), Index("waterId")]) data class Catch(@PrimaryKey(autoGenerate = true) val id: Long = 0, val speciesId: Long? = null, val weightGrams: Double? = null, val lengthCm: Double? = null, val returned: Boolean = true, val photoUri: String? = null, val rig: String? = null, val bait: String? = null, val caughtAt: Instant = Instant.now(), val sessionId: Long? = null, val waterId: Long? = null)
+@Entity(indices = [Index("speciesId"), Index("sessionId"), Index("waterId")]) data class Catch(@PrimaryKey(autoGenerate = true) val id: Long = 0, val speciesId: Long? = null, val weightGrams: Double? = null, val lengthCm: Double? = null, val returned: Boolean = true, val photoUri: String? = null, val rig: String? = null, val bait: String? = null, val caughtAt: Instant = Instant.now(), val sessionId: Long? = null, val waterId: Long? = null, val notes: String = "")
 @Entity(indices = [Index(value=["catchId"], unique=true)]) data class ConditionsSnapshot(@PrimaryKey(autoGenerate = true) val id: Long = 0, val catchId: Long, val airTempC: Double? = null, val windDirection: String? = null, val windSpeedKph: Double? = null, val pressureHpa: Double? = null, val pressureTrend: String? = null, val moonPhase: String? = null)
 @Entity data class GearItem(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val category: GearCategory, val notes: String = "")
 @Entity data class TacklePreset(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val kind: PresetKind)
@@ -60,6 +62,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Insert suspend fun addPreset(value:TacklePreset)
     @Delete suspend fun deletePreset(value:TacklePreset)
     @Update suspend fun updateWater(value:Water)
+    @Update suspend fun updateCatch(value:Catch)
     /** The session a catch should be attached to: the most recently started one that has not been finished. */
     @Query("SELECT * FROM FishingSession WHERE endAt IS NULL ORDER BY startAt DESC LIMIT 1") suspend fun openSession(): FishingSession?
     // Per-item deletes. Only "delete everything" existed, and Room declares no foreign keys, so the child rows and
@@ -76,6 +79,19 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM TacklePreset") suspend fun clearPresets()
 }
 
-@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=1, exportSchema=true)
+@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=2, exportSchema=true)
 @TypeConverters(Converters::class)
 abstract class TackleboxDatabase: RoomDatabase() { abstract fun dao(): TackleboxDao }
+
+/**
+ * The first real migration. Sessions, waters and gear could all carry a note; the catch — the thing the journal is
+ * actually about — could not, so the story behind a fish had nowhere to go.
+ *
+ * Testers already have data, so this must be a migration rather than a destructive rebuild. NOT NULL with a default
+ * keeps existing rows valid without a backfill pass.
+ */
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `Catch` ADD COLUMN `notes` TEXT NOT NULL DEFAULT ''")
+    }
+}

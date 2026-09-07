@@ -57,7 +57,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
     if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={BottomBar(nav,showFab)}){pad ->
         NavHost(nav,"vault",Modifier.padding(pad)){
             composable("vault"){Vault(state,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
-            composable("catches"){Catches(state,nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm)}; composable("year"){YearOnWater(state)}
+            composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm)}; composable("year"){YearOnWater(state)}
             composable("water/{id}"){WaterPassport(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("species/{id}"){SpeciesDetail(state,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catch/{id}"){CatchDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}
         }
     }
@@ -157,6 +157,8 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
     var length by rememberSaveable{mutableStateOf("")}
     var rig by rememberSaveable{mutableStateOf("")}; var bait by rememberSaveable{mutableStateOf("")}
     var returned by rememberSaveable{mutableStateOf(true)}
+    var notes by rememberSaveable{mutableStateOf("")}
+    var caughtAt by rememberSaveable{mutableStateOf(System.currentTimeMillis())}
     var photo by rememberSaveable{mutableStateOf<String?>(null)}
     var water by rememberSaveable{mutableStateOf(openSession?.water?.id)}
     var newSpecies by rememberSaveable{mutableStateOf("")}; var addingSpecies by rememberSaveable{mutableStateOf(false)}
@@ -192,11 +194,17 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         item{PresetField(rig,{rig=it},"Rig",s.presets.filter{it.kind==PresetKind.RIG}.map{it.name})
              PresetField(bait,{bait=it},"Bait",s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name})}
         item{Row(verticalAlignment=Alignment.CenterVertically){Text("Returned",Modifier.weight(1f));Switch(returned,{returned=it})}}
+        // Sessions, waters and gear could all carry a note; the catch could not, so the story behind a fish — the
+        // thing that makes a journal worth keeping — had nowhere to go.
+        item{OutlinedTextField(notes,{notes=it},label={Text("Notes")},
+            placeholder={Text("Took it on the drop, margin swim, three hours in…")},
+            minLines=3,modifier=Modifier.fillMaxWidth().testTag("catchNotes"))}
+        item{CaughtAtField(caughtAt){caughtAt=it}}
         item{if(openSession!=null)Text("Will be added to your open session at ${openSession.water?.name?:"an unspecified water"}.",color=Muted,style=MaterialTheme.typography.bodyMedium)}
         item{Button(onClick={
                 val weightGrams=if(metric) grams.toDoubleOrNull() else Weights.fromPoundsAndOunces(pounds,ounces)
                 val lengthCm=length.toDoubleOrNull()?.let{if(metric)it else it*2.54}
-                vm.addCatch(species,weightGrams,lengthCm,rig,bait,returned,water,photo){nav.navigate("catch/$it"){popUpTo("vault")}}
+                vm.addCatch(species,weightGrams,lengthCm,rig,bait,returned,water,photo,notes,Instant.ofEpochMilli(caughtAt)){nav.navigate("catch/$it"){popUpTo("vault")}}
             },modifier=Modifier.fillMaxWidth().testTag("saveCatch"),enabled=species!=null){Text("Save catch")}}
     }
     if(addingSpecies)AlertDialog(onDismissRequest={addingSpecies=false},title={Text("Add a species")},
@@ -276,9 +284,11 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
             if(w?.windSpeedKph!=null)Text("Wind · %.0f kph${w.windDirection?.let{" $it"}.orEmpty()}".format(w.windSpeedKph))
             if(w?.pressureHpa!=null)Text("Pressure · %.0f hPa".format(w.pressureHpa))
             if(w?.airTempC==null&&w?.windSpeedKph==null&&w?.pressureHpa==null)Text("No weather was recorded for this catch.",color=Muted)}}
+        item{if(!c?.item?.notes.isNullOrBlank())HeritageCard{Text("Notes",color=Brass);Text(c!!.item.notes)}}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            OutlinedButton({c?.let{ShareSheet.catchCard(context,it,s.settings.unitSystem)}},Modifier.weight(1f)){Icon(Icons.Default.Share,null);Text(" Share")}
-            TextButton({confirmDelete=true},Modifier.weight(1f),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete")}}}
+            OutlinedButton({c?.let{nav.navigate("edit/${it.item.id}")}},Modifier.weight(1f).testTag("editCatch")){Icon(Icons.Default.Edit,null);Text(" Edit")}
+            OutlinedButton({c?.let{ShareSheet.catchCard(context,it,s.settings.unitSystem)}},Modifier.weight(1f)){Icon(Icons.Default.Share,null);Text(" Share")}}}
+        item{TextButton({confirmDelete=true},Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete this catch")}}
     }
     if(confirmDelete)AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete this catch?")},
         text={Text("It is removed from your vault, your records and your insights. This cannot be undone.")},
@@ -392,3 +402,72 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
     save={listOf(it.text,it.speciesName,it.waterName,it.period.name,it.personalBestsOnly,it.minimumGrams)},
     restore={CatchFilter(it[0] as String,it[1] as String?,it[2] as String?,CatchFilter.Period.valueOf(it[3] as String),it[4] as Boolean,it[5] as Double?)}
 )
+
+// --- Catch date, notes and editing ------------------------------------------------------------------------------
+/**
+ * A tappable "caught at" row. The catch time used to be fixed at the moment of saving, so a session logged from the
+ * car park recorded the wrong day and nothing could ever be back-dated.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun CaughtAtField(millis:Long,onChange:(Long)->Unit){
+    var picking by rememberSaveable{mutableStateOf(false)}
+    HeritageCard(onClick={picking=true}){
+        Text("CAUGHT",color=Brass,style=MaterialTheme.typography.labelLarge)
+        Text(Instant.ofEpochMilli(millis).pretty(),style=MaterialTheme.typography.titleLarge)
+    }
+    if(picking){
+        val state=rememberDatePickerState(initialSelectedDateMillis=millis)
+        DatePickerDialog(onDismissRequest={picking=false},
+            confirmButton={TextButton({state.selectedDateMillis?.let(onChange);picking=false}){Text("Set")}},
+            dismissButton={TextButton({picking=false}){Text("Cancel")}}){DatePicker(state)}
+    }
+}
+
+/**
+ * Editing a saved catch. Both apps were append-only: mistype a weight and the only remedy was to delete the catch
+ * and enter it again.
+ */
+@Composable fun EditCatch(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
+    val row=s.catches.firstOrNull{it.item.id==id}
+    if(row==null){Screen("Edit catch"){item{Empty("Catch not found","It may have been deleted.")}};return}
+    val metric=s.settings.unitSystem==UnitSystem.METRIC
+    val original=row.item
+    var species by rememberSaveable{mutableStateOf(original.speciesId)}
+    var grams by rememberSaveable{mutableStateOf(if(metric)original.weightGrams?.let{"%.0f".format(it)}.orEmpty() else "")}
+    var pounds by rememberSaveable{mutableStateOf(if(!metric)original.weightGrams?.let{Weights.toPoundsAndOunces(it).first.toString()}.orEmpty() else "")}
+    var ounces by rememberSaveable{mutableStateOf(if(!metric)original.weightGrams?.let{Weights.toPoundsAndOunces(it).second.toString()}.orEmpty() else "")}
+    var length by rememberSaveable{mutableStateOf(original.lengthCm?.let{if(metric)"%.0f".format(it) else "%.1f".format(it/2.54)}.orEmpty())}
+    var rig by rememberSaveable{mutableStateOf(original.rig.orEmpty())}
+    var bait by rememberSaveable{mutableStateOf(original.bait.orEmpty())}
+    var returned by rememberSaveable{mutableStateOf(original.returned)}
+    var notes by rememberSaveable{mutableStateOf(original.notes)}
+    var water by rememberSaveable{mutableStateOf(original.waterId)}
+    var caughtAt by rememberSaveable{mutableStateOf(original.caughtAt.toEpochMilli())}
+
+    Screen("Edit catch",row.species?.name){
+        item{Text("Species",style=MaterialTheme.typography.titleLarge)
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.species){sp->
+                FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours())}}}
+        item{Text("Water",style=MaterialTheme.typography.titleLarge)
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.waters){w->
+                FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours())}}}
+        item{if(metric)OutlinedTextField(grams,{grams=it},label={Text("Weight (g)")},keyboardOptions=numberKeyboard,modifier=Modifier.fillMaxWidth())
+             else Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                 OutlinedTextField(pounds,{pounds=it},label={Text("Weight (lb)")},keyboardOptions=numberKeyboard,modifier=Modifier.weight(1f))
+                 OutlinedTextField(ounces,{ounces=it},label={Text("oz")},keyboardOptions=numberKeyboard,modifier=Modifier.weight(1f))}}
+        item{OutlinedTextField(length,{length=it},label={Text(if(metric)"Length (cm)" else "Length (in)")},keyboardOptions=numberKeyboard,modifier=Modifier.fillMaxWidth())}
+        item{PresetField(rig,{rig=it},"Rig",s.presets.filter{it.kind==PresetKind.RIG}.map{it.name})
+             PresetField(bait,{bait=it},"Bait",s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name})}
+        item{Row(verticalAlignment=Alignment.CenterVertically){Text("Returned",Modifier.weight(1f));Switch(returned,{returned=it})}}
+        item{OutlinedTextField(notes,{notes=it},label={Text("Notes")},minLines=3,modifier=Modifier.fillMaxWidth().testTag("editNotes"))}
+        item{CaughtAtField(caughtAt){caughtAt=it}}
+        item{Button({
+                val weightGrams=if(metric) grams.toDoubleOrNull() else Weights.fromPoundsAndOunces(pounds,ounces)
+                val lengthCm=length.toDoubleOrNull()?.let{if(metric)it else it*2.54}
+                vm.updateCatch(original.copy(speciesId=species,weightGrams=weightGrams,lengthCm=lengthCm,
+                    rig=rig.ifBlank{null},bait=bait.ifBlank{null},returned=returned,notes=notes.trim(),
+                    waterId=water,caughtAt=Instant.ofEpochMilli(caughtAt)))
+                nav.popBackStack()
+            },Modifier.fillMaxWidth().testTag("saveEdit"),enabled=species!=null){Text("Save changes")}}
+    }
+}
