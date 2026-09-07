@@ -57,7 +57,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
     if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={BottomBar(nav,showFab)}){pad ->
         NavHost(nav,"vault",Modifier.padding(pad)){
             composable("vault"){Vault(state,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
-            composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm)}; composable("year"){YearOnWater(state)}
+            composable("catches"){Catches(state,nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm)}; composable("year"){YearOnWater(state)}
             composable("water/{id}"){WaterPassport(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("species/{id}"){SpeciesDetail(state,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catch/{id}"){CatchDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}
         }
     }
@@ -90,7 +90,7 @@ val numberKeyboard=KeyboardOptions(keyboardType=KeyboardType.Decimal)
 @Composable fun brassChipColours()=FilterChipDefaults.filterChipColors(selectedContainerColor=Brass,selectedLabelColor=Background,labelColor=Ink,containerColor=Inset)
 fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm"))
 
-@Composable fun Vault(s:AppState,nav:NavHostController){val pb=s.catches.filter{it.item.weightGrams!=null}.maxByOrNull{it.item.weightGrams!!};val sol=Astronomy.calculate();Screen("The Vault","A private ledger of time well spent",actions={IconButton({nav.navigate("settings")}){Icon(Icons.Default.Settings,"Settings")}}){item{HeritageCard(onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}}){Text("FEATURED PERSONAL BEST",color=Brass,style=MaterialTheme.typography.labelLarge);Spacer(Modifier.height(12.dp));Text(pb?.species?.name?:"Your finest catch awaits",style=MaterialTheme.typography.headlineMedium);Text(pb?.item?.weightGrams?.weight(s.settings.unitSystem)?:"Log a catch to begin your board",color=Muted)}};item{HeritageCard(onClick={nav.navigate("solunar")}){Text("TODAY ON THE BANK",color=Teal,style=MaterialTheme.typography.labelLarge);Text("${sol.rating}/5 day · ${sol.moonPhase}",style=MaterialTheme.typography.titleLarge);Text("Next window ${sol.windows.first().start}–${sol.windows.first().end}  ·  ↑ ${sol.sunrise}  ↓ ${sol.sunset}",color=Muted)}};item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f));Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}};item{Text("Personal best board",style=MaterialTheme.typography.titleLarge)};items(s.catches.filter{it.item.weightGrams!=null}.groupBy{it.species?.id}.mapNotNull{(_,v)->v.maxByOrNull{it.item.weightGrams?:0.0}}){c->HeritageCard(onClick={nav.navigate("species/${c.species?.id}")}){Row{Text(c.species?.name?:"Unknown",Modifier.weight(1f));Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft)}}};item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){AssistChip({nav.navigate("tackle")},{Text("My Tacklebox")},leadingIcon={Icon(Icons.Default.Inventory2,null)});AssistChip({nav.navigate("solunar")},{Text("Bite windows")},leadingIcon={Icon(Icons.Default.DarkMode,null)})}}}}
+@Composable fun Vault(s:AppState,nav:NavHostController){val pb=s.catches.filter{it.item.weightGrams!=null}.maxByOrNull{it.item.weightGrams!!};val sol=Astronomy.calculate();Screen("The Vault","A private ledger of time well spent",actions={IconButton({nav.navigate("catches")},modifier=Modifier.testTag("searchCatches")){Icon(Icons.Default.Search,"Search your catches")};IconButton({nav.navigate("settings")}){Icon(Icons.Default.Settings,"Settings")}}){item{HeritageCard(onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}}){Text("FEATURED PERSONAL BEST",color=Brass,style=MaterialTheme.typography.labelLarge);Spacer(Modifier.height(12.dp));Text(pb?.species?.name?:"Your finest catch awaits",style=MaterialTheme.typography.headlineMedium);Text(pb?.item?.weightGrams?.weight(s.settings.unitSystem)?:"Log a catch to begin your board",color=Muted)}};item{HeritageCard(onClick={nav.navigate("solunar")}){Text("TODAY ON THE BANK",color=Teal,style=MaterialTheme.typography.labelLarge);Text("${sol.rating}/5 day · ${sol.moonPhase}",style=MaterialTheme.typography.titleLarge);Text("Next window ${sol.windows.first().start}–${sol.windows.first().end}  ·  ↑ ${sol.sunrise}  ↓ ${sol.sunset}",color=Muted)}};item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f).clickable{nav.navigate("catches")});Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}};item{Text("Personal best board",style=MaterialTheme.typography.titleLarge)};items(s.catches.filter{it.item.weightGrams!=null}.groupBy{it.species?.id}.mapNotNull{(_,v)->v.maxByOrNull{it.item.weightGrams?:0.0}}){c->HeritageCard(onClick={nav.navigate("species/${c.species?.id}")}){Row{Text(c.species?.name?:"Unknown",Modifier.weight(1f));Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft)}}};item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){AssistChip({nav.navigate("tackle")},{Text("My Tacklebox")},leadingIcon={Icon(Icons.Default.Inventory2,null)});AssistChip({nav.navigate("solunar")},{Text("Bite windows")},leadingIcon={Icon(Icons.Default.DarkMode,null)})}}}}
 
 // Waters could only ever arrive from the optional sample seed: Repository.addWater existed but nothing called it,
 // so a tester who chose "Start with an empty vault" could never have one (TB-A-11).
@@ -310,3 +310,85 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
 @Composable fun Empty(title:String,body:String){Column(Modifier.fillMaxWidth().padding(30.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.SetMeal,null,tint=Brass);Text(title,style=MaterialTheme.typography.titleLarge);Text(body,color=Muted,textAlign=TextAlign.Center)}}
 @Composable fun Loading(){Box(Modifier.fillMaxWidth().padding(40.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(color=Brass)}}
 @Composable fun ErrorCard(message:String,retry:()->Unit){HeritageCard{Text(message,color=MaterialTheme.colorScheme.error);TextButton(retry){Text("Try again")}}}
+// --- Catches: the browsable, searchable list -------------------------------------------------------------------
+// Neither app had search or filter of any kind, and the Vault only ever showed one catch per species, so a logged
+// catch was very hard to get back to. This is the list plus the filter sheet that drives CatchFilter.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun Catches(s:AppState,nav:NavHostController){
+    var filter by rememberSaveable(stateSaver=CatchFilterSaver){mutableStateOf(CatchFilter())}
+    var showFilters by rememberSaveable{mutableStateOf(false)}
+    val bests=remember(s.catches){CatchFilter.personalBests(s.catches)}
+    val results=remember(s.catches,filter){filter.apply(s.catches)}
+    Screen("Catches","Everything you have landed",actions={
+        IconButton({showFilters=true},modifier=Modifier.testTag("filterCatches")){
+            Icon(if(filter.isActive)Icons.Default.FilterAlt else Icons.Default.FilterAltOff,"Filter catches",tint=Brass)}}){
+        item{OutlinedTextField(filter.text,{filter=filter.copy(text=it)},
+            label={Text("Species, water, rig or bait")},singleLine=true,
+            leadingIcon={Icon(Icons.Default.Search,null)},
+            trailingIcon={if(filter.text.isNotEmpty())IconButton({filter=filter.copy(text="")}){Icon(Icons.Default.Close,"Clear search")}},
+            modifier=Modifier.fillMaxWidth().testTag("catchSearch"))}
+        if(filter.isActive)item{HeritageCard{
+            Text(filter.activeSummary(s.settings.unitSystem).joinToString(" · "),color=Muted,style=MaterialTheme.typography.bodyMedium)
+            TextButton({filter=CatchFilter()},modifier=Modifier.testTag("clearFilters")){Text("Clear filters")}}}
+        if(results.isEmpty())item{
+            if(s.catches.isEmpty())Empty("Your vault is empty","Tap + to log your first catch.")
+            else Empty("Nothing matched","No catch fits those filters. Try widening the date range or clearing the search.")}
+        else{
+            item{Text("${results.size} ${if(results.size==1)"catch" else "catches"}",color=Muted,style=MaterialTheme.typography.bodyMedium)}
+            items(results){c->HeritageCard(onClick={nav.navigate("catch/${c.item.id}")}){Row(verticalAlignment=Alignment.CenterVertically){
+                Box(Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(Inset),contentAlignment=Alignment.Center){
+                    if(c.item.photoUri!=null)AsyncImage(c.item.photoUri,"Photo of this catch",Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+                    else Icon(Icons.Default.SetMeal,null,tint=Brass)}
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)){
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Text(c.species?.name?:"Unknown species",style=MaterialTheme.typography.titleLarge)
+                        if(bests[c.species?.name]?.item?.id==c.item.id){Spacer(Modifier.width(6.dp))
+                            Text("PB",color=Background,style=MaterialTheme.typography.bodyMedium,
+                                modifier=Modifier.background(BrassSoft,RoundedCornerShape(6.dp)).padding(horizontal=6.dp))}}
+                    Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",color=BrassSoft)
+                    Text(listOfNotNull(c.item.caughtAt.pretty(),c.water?.name,c.item.bait?.ifBlank{null}).joinToString(" · "),
+                        color=Muted,style=MaterialTheme.typography.bodyMedium,maxLines=1)}}}}
+        }
+    }
+    if(showFilters)CatchFilterSheet(s,filter,{filter=it},{showFilters=false})
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun CatchFilterSheet(s:AppState,filter:CatchFilter,onChange:(CatchFilter)->Unit,onDismiss:()->Unit){
+    // Round thresholds in whichever units the angler thinks in, converted to canonical grams.
+    val weights=if(s.settings.unitSystem==UnitSystem.IMPERIAL)
+        listOf("1 lb" to 453.6,"5 lb" to 2268.0,"10 lb" to 4536.0,"20 lb" to 9072.0)
+        else listOf("500 g" to 500.0,"1 kg" to 1000.0,"5 kg" to 5000.0,"10 kg" to 10000.0)
+    ModalBottomSheet(onDismissRequest=onDismiss,containerColor=Background){
+        // Scrollable: on a short screen, or at a large font scale, the personal-bests toggle sits below the fold
+        // and would otherwise be unreachable.
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(start=18.dp,end=18.dp,bottom=32.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Text("Filter",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium)
+                TextButton({onChange(CatchFilter())}){Text("Clear")}}
+            Text("WHEN",color=Brass,style=MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(CatchFilter.Period.entries.toList()){p->
+                FilterChip(filter.period==p,{onChange(filter.copy(period=p))},{Text(p.title)},colors=brassChipColours())}}
+            Text("SPECIES",color=Brass,style=MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.species){sp->
+                FilterChip(filter.speciesName==sp.name,{onChange(filter.copy(speciesName=if(filter.speciesName==sp.name)null else sp.name))},{Text(sp.name)},colors=brassChipColours())}}
+            if(s.waters.isNotEmpty()){
+                Text("WATER",color=Brass,style=MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.waters){w->
+                    FilterChip(filter.waterName==w.name,{onChange(filter.copy(waterName=if(filter.waterName==w.name)null else w.name))},{Text(w.name)},colors=brassChipColours())}}}
+            Text("AT LEAST",color=Brass,style=MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(weights){(label,grams)->
+                FilterChip(filter.minimumGrams==grams,{onChange(filter.copy(minimumGrams=if(filter.minimumGrams==grams)null else grams))},{Text(label)},colors=brassChipColours())}}
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Column(Modifier.weight(1f)){Text("Personal bests only");Text("Your best fish of each species",color=Muted,style=MaterialTheme.typography.bodyMedium)}
+                Switch(filter.personalBestsOnly,{onChange(filter.copy(personalBestsOnly=it))})}
+        }
+    }
+}
+
+/** rememberSaveable needs to know how to store the filter across rotation and process death. */
+val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any?>(
+    save={listOf(it.text,it.speciesName,it.waterName,it.period.name,it.personalBestsOnly,it.minimumGrams)},
+    restore={CatchFilter(it[0] as String,it[1] as String?,it[2] as String?,CatchFilter.Period.valueOf(it[3] as String),it[4] as Boolean,it[5] as Double?)}
+)
