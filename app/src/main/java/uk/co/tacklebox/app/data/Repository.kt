@@ -33,6 +33,11 @@ class TackleboxRepository(context: Context) {
     suspend fun saveSettings(v:AppSettings)=dao.saveSettings(v)
     suspend fun addSpecies(name:String):Long=dao.addSpecies(Species(name=name, discipline=Discipline.COARSE))
     suspend fun addWater(v:Water)=dao.addWater(v)
+    suspend fun addSession(v:FishingSession)=dao.addSession(v)
+    suspend fun existingSpecies():List<Species> = dao.speciesOnce()
+    suspend fun existingWaters():List<Water> = dao.watersOnce()
+    suspend fun existingGear():List<GearItem> = dao.gearOnce()
+    suspend fun existingPresets():List<TacklePreset> = dao.presetsOnce()
     suspend fun addCatch(v:Catch, conditions:ConditionsSnapshot?=null):Long { val id=dao.addCatch(v); conditions?.let { dao.addConditions(it.copy(catchId=id)) }; return id }
     suspend fun startSession(waterId:Long?)=dao.addSession(FishingSession(waterId=waterId))
     suspend fun stopSession(id:Long)=dao.stopSession(id)
@@ -52,6 +57,68 @@ class TackleboxRepository(context: Context) {
     /** Deleting a water keeps its catches and sessions; there are no foreign keys, so detach them explicitly. */
     suspend fun deleteWater(id:Long){ dao.detachCatchesFromWater(id); dao.detachSessionsFromWater(id); dao.deleteWater(id) }
     fun species(id:Long)=dao.species(id); fun water(id:Long)=dao.water(id); fun catchById(id:Long)=dao.catchById(id)
+    /**
+     * Merges an import plan. Nothing existing is deleted or overwritten: waters, species, gear and presets are
+     * matched by name and reused, and catches already present were flagged as duplicates during planning.
+     */
+    suspend fun applyImport(plan: uk.co.tacklebox.app.JournalImport.Plan): uk.co.tacklebox.app.JournalImport.Result {
+        val result = uk.co.tacklebox.app.JournalImport.Result()
+
+        val waters = existingWaters().associateBy { it.name.lowercase() }.toMutableMap()
+        for (record in plan.waters) {
+            if (waters.containsKey(record.name.lowercase())) continue
+            val id = dao.addWater(Water(name=record.name, type=record.type, region=record.region, swimNotes=record.swimNotes))
+            waters[record.name.lowercase()] = Water(id=id, name=record.name, type=record.type, region=record.region, swimNotes=record.swimNotes)
+            result.waters++
+        }
+
+        // Session ids in a file are local to that file, so they are recreated and remapped.
+        val sessionsByFileId = mutableMapOf<Int, Long>()
+        for (record in plan.sessions) {
+            val waterId = record.water?.let { waters[it.lowercase()]?.id }
+            val id = dao.addSession(FishingSession(waterId=waterId, startAt=record.startAt, endAt=record.endAt, notes=record.notes))
+            result.sessions++
+            record.id?.let { sessionsByFileId[it] = id }
+        }
+
+        val gear = existingGear().map { it.name.lowercase() }.toMutableSet()
+        for (record in plan.gear) {
+            if (!gear.add(record.name.lowercase())) continue
+            dao.addGear(GearItem(name=record.name, category=record.category, notes=record.notes))
+            result.gear++
+        }
+
+        val presets = existingPresets().map { "${it.kind}:${it.name.lowercase()}" }.toMutableSet()
+        for (record in plan.presets) {
+            if (!presets.add("${record.kind}:${record.name.lowercase()}")) continue
+            dao.addPreset(TacklePreset(name=record.name, kind=record.kind))
+            result.presets++
+        }
+
+        val species = existingSpecies().associateBy { it.name.lowercase() }.toMutableMap()
+        for (record in plan.catches.filter { !it.isDuplicate }) {
+            var speciesId: Long? = null
+            record.species?.takeIf { it.isNotBlank() }?.let { name ->
+                val found = species[name.lowercase()]
+                speciesId = found?.id ?: dao.addSpecies(Species(name=name, discipline=Discipline.COARSE, scientificName=record.scientificName)).also {
+                    species[name.lowercase()] = Species(id=it, name=name, discipline=Discipline.COARSE, scientificName=record.scientificName)
+                    result.species++
+                }
+            }
+            val catchId = dao.addCatch(Catch(
+                speciesId=speciesId, weightGrams=record.weightGrams, lengthCm=record.lengthCm,
+                returned=record.returned, rig=record.rig, bait=record.bait, caughtAt=record.caughtAt,
+                notes=record.notes, sessionId=record.sessionId?.let { sessionsByFileId[it] },
+                waterId=record.water?.let { waters[it.lowercase()]?.id }))
+            record.conditions?.let {
+                dao.addConditions(ConditionsSnapshot(catchId=catchId, airTempC=it.airTempC, windDirection=it.windDirection,
+                    windSpeedKph=it.windSpeedKph, pressureHpa=it.pressureHpa, pressureTrend=it.pressureTrend, moonPhase=it.moonPhase))
+            }
+            result.catches++
+        }
+        return result
+    }
+
     suspend fun deleteAllUserData() { dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
     companion object { val seedSpecies=listOf(
         Species(name="Common carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="Powerful, adaptable and endlessly individual."),

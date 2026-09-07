@@ -295,6 +295,9 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
     val context=LocalContext.current
     val exported by vm.exported.collectAsStateWithLifecycle()
     val notice by vm.notice.collectAsStateWithLifecycle()
+    val importPlan by vm.importPlan.collectAsStateWithLifecycle()
+    val importResult by vm.importResult.collectAsStateWithLifecycle()
+    val importPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->uri?.let(vm::planImport)}
     // Hand the finished file straight to the share sheet, then clear it so rotating does not re-open the chooser.
     LaunchedEffect(exported){exported?.let{ShareSheet.file(context,it,"application/json","Export your Tacklebox journal");vm.clearExport()}}
     Screen("Settings","Your data, your choices"){
@@ -304,11 +307,25 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         // plainly that it is not built yet and point at the export that does work.
         item{HeritageCard{Text("Backup",style=MaterialTheme.typography.titleLarge);Text("Cloud backup isn’t built yet. Your journal lives on this device only — use Export below to keep a copy.",color=Muted)}}
         item{OutlinedTextField(token,{token=it},label={Text("Species-ID API token")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth());Text("An iNaturalist token, used only to identify a photo. It expires after about a day.",color=Muted,style=MaterialTheme.typography.bodyMedium);Button({vm.settings(s.settings.copy(speciesIdToken=token))}){Text("Save token")}}
-        item{HeritageCard{Text("Data",style=MaterialTheme.typography.titleLarge);OutlinedButton({vm.exportJson()},Modifier.fillMaxWidth().testTag("exportJson")){Icon(Icons.Default.FileDownload,null);Text(" Export JSON")};TextButton({confirm=true},Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete catches, waters & gear")}}}
+        item{HeritageCard{Text("Data",style=MaterialTheme.typography.titleLarge)
+            OutlinedButton({vm.exportJson()},Modifier.fillMaxWidth().testTag("exportJson")){Icon(Icons.Default.FileDownload,null);Text(" Export JSON")}
+            // Export alone is an escape hatch; import is what makes the journal portable — between devices, after
+            // a wiped phone, or in from another app.
+            OutlinedButton({importPicker.launch("application/json")},Modifier.fillMaxWidth().testTag("importJournal")){Icon(Icons.Default.FileUpload,null);Text(" Import a journal")}
+            Text("Adds catches from a Tacklebox export. Nothing you already have is changed or removed.",color=Muted,style=MaterialTheme.typography.bodyMedium)
+            TextButton({confirm=true},Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete catches, waters & gear")}}}
         item{Text("No ads · No analytics · No subscriptions",Modifier.fillMaxWidth(),textAlign=TextAlign.Center,color=Muted)}
     }
     if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Delete your data?")},text={Text("This removes catches, sessions, waters, gear and presets from this device. Species and settings remain.")},confirmButton={TextButton({vm.deleteData();confirm=false}){Text("Delete")}},dismissButton={TextButton({confirm=false}){Text("Cancel")}})
-    notice?.let{message->AlertDialog(onDismissRequest={vm.clearNotice()},title={Text("Export failed")},text={Text(message)},confirmButton={TextButton({vm.clearNotice()}){Text("OK")}})}
+    notice?.let{message->AlertDialog(onDismissRequest={vm.clearNotice()},title={Text("Couldn’t do that")},text={Text(message)},confirmButton={TextButton({vm.clearNotice()}){Text("OK")}})}
+    // The plan is shown before anything is written, so the confirmation says exactly what will happen.
+    importPlan?.let{plan->AlertDialog(onDismissRequest={vm.cancelImport()},title={Text("Import this journal?")},
+        text={Text(importSummary(plan))},
+        confirmButton={TextButton({vm.confirmImport()},modifier=Modifier.testTag("confirmImport")){Text("Import")}},
+        dismissButton={TextButton({vm.cancelImport()}){Text("Cancel")}})}
+    importResult?.let{r->AlertDialog(onDismissRequest={vm.clearImportResult()},title={Text("Import finished")},
+        text={Text(importResultSummary(r))},
+        confirmButton={TextButton({vm.clearImportResult()}){Text("OK")}})}
 }
 @Composable fun Empty(title:String,body:String){Column(Modifier.fillMaxWidth().padding(30.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.SetMeal,null,tint=Brass);Text(title,style=MaterialTheme.typography.titleLarge);Text(body,color=Muted,textAlign=TextAlign.Center)}}
 @Composable fun Loading(){Box(Modifier.fillMaxWidth().padding(40.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(color=Brass)}}
@@ -525,3 +542,21 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
 }
 
 val RoundedRectangle14=RoundedCornerShape(14.dp)
+
+/** Says exactly what an import will do, including what it will skip and what it cannot carry. */
+fun importSummary(plan:JournalImport.Plan):String{
+    val parts=mutableListOf("${plan.newCatches} new ${if(plan.newCatches==1)"catch" else "catches"}")
+    if(plan.newWaters>0)parts+="${plan.newWaters} new ${if(plan.newWaters==1)"water" else "waters"}"
+    if(plan.newSpecies>0)parts+="${plan.newSpecies} new species"
+    var text="This adds ${parts.joinToString(", ")}."
+    if(plan.duplicateCatches>0)text+=" ${plan.duplicateCatches} ${if(plan.duplicateCatches==1)"catch is" else "catches are"} already in your vault and will be skipped."
+    return text+" Nothing you already have is changed or removed. Photos aren’t included in an export, so imported catches arrive without them."
+}
+
+fun importResultSummary(r:JournalImport.Result):String{
+    val parts=mutableListOf("${r.catches} ${if(r.catches==1)"catch" else "catches"}")
+    if(r.waters>0)parts+="${r.waters} waters"
+    if(r.sessions>0)parts+="${r.sessions} sessions"
+    if(r.species>0)parts+="${r.species} species"
+    return "Added ${parts.joinToString(", ")}."
+}
