@@ -11,8 +11,13 @@ import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
 enum class UnitSystem { METRIC, IMPERIAL }
-enum class Discipline { COARSE, GAME, SEA, PREDATOR }
-enum class WaterType { LAKE, RIVER, CANAL, RESERVOIR, SEA }
+// The same six as iOS. Android had four, so a carp was filed as coarse and match fishing had nowhere to go —
+// and the two apps could not describe the same species the same way (TB-P-15).
+enum class Discipline { CARP, COARSE, MATCH, GAME, SEA, PREDATOR }
+// The same ten as iOS. Android had five, and only partly overlapping: no syndicate or day ticket, while iOS had
+// no "sea". Alder Mere read "Syndicate · Oxfordshire" on one platform and "Lake · Oxfordshire" on the other from
+// the same sample data (TB-P-14). SEA becomes SHORE, which is what the importers already mapped it to.
+enum class WaterType { LAKE, POND, RESERVOIR, RIVER, CANAL, SHORE, BOAT, SYNDICATE, DAY_TICKET, COMMERCIAL }
 enum class GearCategory { ROD, REEL, LINE, HOOK, LURE, NET, CLOTHING, OTHER }
 enum class PresetKind { RIG, BAIT }
 
@@ -23,7 +28,7 @@ class Converters {
     @TypeConverter fun strings(v: List<String>): String = v.joinToString("|")
 }
 
-@Entity data class AppSettings(@PrimaryKey val id: Int = 1, val unitSystem: UnitSystem = UnitSystem.METRIC, val activeDisciplines: List<String> = listOf("COARSE", "GAME", "SEA"), val onboardingComplete: Boolean = false, val backupEnabled: Boolean = false, val speciesIdToken: String = "")
+@Entity data class AppSettings(@PrimaryKey val id: Int = 1, val unitSystem: UnitSystem = UnitSystem.METRIC, val activeDisciplines: List<String> = Discipline.entries.map { it.name }, val onboardingComplete: Boolean = false, val backupEnabled: Boolean = false, val speciesIdToken: String = "")
 @Entity data class Species(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val discipline: Discipline, val scientificName: String? = null, val commonName: String? = null, val about: String? = null, val referencePhotoUrl: String? = null, val photoAttribution: String? = null)
 @Entity data class Water(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val type: WaterType, val region: String, val disciplines: List<String> = emptyList(), val swimNotes: String = "")
 @Entity(indices = [Index("waterId")]) data class FishingSession(@PrimaryKey(autoGenerate = true) val id: Long = 0, val waterId: Long? = null, val startAt: Instant = Instant.now(), val endAt: Instant? = null, val notes: String = "")
@@ -97,7 +102,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM TacklePreset") suspend fun clearPresets()
 }
 
-@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=3, exportSchema=true)
+@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=4, exportSchema=true)
 @TypeConverters(Converters::class)
 abstract class TackleboxDatabase: RoomDatabase() { abstract fun dao(): TackleboxDao }
 
@@ -122,5 +127,18 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `CatchPhoto` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `catchId` INTEGER NOT NULL, `uri` TEXT NOT NULL, `order` INTEGER NOT NULL)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_CatchPhoto_catchId` ON `CatchPhoto` (`catchId`)")
+    }
+}
+
+/**
+ * `WaterType.SEA` is gone, replaced by iOS's `SHORE` and `BOAT` (TB-P-14).
+ *
+ * Room stores an enum by name, so a stored "SEA" would no longer convert and any water saved as one would fail to
+ * read. The columns do not change — only the values in them — but this still has to be a migration rather than a
+ * silent rename, because testers have waters saved. SHORE is the mapping both importers already used.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("UPDATE `Water` SET `type` = 'SHORE' WHERE `type` = 'SEA'")
     }
 }

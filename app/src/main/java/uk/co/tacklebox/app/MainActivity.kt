@@ -252,13 +252,21 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
     LaunchedEffect(Unit){place=vm.solunarPlace()}
     val located=place!=null&&place!=DeviceLocation.FALLBACK_INLAND
     val sol=place?.let{Astronomy.calculate(latitude=it.first,longitude=it.second)}?:Astronomy.calculate()
-    Screen("Your fishing life","The Vault",actions={IconButton({nav.navigate("catches")},modifier=Modifier.testTag("searchCatches")){Icon(Icons.Default.Search,"Search your catches")};IconButton({nav.navigate("settings")}){Icon(Icons.Default.Settings,"Settings")}}){
-        item{FeaturedPersonalBest(pb,s.settings.unitSystem,onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}})}
+    Screen("Your fishing life","The Vault",// The same three destinations iOS puts in its toolbar, in the same order (TB-P-07). My Tacklebox lived in an
+        // in-content chip here, so the same place was reached from structurally different parts of the screen.
+        actions={IconButton({nav.navigate("catches")},modifier=Modifier.testTag("searchCatches")){Icon(Icons.Outlined.Search,"Search your catches",tint=BrassSoft)};IconButton({nav.navigate("tackle")}){Icon(Icons.Outlined.Inventory2,"My Tacklebox",tint=BrassSoft)};IconButton({nav.navigate("settings")}){Icon(Icons.Outlined.MoreHoriz,"Settings",tint=BrassSoft)}}){
+        // An empty vault gets the empty state, not a hero card with nothing in it — which is what iOS does, and
+        // what makes the first screen say what to do rather than showing an ornament (TB-P-12).
+        item{if(s.catches.isEmpty())Empty("Your vault is empty","Tap + to log your first catch and begin your private record.")
+             else FeaturedPersonalBest(pb,s.settings.unitSystem,onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}})}
         item{TodayOnTheBank(sol,located,onClick={nav.navigate("solunar")})}
-        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f).clickable{nav.navigate("catches")});Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}}
-        item{SectionLabel("PB board")}
+        // Stats and the board only once there is something to count, as iOS does — an empty vault showed three
+        // zeroes and a PB BOARD heading with nothing under it (TB-P-12).
+        if(s.catches.isNotEmpty()){
+            item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f).clickable{nav.navigate("catches")});Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}}
+            item{SectionLabel("PB board")}}
         items(s.catches.filter{it.item.weightGrams!=null}.groupBy{it.species?.id}.mapNotNull{(_,v)->v.maxByOrNull{it.item.weightGrams?:0.0}}){c->HeritageCard(onClick={nav.navigate("species/${c.species?.id}")}){Row{Text(c.species?.name?:"Unknown",Modifier.weight(1f));Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft)}}}
-        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){AssistChip({nav.navigate("tackle")},{Text("My Tacklebox")},leadingIcon={Icon(Icons.Default.Inventory2,null)});AssistChip({nav.navigate("solunar")},{Text("Bite windows")},leadingIcon={Icon(Icons.Default.DarkMode,null)})}}}
+}
 }
 
 /**
@@ -675,8 +683,13 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     val bests=remember(s.catches){CatchFilter.personalBests(s.catches)}
     val results=remember(s.catches,filter){filter.apply(s.catches)}
     PushedScreen("Catches",onBack={nav.popBackStack()},actions={
+        // iOS uses line.3.horizontal.decrease.circle — the filter glyph inside a circle, filled once a filter is
+        // active. Android showed a bare icon, and swapped to FilterAltOff when inactive, which reads as a
+        // different control rather than the same one in a different state (TB-P-13).
         IconButton({showFilters=true},modifier=Modifier.testTag("filterCatches")){
-            Icon(if(filter.isActive)Icons.Default.FilterAlt else Icons.Default.FilterAltOff,"Filter catches",tint=Brass)}}){
+            Box(Modifier.size(26.dp).background(if(filter.isActive)BrassSoft else Color.Transparent,CircleShape)
+                .border(1.5.dp,BrassSoft,CircleShape),contentAlignment=Alignment.Center){
+                Icon(Icons.Outlined.FilterAlt,"Filter catches",tint=if(filter.isActive)Background else BrassSoft,modifier=Modifier.size(15.dp))}}}){
         item{OutlinedTextField(filter.text,{filter=filter.copy(text=it)},
             label={Text("Species, water, rig or bait")},singleLine=true,
             leadingIcon={Icon(Icons.Default.Search,null)},
@@ -686,7 +699,7 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
             Text(filter.activeSummary(s.settings.unitSystem).joinToString(" · "),color=Muted,style=MaterialTheme.typography.bodyMedium)
             TextButton({filter=CatchFilter()},modifier=Modifier.testTag("clearFilters")){Text("Clear filters")}}}
         if(results.isEmpty())item{
-            if(s.catches.isEmpty())Empty("Your vault is empty","Tap + to log your first catch.")
+            if(s.catches.isEmpty())Empty("Your vault is empty","Tap + to log your first catch and begin your private record.")
             else Empty("Nothing matched","No catch fits those filters. Try widening the date range or clearing the search.")}
         else{
             item{Text("${results.size} ${if(results.size==1)"catch" else "catches"}",color=Muted,style=MaterialTheme.typography.bodyMedium)}

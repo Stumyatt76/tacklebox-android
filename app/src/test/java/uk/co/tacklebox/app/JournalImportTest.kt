@@ -120,15 +120,21 @@ class JournalImportTest {
         val plan = JournalImport.plan(ios, empty)
         assertEquals(1, plan.newCatches)
         assertEquals(8108.0, plan.catches.single().weightGrams!!, 0.01)
-        // dayTicket has no Android equivalent, so it lands on LAKE rather than being dropped.
-        assertEquals(WaterType.LAKE, plan.waters.single().type)
+        // dayTicket used to have no Android equivalent and landed on LAKE. With the enums aligned (TB-P-14) an
+        // iOS journal keeps what the water actually was.
+        assertEquals(WaterType.DAY_TICKET, plan.waters.single().type)
         assertEquals(GearCategory.OTHER, plan.gear.single().category)
         assertEquals(PresetKind.BAIT, plan.presets.single().kind)
     }
 
     @Test fun `unknown enum spellings fall back rather than failing`() {
-        assertEquals(WaterType.SEA, JournalImport.waterType("shore"))
-        assertEquals(WaterType.LAKE, JournalImport.waterType("DAY_TICKET"))
+        // These two used to collapse to SEA and LAKE, because Android had five water types to iOS's ten. With the
+        // enums aligned an iOS journal round-trips without losing what the water actually was (TB-P-14).
+        assertEquals(WaterType.SHORE, JournalImport.waterType("shore"))
+        assertEquals(WaterType.DAY_TICKET, JournalImport.waterType("DAY_TICKET"))
+        assertEquals(WaterType.DAY_TICKET, JournalImport.waterType("dayTicket"))
+        // A journal exported by an older Android build still says "sea".
+        assertEquals(WaterType.SHORE, JournalImport.waterType("sea"))
         assertEquals(WaterType.RIVER, JournalImport.waterType("RIVER"))
         assertEquals(WaterType.LAKE, JournalImport.waterType(null))
         assertEquals(PresetKind.RIG, JournalImport.presetKind(null))

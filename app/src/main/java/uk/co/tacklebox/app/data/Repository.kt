@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.Locale
 
 class TackleboxRepository(context: Context) {
-    private val db = Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+    private val db = Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
     private val dao = db.dao()
     val settings = dao.settings().map { it ?: defaults() }.distinctUntilChanged()
     val species = dao.species()
@@ -24,7 +24,11 @@ class TackleboxRepository(context: Context) {
     // device disagree with its own model default and with iOS, which keys off Locale.measurementSystem (TB-A-14).
     internal fun defaults() = AppSettings(unitSystem=if(Locale.getDefault().country=="US") UnitSystem.IMPERIAL else UnitSystem.METRIC)
     suspend fun seed(samples:Boolean) {
-        if (dao.speciesCount()==0) dao.addSpecies(seedSpecies)
+        // Insert any canonical species that are missing rather than only seeding an empty table — otherwise an
+        // existing tester never gains one that is added later, which is how the two catalogues drifted. iOS has
+        // always done this through SpeciesStore.existingOrInsert.
+        val known = dao.speciesOnce().map { it.name.lowercase() }.toSet()
+        seedSpecies.filterNot { it.name.lowercase() in known }.forEach { dao.addSpecies(it) }
         // Presets were never seeded, so a fresh install had none — and PresetField renders its chips only when
         // presets exist, leaving Android with bare Rig and Bait text fields where iOS offers a chip grid (TB-P-02).
         // The same eleven as SeedData.swift, in the same order, so the two apps open identically.
@@ -140,12 +144,29 @@ class TackleboxRepository(context: Context) {
             Water(name="River Lea", type=WaterType.RIVER, region="Hertfordshire", disciplines=listOf("COARSE"), swimNotes="Travel light; watch the level after rain."))
         val seedPresets = listOf("Ronnie rig","Hair rig","Method feeder","Waggler","Ledger").map { TacklePreset(name=it, kind=PresetKind.RIG) } +
             listOf("Boilie","Sweetcorn","Maggots","Pellets","Bread","Worm").map { TacklePreset(name=it, kind=PresetKind.BAIT) }
+        /**
+         * The species catalogue, identical to `SeedData.species` on iOS in names, order and discipline (TB-P-15).
+         *
+         * All-discipline, not coarse-first: the store listing promises "coarse or carp, river or sea", and the app
+         * ships tides, sea state and species identification. iOS seeded eleven carp and coarse fish and Android
+         * twelve spanning every discipline, with different names for the same animal — "Northern pike" against
+         * "Pike", "Common carp" against "Common Carp".
+         */
         val seedSpecies=listOf(
-        Species(name="Common carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="Powerful, adaptable and endlessly individual."),
-        Species(name="Mirror carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="A distinctive scaled form of common carp."),
+        Species(name="Common Carp",discipline=Discipline.CARP,scientificName="Cyprinus carpio",about="Powerful, adaptable and endlessly individual."),
+        Species(name="Mirror Carp",discipline=Discipline.CARP,scientificName="Cyprinus carpio",about="A distinctive scaled form of common carp."),
         Species(name="Tench",discipline=Discipline.COARSE,scientificName="Tinca tinca",about="A dawn-loving fish of still and slow waters."),
-        Species(name="Roach",discipline=Discipline.COARSE,scientificName="Rutilus rutilus"), Species(name="Perch",discipline=Discipline.PREDATOR,scientificName="Perca fluviatilis"),
-        Species(name="Northern pike",discipline=Discipline.PREDATOR,scientificName="Esox lucius"), Species(name="Barbel",discipline=Discipline.COARSE,scientificName="Barbus barbus"),
-        Species(name="Brown trout",discipline=Discipline.GAME,scientificName="Salmo trutta"), Species(name="Atlantic salmon",discipline=Discipline.GAME,scientificName="Salmo salar"),
-        Species(name="European sea bass",discipline=Discipline.SEA,scientificName="Dicentrarchus labrax"), Species(name="Atlantic mackerel",discipline=Discipline.SEA,scientificName="Scomber scombrus"), Species(name="Cod",discipline=Discipline.SEA,scientificName="Gadus morhua")) }
+        Species(name="Bream",discipline=Discipline.COARSE,scientificName="Abramis brama"),
+        Species(name="Roach",discipline=Discipline.COARSE,scientificName="Rutilus rutilus"),
+        Species(name="Rudd",discipline=Discipline.COARSE,scientificName="Scardinius erythrophthalmus"),
+        Species(name="Perch",discipline=Discipline.PREDATOR,scientificName="Perca fluviatilis"),
+        Species(name="Pike",discipline=Discipline.PREDATOR,scientificName="Esox lucius"),
+        Species(name="Barbel",discipline=Discipline.COARSE,scientificName="Barbus barbus"),
+        Species(name="Chub",discipline=Discipline.COARSE,scientificName="Squalius cephalus"),
+        Species(name="Eel",discipline=Discipline.COARSE,scientificName="Anguilla anguilla"),
+        Species(name="Brown Trout",discipline=Discipline.GAME,scientificName="Salmo trutta"),
+        Species(name="Atlantic Salmon",discipline=Discipline.GAME,scientificName="Salmo salar"),
+        Species(name="European Sea Bass",discipline=Discipline.SEA,scientificName="Dicentrarchus labrax"),
+        Species(name="Atlantic Mackerel",discipline=Discipline.SEA,scientificName="Scomber scombrus"),
+        Species(name="Cod",discipline=Discipline.SEA,scientificName="Gadus morhua")) }
 }
