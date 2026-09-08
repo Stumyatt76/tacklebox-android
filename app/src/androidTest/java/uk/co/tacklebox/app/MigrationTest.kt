@@ -14,6 +14,7 @@ import org.junit.runner.RunWith
 import uk.co.tacklebox.app.data.MIGRATION_1_2
 import uk.co.tacklebox.app.data.MIGRATION_2_3
 import uk.co.tacklebox.app.data.MIGRATION_3_4
+import uk.co.tacklebox.app.data.MIGRATION_4_5
 import uk.co.tacklebox.app.data.TackleboxDatabase
 
 /**
@@ -110,6 +111,30 @@ class MigrationTest {
             assertEquals("the swim note must survive", "Fish the far end after dark.", cursor.getString(3))
             cursor.moveToNext()
             assertEquals("every other water is untouched", "LAKE", cursor.getString(1))
+        }
+    }
+
+    /**
+     * The optional WorldTides key, which unlocks tide predictions outside the contiguous US. Additive with a
+     * default, so nothing needs backfilling — but every other setting has to come through untouched, because a
+     * tester's units and species-ID token live in the same row.
+     */
+    @Test
+    fun migrate4To5_addsTheTideKeyAndKeepsEverySetting() {
+        helper.createDatabase(name, 1).apply {
+            execSQL("""INSERT INTO AppSettings (id, unitSystem, activeDisciplines, onboardingComplete, backupEnabled, speciesIdToken)
+                       VALUES (1, 'IMPERIAL', 'COARSE|SEA', 1, 0, 'inat-token-abc')""")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(name, 5, true, MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+
+        db.query("SELECT unitSystem, speciesIdToken, onboardingComplete, worldTidesKey FROM AppSettings").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals("IMPERIAL", cursor.getString(0))
+            assertEquals("the species token must survive", "inat-token-abc", cursor.getString(1))
+            assertEquals(1, cursor.getInt(2))
+            assertEquals("a new install has no tide key", "", cursor.getString(3))
         }
     }
 

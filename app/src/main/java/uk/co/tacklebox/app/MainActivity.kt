@@ -79,7 +79,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
         NavHost(nav,"vault",Modifier.padding(pad)){
             composable("vault"){Vault(state,vm,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
             composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm,nav)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm,nav)}; composable("year"){YearOnWater(state,nav)}
-            composable("water/{id}"){WaterPassport(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("species/{id}"){SpeciesDetail(state,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catch/{id}"){CatchDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}
+            composable("water/{id}"){WaterPassport(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("species/{id}"){SpeciesDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catch/{id}"){CatchDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}
         }
     }
 }
@@ -242,6 +242,12 @@ fun ConditionsSnapshot.summary(unit:UnitSystem):String{
         pressureTrend?.takeIf{t->t.isNotBlank()}?.let{t->"$reading ${t.lowercase()}"} ?: reading}
     val moon=moonPhase?.let{"$it moon"}
     return listOfNotNull(temperature,wind,pressure,moon).joinToString("  ·  ")
+}
+
+/** Degrees to a sixteen-point compass label, the same table the conditions snapshot uses. */
+fun compassPoint(degrees:Double):String{
+    val points=listOf("N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW")
+    return points[(((degrees % 360) / 22.5).roundToInt()) % 16]
 }
 
 /** The day rating, shown exactly as iOS shows it: the word, uppercased, in a coloured pill (TB-P-05). */
@@ -602,10 +608,106 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
         item{Text(if(located)"Calculated on-device for your position" else "Calculated on-device · showing central UK",color=Muted,style=MaterialTheme.typography.bodyMedium)}
         if(!located&&canAsk)item{HeritageCard(onClick={request.launch(Manifest.permission.ACCESS_COARSE_LOCATION)}){Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.LocationOn,null,tint=Brass);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text("Use my location for local times",fontWeight=FontWeight.SemiBold);Text("Approximate only — your precise spot is never stored.",color=Muted,style=MaterialTheme.typography.bodyMedium)}}}}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat(d.rating.title,"day rating",Modifier.weight(1f));Stat(d.moonPhase,"moon",Modifier.weight(1f))}};item{HeritageCard{Text("Sun & moon",style=MaterialTheme.typography.titleLarge);Text("Sunrise ${d.sunrise.hm()}  ·  Sunset ${d.sunset.hm()}",color=Muted);Text("Moonrise ${d.moonrise?.hm() ?: "—"}  ·  Moonset ${d.moonset?.hm() ?: "—"}",color=Muted)}};items(d.windows){w->HeritageCard{Row{Column(Modifier.weight(1f)){Text(w.label);Text(if(w.major)"Major feeding period" else "Minor feeding period",color=if(w.major)Brass else Muted)};Text("${w.start.hm()}–${w.end.hm()}")}}}}}
-@Composable fun Tides(vm:MainViewModel){val live by vm.marine.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.marine()};Screen("Coastal outlook","Tides & sea"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.marine()};is LiveState.Data->{val h=x.value.hourly;if(h==null||h.waveHeight.isEmpty())Empty("No coastal data","You may be inland or outside forecast coverage.") else HeritageCard{Text("Sea state",style=MaterialTheme.typography.headlineMedium);h.time.take(8).forEachIndexed{i,t->Row{Text(t.takeLast(5),Modifier.weight(1f));Text("${h.waveHeight.getOrNull(i)?:0.0} m · ${h.wavePeriod.getOrNull(i)?:0.0} s",color=Teal)}}}}}}}}
-@Composable fun Rivers(vm:MainViewModel){val live by vm.river.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.river()};Screen("Live water","River conditions"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.river()};is LiveState.Data->if(x.value.items.isEmpty())Empty("No nearby gauges","Try again nearer a gauged river.")else Column{SectionLabel("Nearby readings");x.value.items.take(8).forEach{HeritageCard{Text(it.value?.let{"$it m"}?:"Reading unavailable");Text(it.dateTime?:"Latest observation",color=Muted)}}}}}}}
+/**
+ * Tides and sea state. The screen was named for tides it did not have until now: it showed wave height and period
+ * from Open-Meteo and nothing else, while iOS had NOAA and WorldTides predictions. Both are here now.
+ */
+@Composable fun Tides(vm:MainViewModel){
+    val sea by vm.marine.collectAsStateWithLifecycle()
+    val tide by vm.tides.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit){vm.marine();vm.tides()}
+    Screen("Coastal outlook","Tides & sea"){
+        item{SectionLabel("Today's tides")}
+        item{when(val t=tide){
+            LiveState.Idle,LiveState.Loading->Loading()
+            // Not a red error card: "no predictions for your area" is a fact about where you are standing, not a
+            // failure, and the answer to it is a WorldTides key rather than a retry.
+            is LiveState.Error->HeritageCard{Text(t.message,color=Muted)
+                Spacer(Modifier.height(6.dp));Text("NOAA covers the contiguous US at no cost. Elsewhere, add a WorldTides key in Settings.",color=Muted,style=MaterialTheme.typography.bodyMedium)}
+            is LiveState.Data->{val r=t.value
+                HeritageCard{
+                    val next=r.next()
+                    if(next!=null){Text("Next ${if(next.kind==TideKind.HIGH)"high" else "low"} · ${next.time.hm()}",style=MaterialTheme.typography.titleLarge)
+                        Text("%.1f m · %s%s".format(next.heightMetres,r.source.label,if(r.cached)" · last known" else ""),color=Muted)}
+                    else Text("Today's tides have passed",style=MaterialTheme.typography.titleLarge)
+                    Spacer(Modifier.height(10.dp))
+                    r.events.forEach{e->Row{Text(if(e.kind==TideKind.HIGH)"High" else "Low",Modifier.weight(1f),color=if(e.kind==TideKind.HIGH)Brass else Muted);Text("${e.time.hm()}  ·  %.1f m".format(e.heightMetres),color=Ink)}}}}}}
+        item{SectionLabel("Sea state")}
+        item{when(val x=sea){
+            LiveState.Idle,LiveState.Loading->Loading()
+            is LiveState.Error->ErrorCard(x.message){vm.marine()}
+            is LiveState.Data->{val h=x.value.hourly
+                if(h==null||h.waveHeight.isEmpty())Empty("No coastal data","You may be inland or outside forecast coverage.")
+                else HeritageCard{
+                    // Wave direction and sea temperature come back now too; iOS has always asked for them.
+                    h.seaTemperature.firstOrNull{it!=null}?.let{t->Text("Sea temperature · %.1f °C".format(t),color=Muted);Spacer(Modifier.height(8.dp))}
+                    h.time.take(8).forEachIndexed{i,t->Row{
+                        Text(t.takeLast(5),Modifier.weight(1f))
+                        val dir=h.waveDirection.getOrNull(i)?.let{d->" "+compassPoint(d)}.orEmpty()
+                        Text("${h.waveHeight.getOrNull(i)?:0.0} m$dir · ${h.wavePeriod.getOrNull(i)?:0.0} s",color=Teal)}}}}}}
+    }
+}
 
-@Composable fun SpeciesDetail(s:AppState,id:Long?,nav:NavHostController){val sp=s.species.firstOrNull{it.id==id};val catches=s.catches.filter{it.species?.id==id};Screen("Species record",sp?.name?:"Species record"){sp?.scientificName?.let{n->item{Text(n,color=Muted,fontStyle=androidx.compose.ui.text.font.FontStyle.Italic)}};item{Box(Modifier.fillMaxWidth().height(170.dp).background(Inset,RoundedCornerShape(22.dp)),contentAlignment=Alignment.Center){Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(64.dp))}};item{Text(sp?.about?:"A personal record built from your catches.",color=Muted)};item{SectionLabel("Catch history")};items(catches){c->HeritageCard(onClick={nav.navigate("catch/${c.item.id}")}){Text(c.item.caughtAt.pretty());Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",color=Brass)}}}}
+private fun java.time.Instant.hm():String=
+    java.time.LocalDateTime.ofInstant(this,java.time.ZoneId.systemDefault()).toLocalTime().hm()
+/**
+ * River gauges. This printed bare numbers with no station name, units or trend, and had no US coverage; iOS has
+ * shown named Environment Agency stations with a rising/falling reading, and USGS, since it shipped.
+ */
+@Composable fun Rivers(vm:MainViewModel){
+    val live by vm.river.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit){vm.river()}
+    Screen("Live water","River conditions"){
+        when(val x=live){
+            LiveState.Idle,LiveState.Loading->item{Loading()}
+            // "Not available for your area" and "no gauges nearby" are facts about where you are, not failures,
+            // so they are stated rather than offered with a retry that would say the same thing again.
+            is LiveState.Error->item{HeritageCard{Text(x.message,color=Muted)
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton({vm.river()},Modifier.fillMaxWidth()){Text("Try again")}}}
+            is LiveState.Data->{
+                val r=x.value
+                item{SectionLabel(if(r.cached)"Nearby gauges · last known" else "Nearby gauges")}
+                items(r.gauges){g->HeritageCard{
+                    Row(verticalAlignment=Alignment.CenterVertically){
+                        Column(Modifier.weight(1f)){
+                            Text(g.name,style=MaterialTheme.typography.titleLarge)
+                            Text(listOfNotNull(g.river,"%.1f km away".format(g.distanceKm)).joinToString(" · "),color=Muted,style=MaterialTheme.typography.bodyMedium)}
+                        TrendChip(g.trend)}
+                    Spacer(Modifier.height(8.dp))
+                    g.latestLevel?.let{Text("Level · %.2f %s".format(it.value,it.unit).trim(),color=Ink)}
+                    g.latestFlow?.let{Text("Flow · %.2f %s".format(it.value,it.unit).trim(),color=Ink)}
+                    Text(listOfNotNull(g.sourceLabel,g.updatedAt?.let{"updated ${it.hm()}"}).joinToString(" · "),color=Muted.copy(alpha=.7f),style=MaterialTheme.typography.bodyMedium)}}}
+        }
+    }
+}
+
+/** Rising, falling or steady — the part of a gauge reading an angler actually acts on. */
+@Composable private fun TrendChip(trend:RiverTrend){
+    val (label,colour)=when(trend){
+        RiverTrend.RISING->"Rising" to Brass
+        RiverTrend.FALLING->"Falling" to Teal
+        RiverTrend.STEADY->"Steady" to Muted
+        RiverTrend.UNKNOWN->"—" to Muted.copy(alpha=.5f)}
+    Text(label.uppercase(),color=Background,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,
+        modifier=Modifier.background(colour,RoundedCornerShape(12.dp)).padding(horizontal=9.dp,vertical=4.dp))
+}
+@Composable fun SpeciesDetail(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
+    val sp=s.species.firstOrNull{it.id==id}
+    val catches=s.catches.filter{it.species?.id==id}
+    // Fetches the reference photo and description once, the first time the record is opened. iOS has done this
+    // since it shipped; Android had the columns and showed a flat icon (feature parity, 2026-09-08).
+    LaunchedEffect(sp?.id){sp?.let(vm::enrichSpecies)}
+    Screen("Species record",sp?.name?:"Species record"){
+        sp?.scientificName?.let{n->item{Text(n,color=Muted,fontStyle=androidx.compose.ui.text.font.FontStyle.Italic)}}
+        item{Box(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(22.dp)).background(Inset),contentAlignment=Alignment.Center){
+            if(!sp?.referencePhotoUrl.isNullOrBlank())AsyncImage(sp.referencePhotoUrl,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+            else Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(64.dp))}
+            sp?.photoAttribution?.takeIf{it.isNotBlank()}?.let{a->Text(a,color=Muted.copy(alpha=.7f),style=MaterialTheme.typography.bodyMedium)}}
+        item{Text(sp?.about?:"A personal record built from your catches.",color=Muted)}
+        item{SectionLabel("Catch history")}
+        items(catches){c->HeritageCard(onClick={nav.navigate("catch/${c.item.id}")}){Text(c.item.caughtAt.pretty());Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",color=Brass)}}}
+}
 @Composable fun CatchDetail(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
     val c=s.catches.firstOrNull{it.item.id==id}
     var confirmDelete by rememberSaveable{mutableStateOf(false)}
@@ -643,6 +745,7 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
 
 @Composable fun Settings(s:AppState,vm:MainViewModel,nav:NavHostController){
     var token by rememberSaveable(s.settings.speciesIdToken){mutableStateOf(s.settings.speciesIdToken)}
+    var tideKey by rememberSaveable(s.settings.worldTidesKey){mutableStateOf(s.settings.worldTidesKey)}
     var confirm by rememberSaveable{mutableStateOf(false)}
     val context=LocalContext.current
     val exported by vm.exported.collectAsStateWithLifecycle()
@@ -661,6 +764,10 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
         // plainly that it is not built yet and point at the export that does work.
         item{HeritageCard{SectionLabel("Backup");Text("Cloud backup isn’t built yet. Your journal lives on this device only — use Export below to keep a copy.",color=Muted)}}
         item{OutlinedTextField(token,{token=it},label={Text("Species-ID API token")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth());Text("An iNaturalist token, used only to identify a photo. It expires after about a day.",color=Muted,style=MaterialTheme.typography.bodyMedium);Button({vm.settings(s.settings.copy(speciesIdToken=token))}){Text("Save token")}}
+        // Optional, and only needed outside the contiguous US — NOAA covers that for free. Kept alongside the
+        // species token because they are the same kind of thing: a key the angler brings, for a feature that
+        // works without it or says plainly that it cannot.
+        item{OutlinedTextField(tideKey,{tideKey=it},label={Text("WorldTides API key")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth().testTag("worldTidesKey"));Text("Optional. Tide predictions come from NOAA free of charge inside the contiguous US; a WorldTides key covers everywhere else.",color=Muted,style=MaterialTheme.typography.bodyMedium);Button({vm.settings(s.settings.copy(worldTidesKey=tideKey))}){Text("Save key")}}
         item{HeritageCard{SectionLabel("Data")
             OutlinedButton({vm.exportJson()},Modifier.fillMaxWidth().testTag("exportJson")){Icon(Icons.Default.FileDownload,null);Text(" Export JSON")}
             // Export alone is an escape hatch; import is what makes the journal portable — between devices, after
