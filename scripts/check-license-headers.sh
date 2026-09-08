@@ -10,7 +10,9 @@ SEARCH_DIRS=(app/src)
 missing=()
 
 while IFS= read -r -d '' f; do
-  if ! head -n 5 "$f" | grep -q "$MARKER"; then
+  # Captured rather than piped: grep -q exits on match and SIGPIPEs head, which pipefail reports as failure.
+  header=$(head -n 5 "$f" || true)
+  if ! printf '%s\n' "$header" | grep -q "$MARKER"; then
     missing+=("$f")
   fi
 done < <(find "${SEARCH_DIRS[@]}" -name '*.kt' -print0 2>/dev/null)

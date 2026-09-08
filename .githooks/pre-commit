@@ -13,8 +13,14 @@ while IFS= read -r f; do
     *.kt) ;;
     *) continue ;;
   esac
-  # read the staged version of the file (":$f") — that's what's being committed
-  if ! git show ":$f" 2>/dev/null | head -n 5 | grep -q "$MARKER"; then
+  # Read the staged version of the file (":$f") — that is what is being committed.
+  #
+  # Captured into a variable rather than piped straight into grep. `grep -q` exits the moment it matches, which
+  # SIGPIPEs the upstream `git show`; with `set -o pipefail` that non-zero status became a spurious "missing
+  # header". It only ever bit on the largest file, because a small one finishes writing before grep exits, which
+  # is why it survived this long.
+  header=$(git show ":$f" 2>/dev/null | head -n 5 || true)
+  if ! printf '%s\n' "$header" | grep -q "$MARKER"; then
     missing+=("$f")
   fi
 done < <(git diff --cached --name-only --diff-filter=ACM)
