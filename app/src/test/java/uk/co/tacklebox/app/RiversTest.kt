@@ -6,6 +6,7 @@ package uk.co.tacklebox.app
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.assertTrue
@@ -25,16 +26,29 @@ class RiversTest {
 
     @Before fun clearCache() = Rivers.clearCache()
 
-    @Test fun `Great Britain goes to the Environment Agency and the contiguous US to USGS`() = runTest {
-        // Neither of these should be the "unavailable area" error; anything else is a network outcome.
-        val gb = runCatching { Rivers.gauges(52.63, 1.29) }.exceptionOrNull()
-        val us = runCatching { Rivers.gauges(38.98, -76.48) }.exceptionOrNull()
-        assertTrue("Norwich must not be unavailable", gb !is RiverError.UnavailableArea)
-        assertTrue("Chesapeake must not be unavailable", us !is RiverError.UnavailableArea)
+    /**
+     * Source selection is a pure decision made before any request, so it is tested as one.
+     *
+     * The first version of this called `Rivers.gauges` and asserted on the error. It passed locally only because
+     * the calls failed quickly, and hung on CI until `runTest` gave up — a unit test that reaches the network is
+     * a test of the network.
+     */
+    @Test fun `Great Britain goes to the Environment Agency and the contiguous US to USGS`() {
+        assertEquals(Rivers.Source.EA, Rivers.source(52.63, 1.29))      // Norwich
+        assertEquals(Rivers.Source.EA, Rivers.source(50.72, -3.53))     // Exeter
+        assertEquals(Rivers.Source.USGS, Rivers.source(38.98, -76.48))  // Chesapeake
+        assertEquals(Rivers.Source.USGS, Rivers.source(45.52, -122.68)) // Portland
     }
 
-    @Test fun `somewhere with neither source says so rather than returning nothing`() = runTest {
-        val error = runCatching { Rivers.gauges(-33.87, 151.21) }.exceptionOrNull()   // Sydney
+    @Test fun `somewhere with neither source is null rather than a guess`() {
+        assertNull("Sydney", Rivers.source(-33.87, 151.21))
+        assertNull("Reykjavik", Rivers.source(64.15, -21.94))
+        assertNull("Cape Town", Rivers.source(-33.92, 18.42))
+    }
+
+    /** And that null is what turns into the message the angler sees. */
+    @Test fun `no source means the area is reported as unavailable`() = runTest {
+        val error = runCatching { Rivers.gauges(-33.87, 151.21) }.exceptionOrNull()
         assertTrue("expected UnavailableArea, got $error", error is RiverError.UnavailableArea)
     }
 

@@ -91,9 +91,10 @@ object Rivers {
 
     private val api: RiverStationsApi get() = Services.riverStations
 
-    private enum class Source { EA, USGS }
+    /** Which service covers a position, or null when neither does. Internal so it can be tested without a call. */
+    enum class Source { EA, USGS }
 
-    private fun source(latitude: Double, longitude: Double): Source? = when {
+    internal fun source(latitude: Double, longitude: Double): Source? = when {
         latitude in 49.8..59.0 && longitude in -8.7..2.1 -> Source.EA
         latitude in 24.4..49.5 && longitude in -125.0..-66.5 -> Source.USGS
         else -> null
