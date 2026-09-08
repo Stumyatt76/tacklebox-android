@@ -15,13 +15,21 @@ import uk.co.tacklebox.app.services.*
 import java.time.Instant
 import kotlin.math.roundToInt
 
-data class AppState(val settings:AppSettings=AppSettings(),val species:List<Species> = emptyList(),val waters:List<Water> = emptyList(),val catches:List<CatchRow> = emptyList(),val sessions:List<SessionRow> = emptyList(),val gear:List<GearItem> = emptyList(),val presets:List<TacklePreset> = emptyList())
+/**
+ * `loaded` distinguishes "nothing read yet" from "nothing there".
+ *
+ * Without it the placeholder handed to `stateIn` was a default AppState whose onboardingComplete is false, so an
+ * existing angler saw the onboarding flow for as long as the seven flows took to emit — normally a blink, but I
+ * watched it hold for six seconds after an install, when the Room migration ran first. Tapping Continue through
+ * it would have set onboardingComplete and could have seeded sample waters into a vault that already had fish.
+ */
+data class AppState(val loaded:Boolean=false,val settings:AppSettings=AppSettings(),val species:List<Species> = emptyList(),val waters:List<Water> = emptyList(),val catches:List<CatchRow> = emptyList(),val sessions:List<SessionRow> = emptyList(),val gear:List<GearItem> = emptyList(),val presets:List<TacklePreset> = emptyList())
 sealed interface LiveState<out T>{ data object Idle:LiveState<Nothing>; data object Loading:LiveState<Nothing>; data class Data<T>(val value:T):LiveState<T>; data class Error(val message:String):LiveState<Nothing> }
 
 class MainViewModel(app:Application):AndroidViewModel(app){
     val repo=(app as TackleboxApp).repository
     val state=combine(repo.settings,repo.species,repo.waters,repo.catches,repo.sessions,repo.gear,repo.presets){ a:Array<Any?> ->
-        @Suppress("UNCHECKED_CAST") AppState(a[0] as AppSettings,a[1] as List<Species>,a[2] as List<Water>,a[3] as List<CatchRow>,a[4] as List<SessionRow>,a[5] as List<GearItem>,a[6] as List<TacklePreset>)
+        @Suppress("UNCHECKED_CAST") AppState(true,a[0] as AppSettings,a[1] as List<Species>,a[2] as List<Water>,a[3] as List<CatchRow>,a[4] as List<SessionRow>,a[5] as List<GearItem>,a[6] as List<TacklePreset>)
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),AppState())
     val marine=MutableStateFlow<LiveState<MarineResponse>>(LiveState.Idle); val river=MutableStateFlow<LiveState<RiverItems>>(LiveState.Idle)
     val suggestions=MutableStateFlow<LiveState<List<SpeciesSuggestion>>>(LiveState.Idle)

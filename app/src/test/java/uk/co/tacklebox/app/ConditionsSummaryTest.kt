@@ -6,6 +6,7 @@ package uk.co.tacklebox.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import uk.co.tacklebox.app.data.ConditionsSnapshot
 import uk.co.tacklebox.app.data.UnitSystem
@@ -19,6 +20,18 @@ import uk.co.tacklebox.app.data.UnitSystem
 class ConditionsSummaryTest {
     private val full = ConditionsSnapshot(catchId = 1, airTempC = 13.7, windSpeedKph = 12.0,
         windDirection = "WSW", pressureHpa = 996.0, moonPhase = "Waning Crescent")
+
+    /**
+     * iOS writes "996 hPa steady". Android never captures a trend of its own — the column exists and the importer
+     * fills it, so this only shows for a journal imported from iOS — but when one is there it must be rendered,
+     * not dropped.
+     */
+    @Test fun `a pressure trend is appended when the reading carries one`() {
+        val withTrend = full.copy(pressureTrend = "Steady")
+        assertTrue(withTrend.summary(UnitSystem.METRIC).contains("996 hPa steady"))
+        // Without one the reading stands alone — the separator that follows is not a trend.
+        assertEquals("996 hPa", full.summary(UnitSystem.METRIC).split("  ·  ")[2])
+    }
 
     @Test fun `metric reads in celsius, kilometres per hour and hectopascals`() {
         assertEquals("14°C  ·  WSW 12 km/h  ·  996 hPa  ·  Waning Crescent moon", full.summary(UnitSystem.METRIC))
@@ -40,5 +53,19 @@ class ConditionsSummaryTest {
 
     @Test fun `an empty reading produces nothing rather than a row of separators`() {
         assertEquals("", ConditionsSnapshot(catchId = 1).summary(UnitSystem.METRIC))
+    }
+
+    /**
+     * The same snapshot must read the same way wherever it is shown. The catch detail screen rendered these four
+     * values hardcoded in metric while the capture screen honoured the setting, so an imperial angler saw 56°F
+     * when logging a fish and 13.2 °C when reading it back. Both go through this now.
+     */
+    @Test fun `the same snapshot reads differently in each system and never mixes them`() {
+        val metric = full.summary(UnitSystem.METRIC)
+        val imperial = full.summary(UnitSystem.IMPERIAL)
+        assertTrue(metric.contains("°C") && metric.contains("km/h") && metric.contains("hPa"))
+        assertFalse(metric.contains("°F") || metric.contains("mph") || metric.contains("inHg"))
+        assertTrue(imperial.contains("°F") && imperial.contains("mph") && imperial.contains("inHg"))
+        assertFalse(imperial.contains("°C") || imperial.contains("km/h") || imperial.contains("hPa"))
     }
 }

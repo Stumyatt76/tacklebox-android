@@ -72,7 +72,10 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
     // Capture is presented as its own thing, not as a tab: iOS opens it as a modal sheet, and leaving the tab bar
     // visible behind it made the same task look like a different kind of thing on each platform (TB-P-04).
     val modal=route in setOf("log","edit/{id}")
-    if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={if(!modal)BottomBar(nav,showFab)}){pad ->
+    // Nothing until the store has answered — see AppState.loaded. Showing onboarding while the read is in flight
+    // asks a returning angler to set the app up again.
+    if(!state.loaded){Box(Modifier.fillMaxSize().background(Background))}
+    else if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={if(!modal)BottomBar(nav,showFab)}){pad ->
         NavHost(nav,"vault",Modifier.padding(pad)){
             composable("vault"){Vault(state,vm,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
             composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm,nav)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm,nav)}; composable("year"){YearOnWater(state,nav)}
@@ -189,7 +192,9 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
 // case and the value brass, so the same three tiles read as a different component on each platform (TB-P-09).
 @Composable fun Stat(value:String,label:String,modifier:Modifier=Modifier){
     Column(modifier.background(Inset,RoundedCornerShape(14.dp)).padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
-        Text(value,style=MaterialTheme.typography.headlineMedium,maxLines=1)
+        // Two lines, not one. iOS shrinks the value to fit (minimumScaleFactor 0.7); Compose clips instead, so a
+        // one-line tile turned "Waning Crescent" into "Waning" — the moon phase, silently halved.
+        Text(value,style=MaterialTheme.typography.headlineMedium,maxLines=2)
         Text(label.uppercase(),color=Muted,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.3.sp)}}
 // Rounds ounces before splitting, so 15.6 oz reads "1 lb 0 oz" rather than "0 lb 16 oz" (TB-A-13).
 fun Double.weight(unit:UnitSystem)=if(unit==UnitSystem.METRIC) if(this>=1000)"%.2f kg".format(this/1000) else "%.0f g".format(this) else Weights.toPoundsAndOunces(this).let{(lb,oz)->"$lb lb $oz oz"}
@@ -230,7 +235,11 @@ fun ConditionsSnapshot.summary(unit:UnitSystem):String{
     fun whole(v:Double)=v.roundToInt().toString()
     val temperature=airTempC?.let{if(unit==UnitSystem.METRIC)"${whole(it)}°C" else "${whole(it*9/5+32)}°F"}
     val wind=windSpeedKph?.let{"${windDirection.orEmpty()} ${if(unit==UnitSystem.METRIC) whole(it)+" km/h" else whole(it/1.609344)+" mph"}".trim()}
-    val pressure=pressureHpa?.let{if(unit==UnitSystem.METRIC)"${whole(it)} hPa" else String.format("%.2f inHg",it*0.0295299830714)}
+    // iOS appends the trend — "996 hPa steady". Android has the column and the importer fills it, but nothing here
+    // ever captures one, so it shows only for journals imported from iOS. Recorded as a gap rather than faked.
+    val pressure=pressureHpa?.let{
+        val reading=if(unit==UnitSystem.METRIC)"${whole(it)} hPa" else String.format("%.2f inHg",it*0.0295299830714)
+        pressureTrend?.takeIf{t->t.isNotBlank()}?.let{t->"$reading ${t.lowercase()}"} ?: reading}
     val moon=moonPhase?.let{"$it moon"}
     return listOfNotNull(temperature,wind,pressure,moon).joinToString("  ·  ")
 }
@@ -613,13 +622,13 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
         item{HeritageCard{Text("Tackle",color=Brass);Text("Rig · ${c?.item?.rig?.ifBlank{"Not recorded"}?:"Not recorded"}");Text("Bait · ${c?.item?.bait?.ifBlank{"Not recorded"}?:"Not recorded"}")}}
         // Weather is genuinely captured now, so the card reports what was recorded instead of blaming the network
         // for a snapshot the app never even attempted (TB-A-09).
+        // Through the same summary the capture screen uses, so the units follow the setting. These four lines were
+        // hardcoded metric: an imperial angler was shown 56°F when logging the fish and 13.2 °C when reading it
+        // back. iOS has always rendered this one line through ConditionsMetrics.summary(_:unit:).
         item{HeritageCard{Text("Conditions",color=Teal)
             val w=c?.conditions
-            Text("Moon · ${w?.moonPhase?:"Not available"}")
-            if(w?.airTempC!=null)Text("Air · %.1f °C".format(w.airTempC))
-            if(w?.windSpeedKph!=null)Text("Wind · %.0f kph${w.windDirection?.let{" $it"}.orEmpty()}".format(w.windSpeedKph))
-            if(w?.pressureHpa!=null)Text("Pressure · %.0f hPa".format(w.pressureHpa))
-            if(w?.airTempC==null&&w?.windSpeedKph==null&&w?.pressureHpa==null)Text("No weather was recorded for this catch.",color=Muted)}}
+            val line=w?.summary(s.settings.unitSystem).orEmpty()
+            if(line.isBlank())Text("No weather was recorded for this catch.",color=Muted) else Text(line)}}
         item{if(!c?.item?.notes.isNullOrBlank())HeritageCard{Text("Notes",color=Brass);Text(c!!.item.notes)}}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
             OutlinedButton({c?.let{nav.navigate("edit/${it.item.id}")}},Modifier.weight(1f).testTag("editCatch")){Icon(Icons.Default.Edit,null);Text(" Edit")}
@@ -644,7 +653,9 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     // Hand the finished file straight to the share sheet, then clear it so rotating does not re-open the chooser.
     LaunchedEffect(exported){exported?.let{ShareSheet.file(context,it,"application/json","Export your Tacklebox journal");vm.clearExport()}}
     PushedScreen("Settings",onBack={nav.popBackStack()}){
-        item{HeritageCard{SectionLabel("Units");SingleChoiceSegmentedButtonRow{UnitSystem.entries.forEachIndexed{i,u->SegmentedButton(s.settings.unitSystem==u,{vm.settings(s.settings.copy(unitSystem=u))},SegmentedButtonDefaults.itemShape(i,2),colors=SegmentedButtonDefaults.colors(activeContainerColor=Brass,activeContentColor=Background,inactiveContainerColor=Inset,inactiveContentColor=Ink)){Text(u.name.lowercase().replaceFirstChar(Char::uppercase))}}}}}
+        // icon={} for the same reason as onboarding: Material draws a checkmark in the selected segment that iOS's
+        // control has no counterpart for, and the same control appeared two different ways in the same app.
+        item{HeritageCard{SectionLabel("Units");SingleChoiceSegmentedButtonRow{UnitSystem.entries.forEachIndexed{i,u->SegmentedButton(s.settings.unitSystem==u,{vm.settings(s.settings.copy(unitSystem=u))},SegmentedButtonDefaults.itemShape(i,2),colors=SegmentedButtonDefaults.colors(activeContainerColor=Brass,activeContentColor=Background,inactiveContainerColor=Inset,inactiveContentColor=Ink),icon={}){Text(u.name.lowercase().replaceFirstChar(Char::uppercase))}}}}}
         // The Drive switch only ever persisted a boolean — there is no Drive code, no OAuth client and no
         // GoogleSignIn dependency in the app. Rather than keep a control that implies a backup is happening, say
         // plainly that it is not built yet and point at the export that does work.

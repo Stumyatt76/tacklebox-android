@@ -135,12 +135,9 @@ class TackleboxRepository(context: Context) {
          * The same two waters as `SeedData.swift`, so "Begin with sample waters" means the same thing on both
          * platforms. iOS's names win because they are the ones in the committed App Store screenshots.
          *
-         * Alder Mere is a *syndicate* on iOS and a lake here, because Android's `WaterType` has five values to
-         * iOS's ten and no syndicate among them. That enum divergence is real but is a model problem, not an
-         * onboarding one; it is recorded separately as TB-P-14.
          */
         val sampleWaters = listOf(
-            Water(name="Alder Mere", type=WaterType.LAKE, region="Oxfordshire", disciplines=listOf("CARP","COARSE"), swimNotes="Reeds on the west bank fish well at dusk."),
+            Water(name="Alder Mere", type=WaterType.SYNDICATE, region="Oxfordshire", disciplines=listOf("CARP","COARSE"), swimNotes="Reeds on the west bank fish well at dusk."),
             Water(name="River Lea", type=WaterType.RIVER, region="Hertfordshire", disciplines=listOf("COARSE"), swimNotes="Travel light; watch the level after rain."))
         val seedPresets = listOf("Ronnie rig","Hair rig","Method feeder","Waggler","Ledger").map { TacklePreset(name=it, kind=PresetKind.RIG) } +
             listOf("Boilie","Sweetcorn","Maggots","Pellets","Bread","Worm").map { TacklePreset(name=it, kind=PresetKind.BAIT) }

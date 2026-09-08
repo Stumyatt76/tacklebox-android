@@ -7,6 +7,7 @@ package uk.co.tacklebox.app
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import uk.co.tacklebox.app.data.TackleboxRepository
+import uk.co.tacklebox.app.data.WaterType
 
 /**
  * The sample waters offered on the last onboarding page (TB-P-06, TB-P-03).
@@ -21,6 +22,11 @@ class SampleWatersTest {
     @Test fun `offers the same two waters as iOS, in order`() {
         assertEquals(listOf("Alder Mere", "River Lea"), waters.map { it.name })
         assertEquals(listOf("Oxfordshire", "Hertfordshire"), waters.map { it.region })
+    }
+
+    /** Alder Mere is a syndicate on both now that the water-type enums are aligned (TB-P-14). */
+    @Test fun `sample water types match iOS`() {
+        assertEquals(listOf(WaterType.SYNDICATE, WaterType.RIVER), waters.map { it.type })
     }
 
     @Test fun `sample waters carry swim notes and no assigned ids`() {
