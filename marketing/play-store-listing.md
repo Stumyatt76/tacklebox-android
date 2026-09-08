@@ -26,7 +26,9 @@ BITE WINDOWS (SOLUNAR)
 Major and minor feeding periods, sunrise and sunset, moon phase and a day rating — all calculated on your device from the date and your location. No connection needed.
 
 LIVE CONDITIONS
-When you want them, pull nearby weather, coastal sea state, and river levels and flow from public sources (Open-Meteo and the UK Environment Agency). Everything degrades gracefully when you're offline.
+When you want them, pull nearby weather, coastal tides and sea state, and river levels and flow from public sources (Open-Meteo, NOAA, the UK Environment Agency and the USGS). Everything degrades gracefully when you're offline.
+
+Tide predictions come from NOAA free of charge in the contiguous United States. Elsewhere they need a free WorldTides key, which you add in Settings; the rest of the app never asks for one.
 
 WATERS & SESSIONS
 Keep a private passport for each water, with your own swim notes and per-water insights. Start and stop sessions to remember your hours on the bank.
@@ -57,10 +59,9 @@ Tight lines.
 Checked line by line against the shipping app. Four claims were wrong and are corrected above; recording
 them because each would have been a promise on a public listing that the app does not keep.
 
-- **"coastal tides"** — there is no tide source on Android. The Tides & sea screen shows wave height and
-  period from Open-Meteo marine, nothing more. iOS has real tides through NOAA, with WorldTides as an
-  optional key; Android has neither. The in-app screen title overclaims in the same way and is tracked
-  separately.
+- ~~**"coastal tides"**~~ — *was* false: Android had no tide source at all, only wave height and period. Tides
+  were built for 2.1 (NOAA, plus WorldTides for outside the contiguous US), so the claim is now true and is
+  back in the description — with the coverage caveat spelled out, because outside the US it needs a key.
 - **"optional backup to your own Google Drive"** — nothing in the app writes to Drive, and Settings says
   so plainly: "Cloud backup isn't built yet." Export to a file is the real answer.
 - **"top bait by catch-rate ... the gear behind your personal bests"** — the panel shows the most-used rig
