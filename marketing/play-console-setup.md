@@ -17,7 +17,11 @@ Play Console → **All apps → Create app**
 - **Full description:** paste from `marketing/play-store-listing.md`
 - **App icon:** `marketing/store-assets/icon.png` (512×512)
 - **Feature graphic:** `marketing/store-assets/feature.png` (1024×500)
-- **Phone screenshots:** the 6 in `~/Downloads/tacklebox-play-screenshots/` (1080×2160)
+- **Phone screenshots:** the 6 in `marketing/store-assets/screenshots/` (1080×2160)
+  *Captured from the signed 2.0 release on 8 September 2026. The set that used to live in
+  `~/Downloads/` was from 28 August and showed the pre-2.0 interface — different onboarding, a flat
+  Vault card, "4/5 day", text-field weight entry, different tab icons. Recapture these whenever a
+  screen changes; they are the artefact that goes stale silently. Recipe in `closed-testing.md`.*
 - **App category:** Sports  *(alt: Lifestyle)*
 - **Contact email:** support@caddro.co.uk  *(must match the address in the privacy policy — Play shows this on the listing)*
 

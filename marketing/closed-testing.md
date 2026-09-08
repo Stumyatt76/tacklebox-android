@@ -78,3 +78,29 @@ Keep a simple list so you can chase the fortnight:
 | Name | Gmail | Opted in? | Notes |
 |------|-------|-----------|-------|
 |      |       |           |       |
+
+---
+
+## F) Recapturing the store screenshots
+
+They are the one artefact that goes stale without anything failing. The committed set was taken from
+the signed 2.0 build; redo it whenever a screen changes.
+
+```
+adb install -r tacklebox-<version>.apk          # the signed release, not a debug build
+adb shell pm grant uk.co.tacklebox.app android.permission.ACCESS_COARSE_LOCATION
+adb emu geo fix 1.2974 52.6309                  # anywhere that is not 52.36/-1.17
+```
+
+Then in the app: onboard with **Begin with sample waters**, set **Settings → Units → Metric**, log a
+catch with a water, a rig and a bait so the Vault, Insights and the board have something in them, and
+capture with `adb exec-out screencap -p > out.png`.
+
+Six screens, in listing order: Vault, Bite windows, Log a Catch, Insights, Year on the Water, Waters.
+
+Play caps phone screenshots at a 2:1 aspect ratio and the emulator is 1080×2400 (2.22:1), so each is
+scaled to fit 1080×2160 and centred on the app's background colour `#0E1A1E` — undistorted, and the
+same size as the set Play has already accepted.
+
+Note `52.36/-1.17` is the app's own fallback position: set the emulator to exactly that and the app
+correctly decides it has no fix, and the Vault keeps saying "Approximate".
