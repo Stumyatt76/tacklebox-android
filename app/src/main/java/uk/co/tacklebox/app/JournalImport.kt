@@ -142,19 +142,25 @@ object JournalImport {
     // The two apps spell their enums differently — iOS `dayTicket`, Android `DAY_TICKET` — and each has members the
     // other does not. Matching loosely, with a sensible fallback, is what lets a journal cross platforms.
 
+    /** Compares with underscores stripped from *both* sides, so "DAY_TICKET", "dayTicket" and "day ticket" match. */
+    private fun key(raw: String?) = raw?.replace("_", "")?.replace(" ", "")?.lowercase()
+
     fun waterType(raw: String?): WaterType {
-        val key = raw?.replace("_", "")?.lowercase() ?: return WaterType.LAKE
-        WaterType.entries.firstOrNull { it.name.lowercase() == key }?.let { return it }
+        val key = key(raw) ?: return WaterType.LAKE
+        // The underscore was stripped from the incoming value but not from the enum name, so any multi-word value
+        // fell through to the default. WaterType had none until DAY_TICKET arrived with TB-P-14, which is why it
+        // went unnoticed — GearCategory and Discipline would have hit it the moment either gained one.
+        WaterType.entries.firstOrNull { key(it.name) == key }?.let { return it }
         return when (key) {
-            "shore", "boat" -> WaterType.SEA
-            "pond", "syndicate", "dayticket", "commercial" -> WaterType.LAKE
+            // Journals exported before the enums were aligned (TB-P-14) still say "sea".
+            "sea" -> WaterType.SHORE
             else -> WaterType.LAKE
         }
     }
 
     fun gearCategory(raw: String?): GearCategory {
-        val key = raw?.replace("_", "")?.lowercase() ?: return GearCategory.OTHER
-        GearCategory.entries.firstOrNull { it.name.lowercase() == key }?.let { return it }
+        val key = key(raw) ?: return GearCategory.OTHER
+        GearCategory.entries.firstOrNull { key(it.name) == key }?.let { return it }
         return when (key) { "terminal" -> GearCategory.OTHER; else -> GearCategory.OTHER }
     }
 

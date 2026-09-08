@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import uk.co.tacklebox.app.data.MIGRATION_1_2
 import uk.co.tacklebox.app.data.MIGRATION_2_3
+import uk.co.tacklebox.app.data.MIGRATION_3_4
 import uk.co.tacklebox.app.data.TackleboxDatabase
 
 /**
@@ -80,6 +81,35 @@ class MigrationTest {
         db.query("SELECT count(*) FROM CatchPhoto").use { cursor ->
             cursor.moveToFirst()
             assertEquals("an upgraded catch starts with no extras", 0, cursor.getInt(0))
+        }
+    }
+
+    /**
+     * `WaterType.SEA` was replaced by iOS's `SHORE` and `BOAT` (TB-P-14). Room stores an enum by name, so a water
+     * a tester had saved as a sea mark would no longer convert on read — the column is unchanged, the value in it
+     * is not. Everything else about the water has to survive untouched.
+     */
+    @Test
+    fun migrate3To4_rewritesSeaWatersAsShoreAndLeavesTheRestAlone() {
+        helper.createDatabase(name, 1).apply {
+            execSQL("""INSERT INTO Water (id, name, type, region, disciplines, swimNotes)
+                       VALUES (1, 'Chesil Beach', 'SEA', 'Dorset', 'SEA', 'Fish the far end after dark.')""")
+            execSQL("""INSERT INTO Water (id, name, type, region, disciplines, swimNotes)
+                       VALUES (2, 'Alder Mere', 'LAKE', 'Oxfordshire', 'COARSE', '')""")
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(name, 4, true, MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+
+        db.query("SELECT name, type, region, swimNotes FROM Water ORDER BY id").use { cursor ->
+            assertEquals(2, cursor.count)
+            cursor.moveToFirst()
+            assertEquals("Chesil Beach", cursor.getString(0))
+            assertEquals("a sea mark becomes a shore mark", "SHORE", cursor.getString(1))
+            assertEquals("Dorset", cursor.getString(2))
+            assertEquals("the swim note must survive", "Fish the far end after dark.", cursor.getString(3))
+            cursor.moveToNext()
+            assertEquals("every other water is untouched", "LAKE", cursor.getString(1))
         }
     }
 
