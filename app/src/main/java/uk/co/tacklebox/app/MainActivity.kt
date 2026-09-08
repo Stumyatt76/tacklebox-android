@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -48,6 +49,7 @@ import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import uk.co.tacklebox.app.data.*
+import uk.co.tacklebox.app.ui.FishGlyph
 import uk.co.tacklebox.app.services.*
 import uk.co.tacklebox.app.ui.*
 import java.time.*
@@ -67,7 +69,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
     val modal=route in setOf("log","edit/{id}")
     if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={if(!modal)BottomBar(nav,showFab)}){pad ->
         NavHost(nav,"vault",Modifier.padding(pad)){
-            composable("vault"){Vault(state,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
+            composable("vault"){Vault(state,vm,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
             composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm)}; composable("year"){YearOnWater(state)}
             composable("water/{id}"){WaterPassport(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("species/{id}"){SpeciesDetail(state,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catch/{id}"){CatchDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}
         }
@@ -147,7 +149,10 @@ fun Double.weight(unit:UnitSystem)=if(unit==UnitSystem.METRIC) if(this>=1000)"%.
 val numberKeyboard=KeyboardOptions(keyboardType=KeyboardType.Decimal)
 // LocalTime.toString() prints seconds when they are non-zero, so a computed sunrise read "06:43:12" while the
 // hardcoded old one read "06:43". The ephemeris returns real times, so they always have seconds.
-fun java.time.LocalTime.hm():String=format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+//
+// Localised rather than a fixed HH:mm, which is what iOS does: a US device should read "9:40 AM" and a UK one
+// "09:40". A hardcoded pattern had the two apps printing the same instant differently on the same phone (TB-P-05).
+fun java.time.LocalTime.hm():String=format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
 /** An uppercase letterspaced section label, matching the iOS capture screen (TB-P-04). */
 @Composable fun SectionLabel(text:String)=Text(text.uppercase(),color=Muted,style=MaterialTheme.typography.labelLarge,letterSpacing=1.5.sp)
 
@@ -192,12 +197,99 @@ fun ConditionsSnapshot.summary(unit:UnitSystem):String{
 @Composable fun brassChipColours()=FilterChipDefaults.filterChipColors(selectedContainerColor=Brass,selectedLabelColor=Background,labelColor=Ink,containerColor=Inset)
 fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm"))
 
-@Composable fun Vault(s:AppState,nav:NavHostController){val pb=s.catches.filter{it.item.weightGrams!=null}.maxByOrNull{it.item.weightGrams!!};val sol=Astronomy.calculate();Screen("The Vault","A private ledger of time well spent",actions={IconButton({nav.navigate("catches")},modifier=Modifier.testTag("searchCatches")){Icon(Icons.Default.Search,"Search your catches")};IconButton({nav.navigate("settings")}){Icon(Icons.Default.Settings,"Settings")}}){item{HeritageCard(onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}}){Text("FEATURED PERSONAL BEST",color=Brass,style=MaterialTheme.typography.labelLarge);Spacer(Modifier.height(12.dp));Text(pb?.species?.name?:"Your finest catch awaits",style=MaterialTheme.typography.headlineMedium);Text(pb?.item?.weightGrams?.weight(s.settings.unitSystem)?:"Log a catch to begin your board",color=Muted)}};item{HeritageCard(onClick={nav.navigate("solunar")}){Row(verticalAlignment=Alignment.CenterVertically){Text("TODAY ON THE BANK",color=Teal,style=MaterialTheme.typography.labelLarge,modifier=Modifier.weight(1f));RatingPill(sol.rating)};Text(sol.moonPhase,style=MaterialTheme.typography.titleLarge);// The next window still to come, not the day's first — this read "Next window 01:55–02:55" at 08:41.
-        val next=sol.windows.firstOrNull{!it.end.isBefore(LocalTime.now())}
-        Text(if(next!=null)"Next ${next.label.lowercase()} ${next.start.hm()}–${next.end.hm()}  ·  ↑ ${sol.sunrise.hm()}  ↓ ${sol.sunset.hm()}" else "No more windows today  ·  ↑ ${sol.sunrise.hm()}  ↓ ${sol.sunset.hm()}",color=Muted)}};item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f).clickable{nav.navigate("catches")});Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}};item{Text("Personal best board",style=MaterialTheme.typography.titleLarge)};items(s.catches.filter{it.item.weightGrams!=null}.groupBy{it.species?.id}.mapNotNull{(_,v)->v.maxByOrNull{it.item.weightGrams?:0.0}}){c->HeritageCard(onClick={nav.navigate("species/${c.species?.id}")}){Row{Text(c.species?.name?:"Unknown",Modifier.weight(1f));Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft)}}};item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){AssistChip({nav.navigate("tackle")},{Text("My Tacklebox")},leadingIcon={Icon(Icons.Default.Inventory2,null)});AssistChip({nav.navigate("solunar")},{Text("Bite windows")},leadingIcon={Icon(Icons.Default.DarkMode,null)})}}}}
+@Composable fun Vault(s:AppState,vm:MainViewModel,nav:NavHostController){
+    val pb=s.catches.filter{it.item.weightGrams!=null}.maxByOrNull{it.item.weightGrams!!}
+    // The card used to call Astronomy.calculate() with its default coordinates, so it showed central-UK times even
+    // with location granted — and disagreed with the Bite windows screen, which has always followed the device.
+    var place by remember{mutableStateOf<Pair<Double,Double>?>(null)}
+    LaunchedEffect(Unit){place=vm.solunarPlace()}
+    val located=place!=null&&place!=DeviceLocation.FALLBACK_INLAND
+    val sol=place?.let{Astronomy.calculate(latitude=it.first,longitude=it.second)}?:Astronomy.calculate()
+    Screen("The Vault","A private ledger of time well spent",actions={IconButton({nav.navigate("catches")},modifier=Modifier.testTag("searchCatches")){Icon(Icons.Default.Search,"Search your catches")};IconButton({nav.navigate("settings")}){Icon(Icons.Default.Settings,"Settings")}}){
+        item{FeaturedPersonalBest(pb,s.settings.unitSystem,onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}})}
+        item{TodayOnTheBank(sol,located,onClick={nav.navigate("solunar")})}
+        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f).clickable{nav.navigate("catches")});Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}}
+        item{Text("Personal best board",style=MaterialTheme.typography.titleLarge)}
+        items(s.catches.filter{it.item.weightGrams!=null}.groupBy{it.species?.id}.mapNotNull{(_,v)->v.maxByOrNull{it.item.weightGrams?:0.0}}){c->HeritageCard(onClick={nav.navigate("species/${c.species?.id}")}){Row{Text(c.species?.name?:"Unknown",Modifier.weight(1f));Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft)}}}
+        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){AssistChip({nav.navigate("tackle")},{Text("My Tacklebox")},leadingIcon={Icon(Icons.Default.Inventory2,null)});AssistChip({nav.navigate("solunar")},{Text("Bite windows")},leadingIcon={Icon(Icons.Default.DarkMode,null)})}}}
+}
 
-// Waters could only ever arrive from the optional sample seed: Repository.addWater existed but nothing called it,
-// so a tester who chose "Start with an empty vault" could never have one (TB-A-11).
+/**
+ * The featured personal best (TB-P-05).
+ *
+ * This was a flat text card against an illustrated hero on iOS — the same record, presented as a list row on one
+ * platform and as the centrepiece of the app on the other. It is now the iOS card: a 230dp hero showing the
+ * catch's own photo where there is one, falling back to the carp glyph on a teal gradient, with a scrim so the
+ * weight stays legible over any photo.
+ */
+@Composable fun FeaturedPersonalBest(pb:CatchRow?,unit:UnitSystem,onClick:(()->Unit)?){
+    Box(Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(18.dp))
+        .border(1.dp,Muted.copy(alpha=.15f),RoundedCornerShape(18.dp))
+        .then(if(onClick!=null)Modifier.clickable(onClick=onClick) else Modifier)){
+        val photo=pb?.allPhotoUris?.firstOrNull()
+        if(photo!=null)AsyncImage(photo,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+        else Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Inset,Teal.copy(alpha=.3f)))),contentAlignment=Alignment.Center){
+            FishGlyph(Teal.copy(alpha=.82f),Modifier.size(210.dp,115.dp))}
+        // Scrim: the weight has to read over a photo as well as over the gradient.
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent,Background.copy(alpha=.92f)))))
+        Column(Modifier.align(Alignment.BottomStart).padding(18.dp)){
+            Text("FEATURED PERSONAL BEST",color=Brass,style=MaterialTheme.typography.labelLarge,letterSpacing=1.3.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(pb?.item?.weightGrams?.weight(unit)?:"Log your first catch",style=MaterialTheme.typography.headlineLarge)
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Text(pb?.species?.name?:"Your finest catch awaits",color=Ink.copy(alpha=.88f),fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
+                if(pb!=null)Icon(Icons.Default.ChevronRight,null,tint=BrassSoft)}}}
+}
+
+/**
+ * Today on the bank (TB-P-05).
+ *
+ * Android showed the phase and one compact line of times. iOS leads with the next window and how long until it
+ * starts, which is the only part an angler acts on — the sun times are context beneath it, not the headline.
+ */
+@Composable fun TodayOnTheBank(sol:SolunarDay,located:Boolean,onClick:()->Unit){
+    val now=LocalTime.now()
+    val next=sol.windows.firstOrNull{!it.end.isBefore(now)}
+    HeritageCard(onClick=onClick){
+        Row(verticalAlignment=Alignment.CenterVertically){
+            Text("TODAY ON THE BANK",color=Muted,style=MaterialTheme.typography.labelLarge,letterSpacing=1.5.sp,modifier=Modifier.weight(1f))
+            RatingPill(sol.rating)}
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment=Alignment.CenterVertically){
+            Icon(Icons.Default.NightsStay,null,tint=BrassSoft,modifier=Modifier.size(23.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)){
+                if(next!=null){
+                    Text("Next ${if(next.major)"Major" else "Minor"} · ${next.start.hm()}",style=MaterialTheme.typography.titleLarge)
+                    Text(countdownTo(now,next.start),color=Teal,style=MaterialTheme.typography.bodyMedium,fontWeight=FontWeight.SemiBold)
+                }else Text("Today's windows have passed",style=MaterialTheme.typography.titleLarge)}
+            Icon(Icons.Default.ChevronRight,null,tint=BrassSoft)}
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement=Arrangement.spacedBy(16.dp)){
+            SunEvent(Icons.Default.WbTwilight,"Sunrise",sol.sunrise)
+            SunEvent(Icons.Default.WbSunny,"Sunset",sol.sunset)}
+        // Say so when the times are the central-UK fallback rather than the angler's own, as iOS does.
+        if(!located){Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Icon(Icons.Default.LocationOff,null,tint=Muted.copy(alpha=.7f),modifier=Modifier.size(12.dp))
+                Spacer(Modifier.width(5.dp))
+                Text("Approximate · enable Location for local times",color=Muted.copy(alpha=.7f),style=MaterialTheme.typography.bodyMedium)}}}
+}
+
+@Composable private fun SunEvent(icon:androidx.compose.ui.graphics.vector.ImageVector,label:String,at:LocalTime){
+    Row(verticalAlignment=Alignment.CenterVertically){
+        Icon(icon,null,tint=Muted,modifier=Modifier.size(14.dp));Spacer(Modifier.width(5.dp))
+        Text("$label ${at.hm()}",color=Muted,style=MaterialTheme.typography.bodyMedium,fontWeight=FontWeight.SemiBold)}
+}
+
+/** "in 4m", "in 2h 31m", or "Happening now" — the same wording as iOS. */
+fun countdownTo(now:LocalTime,start:LocalTime):String{
+    val minutes=java.time.Duration.between(now,start).toMinutes()
+    if(minutes<=0)return "Happening now"
+    return if(minutes>=60)"in ${minutes/60}h ${minutes%60}m" else "in ${maxOf(1,minutes)}m"
+}
+
 @Composable fun Waters(s:AppState,vm:MainViewModel,nav:NavHostController){
     var adding by rememberSaveable{mutableStateOf(false)}
     Screen("Waters","Your places, kept private",actions={IconButton({adding=true}){Icon(Icons.Default.Add,"Add a water")}}){
