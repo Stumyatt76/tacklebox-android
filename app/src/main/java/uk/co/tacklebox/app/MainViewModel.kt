@@ -31,7 +31,8 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     val state=combine(repo.settings,repo.species,repo.waters,repo.catches,repo.sessions,repo.gear,repo.presets){ a:Array<Any?> ->
         @Suppress("UNCHECKED_CAST") AppState(true,a[0] as AppSettings,a[1] as List<Species>,a[2] as List<Water>,a[3] as List<CatchRow>,a[4] as List<SessionRow>,a[5] as List<GearItem>,a[6] as List<TacklePreset>)
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),AppState())
-    val marine=MutableStateFlow<LiveState<MarineResponse>>(LiveState.Idle); val river=MutableStateFlow<LiveState<RiverItems>>(LiveState.Idle)
+    val marine=MutableStateFlow<LiveState<MarineResponse>>(LiveState.Idle); val river=MutableStateFlow<LiveState<RiverResult>>(LiveState.Idle)
+    val tides=MutableStateFlow<LiveState<TideResult>>(LiveState.Idle)
     val suggestions=MutableStateFlow<LiveState<List<SpeciesSuggestion>>>(LiveState.Idle)
     val exported=MutableStateFlow<Uri?>(null)
     val notice=MutableStateFlow<String?>(null)
@@ -65,9 +66,14 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     suspend fun captureConditions():ConditionsSnapshot {
         val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_INLAND
         val moon=Astronomy.calculate(latitude=lat,longitude=lon).moonPhase
-        val current=runCatching{Services.weather.current(lat,lon).current}.getOrNull()
+        val weather=runCatching{Services.weather.current(lat,lon)}.getOrNull()
+        val current=weather?.current
         return ConditionsSnapshot(catchId=0,airTempC=current?.temperature,windSpeedKph=current?.wind,
-            windDirection=current?.windDirection?.let(::compass),pressureHpa=current?.pressure,moonPhase=moon)
+            windDirection=current?.windDirection?.let(::compass),pressureHpa=current?.pressure,
+            // The trend needs the hourly series, which the weather call now asks for. Android had the column and
+            // the importer but nothing that ever computed one (feature parity, 2026-09-08).
+            pressureTrend=current?.pressure?.let{PressureTrend.of(it,weather.hourly,current.time)},
+            moonPhase=moon)
     }
 
     private fun compass(degrees:Double):String {
@@ -91,15 +97,48 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     fun deleteCatch(id:Long)=viewModelScope.launch{repo.deleteCatch(id)}
     fun deleteWater(id:Long)=viewModelScope.launch{repo.deleteWater(id)}
 
+    /**
+     * Fills in a species' reference photo and description from iNaturalist, once (feature parity, 2026-09-08).
+     *
+     * Only ever adds: a name or note the angler has already got stays as it is, and a failed lookup leaves the
+     * record exactly as it was rather than blanking it. Skipped entirely when the photo is already there, so
+     * opening a species record repeatedly does not re-fetch.
+     */
+    fun enrichSpecies(species:Species)=viewModelScope.launch{
+        if(!species.referencePhotoUrl.isNullOrBlank()) return@launch
+        val info=SpeciesLookup.enrich(species.name) ?: return@launch
+        repo.saveSpecies(species.copy(
+            scientificName=species.scientificName ?: info.scientificName,
+            commonName=species.commonName ?: info.commonName,
+            about=species.about ?: info.about,
+            referencePhotoUrl=info.referencePhotoUrl,
+            photoAttribution=info.photoAttribution))
+    }
+
     fun marine()=viewModelScope.launch{
         marine.value=LiveState.Loading
         val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_COASTAL
         marine.value=runCatching{LiveState.Data(Services.marine.forecast(lat,lon))}.getOrElse{LiveState.Error("Couldn’t update the sea forecast. Try again.")}
     }
+    /**
+     * Tide predictions (feature parity with iOS, 2026-09-08).
+     *
+     * The error carries the service's own message rather than a generic one, because the two failures need
+     * different things from the angler: "not available for your area" is answered by adding a WorldTides key,
+     * "couldn't be updated" by finding a signal.
+     */
+    fun tides()=viewModelScope.launch{
+        tides.value=LiveState.Loading
+        val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_COASTAL
+        val key=repo.settings.first().worldTidesKey
+        tides.value=runCatching{LiveState.Data(Tides.tides(lat,lon,key))}
+            .getOrElse{LiveState.Error(it.message ?: "Couldn’t update tide predictions. Try again.")}
+    }
     fun river()=viewModelScope.launch{
         river.value=LiveState.Loading
         val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_INLAND
-        river.value=runCatching{LiveState.Data(Services.river.readings(lat,lon))}.getOrElse{LiveState.Error("Couldn’t update river gauges. Try again.")}
+        river.value=runCatching{LiveState.Data(Rivers.gauges(lat,lon))}
+            .getOrElse{LiveState.Error(it.message ?: "Couldn’t update river gauges. Try again.")}
     }
 
     fun identify(photoUri:String?,token:String)=viewModelScope.launch{

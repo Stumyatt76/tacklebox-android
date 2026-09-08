@@ -28,7 +28,7 @@ class Converters {
     @TypeConverter fun strings(v: List<String>): String = v.joinToString("|")
 }
 
-@Entity data class AppSettings(@PrimaryKey val id: Int = 1, val unitSystem: UnitSystem = UnitSystem.METRIC, val activeDisciplines: List<String> = Discipline.entries.map { it.name }, val onboardingComplete: Boolean = false, val backupEnabled: Boolean = false, val speciesIdToken: String = "")
+@Entity data class AppSettings(@PrimaryKey val id: Int = 1, val unitSystem: UnitSystem = UnitSystem.METRIC, val activeDisciplines: List<String> = Discipline.entries.map { it.name }, val onboardingComplete: Boolean = false, val backupEnabled: Boolean = false, val speciesIdToken: String = "", val worldTidesKey: String = "")
 @Entity data class Species(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val discipline: Discipline, val scientificName: String? = null, val commonName: String? = null, val about: String? = null, val referencePhotoUrl: String? = null, val photoAttribution: String? = null)
 @Entity data class Water(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val type: WaterType, val region: String, val disciplines: List<String> = emptyList(), val swimNotes: String = "")
 @Entity(indices = [Index("waterId")]) data class FishingSession(@PrimaryKey(autoGenerate = true) val id: Long = 0, val waterId: Long? = null, val startAt: Instant = Instant.now(), val endAt: Instant? = null, val notes: String = "")
@@ -81,6 +81,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("SELECT * FROM TacklePreset ORDER BY kind,name") fun presets(): Flow<List<TacklePreset>>
     @Insert suspend fun addPreset(value:TacklePreset)
     @Delete suspend fun deletePreset(value:TacklePreset)
+    @Update suspend fun updateSpecies(value:Species)
     @Update suspend fun updateWater(value:Water)
     @Update suspend fun updateCatch(value:Catch)
     @Insert suspend fun addPhotos(values:List<CatchPhoto>)
@@ -102,7 +103,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM TacklePreset") suspend fun clearPresets()
 }
 
-@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=4, exportSchema=true)
+@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=5, exportSchema=true)
 @TypeConverters(Converters::class)
 abstract class TackleboxDatabase: RoomDatabase() { abstract fun dao(): TackleboxDao }
 
@@ -140,5 +141,16 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("UPDATE `Water` SET `type` = 'SHORE' WHERE `type` = 'SEA'")
+    }
+}
+
+/**
+ * The optional WorldTides key, which gives tide predictions outside the contiguous US (NOAA covers that for free
+ * and needs no key). Empty for everyone who has not supplied one, which is the honest default: the tides screen
+ * then says predictions are not available for the area rather than showing an empty list.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `AppSettings` ADD COLUMN `worldTidesKey` TEXT NOT NULL DEFAULT ''")
     }
 }

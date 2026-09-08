@@ -11,7 +11,7 @@ import java.time.Instant
 import java.util.Locale
 
 class TackleboxRepository(context: Context) {
-    private val db = Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
+    private val db = Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
     private val dao = db.dao()
     val settings = dao.settings().map { it ?: defaults() }.distinctUntilChanged()
     val species = dao.species()
@@ -55,6 +55,7 @@ class TackleboxRepository(context: Context) {
     suspend fun deleteGear(v:GearItem)=dao.deleteGear(v)
     suspend fun addPreset(v:TacklePreset)=dao.addPreset(v)
     suspend fun deletePreset(v:TacklePreset)=dao.deletePreset(v)
+    suspend fun saveSpecies(v:Species)=dao.updateSpecies(v)
     suspend fun saveWater(v:Water)=dao.updateWater(v)
     suspend fun saveCatch(v:Catch)=dao.updateCatch(v)
     /** Replaces a catch's photos: the first is the cover on the row itself, the rest become CatchPhoto records. */

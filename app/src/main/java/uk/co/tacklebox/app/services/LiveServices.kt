@@ -23,15 +23,13 @@ import java.time.*
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
-data class CurrentWeather(@SerializedName("temperature_2m") val temperature:Double?, @SerializedName("wind_speed_10m") val wind:Double?, @SerializedName("surface_pressure") val pressure:Double?, @SerializedName("wind_direction_10m") val windDirection:Double?)
-data class WeatherResponse(val current:CurrentWeather?)
-data class MarineHourly(val time:List<String> = emptyList(), @SerializedName("wave_height") val waveHeight:List<Double?> = emptyList(), @SerializedName("wave_period") val wavePeriod:List<Double?> = emptyList())
+data class CurrentWeather(@SerializedName("temperature_2m") val temperature:Double?, @SerializedName("wind_speed_10m") val wind:Double?, @SerializedName("surface_pressure") val pressure:Double?, @SerializedName("wind_direction_10m") val windDirection:Double?, val time:String?=null)
+data class HourlyWeather(val time:List<String> = emptyList(), @SerializedName("surface_pressure") val pressure:List<Double?> = emptyList())
+data class WeatherResponse(val current:CurrentWeather?, val hourly:HourlyWeather?)
+data class MarineHourly(val time:List<String> = emptyList(), @SerializedName("wave_height") val waveHeight:List<Double?> = emptyList(), @SerializedName("wave_period") val wavePeriod:List<Double?> = emptyList(), @SerializedName("wave_direction") val waveDirection:List<Double?> = emptyList(), @SerializedName("sea_surface_temperature") val seaTemperature:List<Double?> = emptyList())
 data class MarineResponse(val hourly:MarineHourly?)
-interface WeatherApi { @GET("v1/forecast") suspend fun current(@Query("latitude") lat:Double,@Query("longitude") lon:Double,@Query("current") current:String="temperature_2m,wind_speed_10m,wind_direction_10m,surface_pressure"):WeatherResponse }
-interface MarineApi { @GET("v1/marine") suspend fun forecast(@Query("latitude") lat:Double,@Query("longitude") lon:Double,@Query("hourly") hourly:String="wave_height,wave_period",@Query("forecast_days") days:Int=2):MarineResponse }
-data class RiverItems(val items:List<RiverReading> = emptyList())
-data class RiverReading(val dateTime:String?=null,val value:Double?=null,val measure:String?=null)
-interface RiverApi { @GET("flood-monitoring/id/readings") suspend fun readings(@Query("lat") lat:Double,@Query("long") lon:Double,@Query("dist") distance:Int=20,@Query("_limit") limit:Int=20,@Query("latest") latest:String=""):RiverItems }
+interface WeatherApi { @GET("v1/forecast") suspend fun current(@Query("latitude") lat:Double,@Query("longitude") lon:Double,@Query("current") current:String="temperature_2m,wind_speed_10m,wind_direction_10m,surface_pressure",@Query("hourly") hourly:String="surface_pressure",@Query("timezone") timezone:String="auto"):WeatherResponse }
+interface MarineApi { @GET("v1/marine") suspend fun forecast(@Query("latitude") lat:Double,@Query("longitude") lon:Double,@Query("hourly") hourly:String="wave_height,wave_direction,wave_period,sea_surface_temperature",@Query("forecast_days") days:Int=2,@Query("timezone") timezone:String="auto"):MarineResponse }
 
 object Services {
     // Explicit timeouts: the bare client had none, so a captive portal or a stalled gauge left the Rivers and Tides
@@ -42,8 +40,12 @@ object Services {
     private fun <T> api(url:String,c:Class<T>):T=Retrofit.Builder().baseUrl(url).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(c)
     val weather:WeatherApi=api("https://api.open-meteo.com/",WeatherApi::class.java)
     val marine:MarineApi=api("https://marine-api.open-meteo.com/",MarineApi::class.java)
-    val river:RiverApi=api("https://environment.data.gov.uk/",RiverApi::class.java)
     val vision:VisionApi=api("https://api.inaturalist.org/",VisionApi::class.java)
+    // Tides call two different hosts (NOAA and WorldTides), so every request passes a full @Url and this base is
+    // only here because Retrofit insists on one.
+    val tide:TideApi=api("https://api.tidesandcurrents.noaa.gov/",TideApi::class.java)
+    val taxa:TaxaApi=api("https://api.inaturalist.org/",TaxaApi::class.java)
+    val riverStations:RiverStationsApi=api("https://environment.data.gov.uk/",RiverStationsApi::class.java)
 }
 
 // --- Species identification (iNaturalist computer vision) -------------------------------------------------------
@@ -82,4 +84,30 @@ object SpeciesId {
     suspend fun validate(token:String):Boolean = try { Services.vision.me(bearer(token)); true } catch (_:Exception) { false }
 
     private fun bearer(token:String) = if (token.startsWith("Bearer ",ignoreCase=true)) token else "Bearer $token"
+}
+
+/**
+ * Which way the barometer is going, ported from the iOS `ConditionsService` (feature parity, 2026-09-08).
+ *
+ * Android had a `pressureTrend` column and an importer that filled it, but nothing that ever computed one — so the
+ * field showed only on journals imported from iOS. It needs the hourly pressure series, which is why the weather
+ * request now asks for it.
+ *
+ * Three hours back is the window iOS uses, and one hectopascal the threshold. Anglers read a falling glass as the
+ * fish coming on, so the wording matters more than the precision.
+ */
+object PressureTrend {
+    fun of(current: Double?, hourly: HourlyWeather?, now: String?): String {
+        if (current == null || hourly == null || hourly.time.isEmpty()) return "Steady"
+        val currentIndex = now?.let { t -> hourly.time.indexOfLast { it <= t } }?.takeIf { it >= 0 }
+            ?: hourly.time.lastIndex
+        val earlierIndex = maxOf(0, currentIndex - 3)
+        val earlier = hourly.pressure.getOrNull(earlierIndex) ?: return "Steady"
+        val change = current - earlier
+        return when {
+            change >= 1 -> "Rising"
+            change <= -1 -> "Falling"
+            else -> "Steady"
+        }
+    }
 }
