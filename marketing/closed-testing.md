@@ -68,7 +68,7 @@ Collect each tester's **Google (Gmail) account email** — that's what you add i
 
 ## E) Feedback channel
 Pick one and put it in the recruitment message / tester instructions:
-- Reply-to email (e.g. myattstuart1976@gmail.com), or
+- Reply-to email (support@caddro.co.uk, the same address as the listing and the privacy policy), or
 - A WhatsApp/group chat, or
 - GitHub issues: https://github.com/Stumyatt76/tacklebox-android/issues
 
