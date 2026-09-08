@@ -17,7 +17,25 @@ Welcome to Tacklebox — a calm, private home for your fishing.
 Fully offline. No account, no ads, no tracking. Tight lines.
 ```
 
-## 2.0 — closed testing  (~400 chars)
+## 2.1 — closed testing  (~430 chars)
+
+Supersedes the 2.0 note below; 2.0 was tagged but never uploaded to Play.
+
+```
+Bite windows were wrong, and now they're right.
+
+• The moon phase was around nineteen days out, so the feeding windows built on it were too. The solunar model has been rebuilt and now tracks the moon properly.
+• New: tide times. Free in the US; elsewhere add a WorldTides key in Settings.
+• Rivers now name the gauge, show the trend, and cover the US.
+• Species records gain a reference photo.
+• Log a catch: pick a water, tap a species from the full grid, set weight with a stepper.
+
+Tight lines.
+```
+
+---
+
+## 2.0 — tagged, never uploaded  (~400 chars) — *superseded by 2.1*
 
 The one that matters is first, because it changes what the app told you.
 

@@ -364,7 +364,7 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     var adding by rememberSaveable{mutableStateOf(false)}
     Screen("Private places","Waters",actions={IconButton({adding=true}){Icon(Icons.Default.Add,"Add a water")}}){
         item{HeritageCard(onClick={nav.navigate("rivers")}){Text("River conditions",style=MaterialTheme.typography.titleLarge);Text("Levels and nearby gauges",color=Muted)}}
-        item{HeritageCard(onClick={nav.navigate("tides")}){Text("Tides & sea",style=MaterialTheme.typography.titleLarge);Text("Coastal waves and sea state",color=Muted)}}
+        item{HeritageCard(onClick={nav.navigate("tides")}){Text("Tides & sea",style=MaterialTheme.typography.titleLarge);Text("Tide times, waves and sea state",color=Muted)}}
         item{SectionLabel("Water passports")}
         if(s.waters.isEmpty())item{Empty("No waters saved","Add a water to build your private map.")}
         items(s.waters){w->HeritageCard(onClick={nav.navigate("water/${w.id}")}){Row{Icon(Icons.Default.Water,null,tint=Teal);Spacer(Modifier.width(12.dp));Column{Text(w.name,style=MaterialTheme.typography.titleLarge);Text("${w.type.name.lowercase().replaceFirstChar(Char::uppercase)} · ${w.region}",color=Muted)}}}}
