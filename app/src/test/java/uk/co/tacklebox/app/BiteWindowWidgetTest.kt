@@ -58,11 +58,12 @@ class BiteWindowWidgetTest {
         }
     }
 
-    @Test fun `every day offers windows and a rating in range`() {
+    @Test fun `every day offers windows, a rating and a named phase`() {
         (0 until 30).forEach { offset ->
             val d = Astronomy.calculate(LocalDate.of(2026, 1, 1).plusDays(offset.toLong()))
             assertTrue(d.windows.isNotEmpty())
-            assertTrue("rating ${d.rating} out of range", d.rating in 1..5)
+            // The rating is a four-point word scale now, not "n/5" — see AstronomyTest for why (TB-P-05).
+            assertTrue(d.rating.title.isNotBlank())
             assertTrue(d.moonPhase.isNotBlank())
         }
     }

@@ -58,7 +58,9 @@ class BiteWindowWidget : GlanceAppWidget() {
                         Text("NEXT WINDOW", style = TextStyle(color = androidx.glance.unit.ColorProvider(Brass),
                             fontSize = 10.sp, fontWeight = FontWeight.Bold))
                         Spacer(GlanceModifier.defaultWeight())
-                        Text("${day.rating}/5", style = TextStyle(color = androidx.glance.unit.ColorProvider(Teal),
+                        // The word, as the iOS widget shows it — not "n/5", a scale whose lower half was
+                        // unreachable (TB-P-05).
+                        Text(day.rating.title.uppercase(), style = TextStyle(color = androidx.glance.unit.ColorProvider(Teal),
                             fontSize = 10.sp, fontWeight = FontWeight.Bold))
                     }
                     Spacer(GlanceModifier.height(6.dp))
