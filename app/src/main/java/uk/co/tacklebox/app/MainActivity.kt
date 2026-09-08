@@ -235,7 +235,11 @@ fun ConditionsSnapshot.summary(unit:UnitSystem):String{
     fun whole(v:Double)=v.roundToInt().toString()
     val temperature=airTempC?.let{if(unit==UnitSystem.METRIC)"${whole(it)}°C" else "${whole(it*9/5+32)}°F"}
     val wind=windSpeedKph?.let{"${windDirection.orEmpty()} ${if(unit==UnitSystem.METRIC) whole(it)+" km/h" else whole(it/1.609344)+" mph"}".trim()}
-    val pressure=pressureHpa?.let{if(unit==UnitSystem.METRIC)"${whole(it)} hPa" else String.format("%.2f inHg",it*0.0295299830714)}
+    // iOS appends the trend — "996 hPa steady". Android has the column and the importer fills it, but nothing here
+    // ever captures one, so it shows only for journals imported from iOS. Recorded as a gap rather than faked.
+    val pressure=pressureHpa?.let{
+        val reading=if(unit==UnitSystem.METRIC)"${whole(it)} hPa" else String.format("%.2f inHg",it*0.0295299830714)
+        pressureTrend?.takeIf{t->t.isNotBlank()}?.let{t->"$reading ${t.lowercase()}"} ?: reading}
     val moon=moonPhase?.let{"$it moon"}
     return listOfNotNull(temperature,wind,pressure,moon).joinToString("  ·  ")
 }

@@ -21,6 +21,18 @@ class ConditionsSummaryTest {
     private val full = ConditionsSnapshot(catchId = 1, airTempC = 13.7, windSpeedKph = 12.0,
         windDirection = "WSW", pressureHpa = 996.0, moonPhase = "Waning Crescent")
 
+    /**
+     * iOS writes "996 hPa steady". Android never captures a trend of its own — the column exists and the importer
+     * fills it, so this only shows for a journal imported from iOS — but when one is there it must be rendered,
+     * not dropped.
+     */
+    @Test fun `a pressure trend is appended when the reading carries one`() {
+        val withTrend = full.copy(pressureTrend = "Steady")
+        assertTrue(withTrend.summary(UnitSystem.METRIC).contains("996 hPa steady"))
+        // Without one the reading stands alone — the separator that follows is not a trend.
+        assertEquals("996 hPa", full.summary(UnitSystem.METRIC).split("  ·  ")[2])
+    }
+
     @Test fun `metric reads in celsius, kilometres per hour and hectopascals`() {
         assertEquals("14°C  ·  WSW 12 km/h  ·  996 hPa  ·  Waning Crescent moon", full.summary(UnitSystem.METRIC))
     }
