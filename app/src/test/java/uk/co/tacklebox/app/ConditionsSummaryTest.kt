@@ -6,6 +6,7 @@ package uk.co.tacklebox.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import uk.co.tacklebox.app.data.ConditionsSnapshot
 import uk.co.tacklebox.app.data.UnitSystem
@@ -40,5 +41,19 @@ class ConditionsSummaryTest {
 
     @Test fun `an empty reading produces nothing rather than a row of separators`() {
         assertEquals("", ConditionsSnapshot(catchId = 1).summary(UnitSystem.METRIC))
+    }
+
+    /**
+     * The same snapshot must read the same way wherever it is shown. The catch detail screen rendered these four
+     * values hardcoded in metric while the capture screen honoured the setting, so an imperial angler saw 56°F
+     * when logging a fish and 13.2 °C when reading it back. Both go through this now.
+     */
+    @Test fun `the same snapshot reads differently in each system and never mixes them`() {
+        val metric = full.summary(UnitSystem.METRIC)
+        val imperial = full.summary(UnitSystem.IMPERIAL)
+        assertTrue(metric.contains("°C") && metric.contains("km/h") && metric.contains("hPa"))
+        assertFalse(metric.contains("°F") || metric.contains("mph") || metric.contains("inHg"))
+        assertTrue(imperial.contains("°F") && imperial.contains("mph") && imperial.contains("inHg"))
+        assertFalse(imperial.contains("°C") || imperial.contains("km/h") || imperial.contains("hPa"))
     }
 }
