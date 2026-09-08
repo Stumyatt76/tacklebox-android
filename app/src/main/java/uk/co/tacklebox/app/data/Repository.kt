@@ -25,6 +25,10 @@ class TackleboxRepository(context: Context) {
     internal fun defaults() = AppSettings(unitSystem=if(Locale.getDefault().country=="US") UnitSystem.IMPERIAL else UnitSystem.METRIC)
     suspend fun seed(samples:Boolean) {
         if (dao.speciesCount()==0) dao.addSpecies(seedSpecies)
+        // Presets were never seeded, so a fresh install had none — and PresetField renders its chips only when
+        // presets exist, leaving Android with bare Rig and Bait text fields where iOS offers a chip grid (TB-P-02).
+        // The same eleven as SeedData.swift, in the same order, so the two apps open identically.
+        if (dao.presetsOnce().isEmpty()) seedPresets.forEach { dao.addPreset(it) }
         if (samples && dao.waterCount()==0) dao.addWaters(listOf(Water(name="Willow Mere",type=WaterType.LAKE,region="Norfolk",disciplines=listOf("COARSE"),swimNotes="Reeds on the west bank fish well at dusk."), Water(name="Upper Avon",type=WaterType.RIVER,region="Wiltshire",disciplines=listOf("GAME","COARSE"),swimNotes="Travel light; watch the level after rain.")))
         // Merge onto what is already stored. saveSettings is REPLACE on id=1, so writing defaults() wholesale
         // discarded any unit choice, the species-ID token and the backup flag (TB-A-14).
@@ -120,7 +124,10 @@ class TackleboxRepository(context: Context) {
     }
 
     suspend fun deleteAllUserData() { dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
-    companion object { val seedSpecies=listOf(
+    companion object {
+        val seedPresets = listOf("Ronnie rig","Hair rig","Method feeder","Waggler","Ledger").map { TacklePreset(name=it, kind=PresetKind.RIG) } +
+            listOf("Boilie","Sweetcorn","Maggots","Pellets","Bread","Worm").map { TacklePreset(name=it, kind=PresetKind.BAIT) }
+        val seedSpecies=listOf(
         Species(name="Common carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="Powerful, adaptable and endlessly individual."),
         Species(name="Mirror carp",discipline=Discipline.COARSE,scientificName="Cyprinus carpio",about="A distinctive scaled form of common carp."),
         Species(name="Tench",discipline=Discipline.COARSE,scientificName="Tinca tinca",about="A dawn-loving fish of still and slow waters."),
