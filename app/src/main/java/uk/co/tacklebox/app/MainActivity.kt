@@ -15,6 +15,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -35,6 +37,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -57,8 +60,12 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
 
 @Composable fun TackleboxRoot(vm:MainViewModel=viewModel()){
     val state by vm.state.collectAsStateWithLifecycle(); val nav=rememberNavController()
-    val back by nav.currentBackStackEntryAsState(); val showFab=back?.destination?.route in setOf("vault","waters","sessions","insights")
-    if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={BottomBar(nav,showFab)}){pad ->
+    val back by nav.currentBackStackEntryAsState(); val route=back?.destination?.route
+    val showFab=route in setOf("vault","waters","sessions","insights")
+    // Capture is presented as its own thing, not as a tab: iOS opens it as a modal sheet, and leaving the tab bar
+    // visible behind it made the same task look like a different kind of thing on each platform (TB-P-04).
+    val modal=route in setOf("log","edit/{id}")
+    if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={if(!modal)BottomBar(nav,showFab)}){pad ->
         NavHost(nav,"vault",Modifier.padding(pad)){
             composable("vault"){Vault(state,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
             composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm)}; composable("year"){YearOnWater(state)}
@@ -141,10 +148,47 @@ val numberKeyboard=KeyboardOptions(keyboardType=KeyboardType.Decimal)
 // LocalTime.toString() prints seconds when they are non-zero, so a computed sunrise read "06:43:12" while the
 // hardcoded old one read "06:43". The ephemeris returns real times, so they always have seconds.
 fun java.time.LocalTime.hm():String=format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+/** An uppercase letterspaced section label, matching the iOS capture screen (TB-P-04). */
+@Composable fun SectionLabel(text:String)=Text(text.uppercase(),color=Muted,style=MaterialTheme.typography.labelLarge,letterSpacing=1.5.sp)
+
+/**
+ * A number, its unit, and a minus/plus pair — the iOS weight and length control (TB-P-04).
+ *
+ * Free-text entry and a stepper are different interactions with different error modes, and the step size is a
+ * design decision a text field cannot express: grams move in tens, because at fifty a metric angler could not
+ * enter most real weights. The value shrinks rather than wraps, which is what TB-I-03 was on iOS.
+ */
+@Composable fun ValueStepper(title:String,value:Int,range:IntRange,step:Int=1,modifier:Modifier=Modifier,onChange:(Int)->Unit){
+    HeritageCard(modifier){Row(verticalAlignment=Alignment.CenterVertically){
+        Row(Modifier.weight(1f),verticalAlignment=Alignment.Bottom){
+            Text("$value",style=MaterialTheme.typography.headlineLarge,maxLines=1,overflow=TextOverflow.Visible,modifier=Modifier.testTag("stepper_$title"))
+            Spacer(Modifier.width(4.dp))
+            Text(title,color=Muted,style=MaterialTheme.typography.labelLarge)}
+        Row(Modifier.background(Inset,RoundedCornerShape(10.dp)),verticalAlignment=Alignment.CenterVertically){
+            IconButton({onChange((value-step).coerceIn(range.first,range.last))},Modifier.testTag("minus_$title"),enabled=value>range.first){Icon(Icons.Default.Remove,"Less $title",tint=Ink)}
+            Box(Modifier.width(1.dp).height(22.dp).background(Muted.copy(alpha=.3f)))
+            IconButton({onChange((value+step).coerceIn(range.first,range.last))},Modifier.testTag("plus_$title"),enabled=value<range.last){Icon(Icons.Default.Add,"More $title",tint=Ink)}}}}
+}
+
+/**
+ * The one-line conditions summary, in the same order and units as iOS's `ConditionsMetrics.summary`.
+ * Android captured these silently; the angler could not see what was being stamped on the fish (TB-P-04).
+ */
+fun ConditionsSnapshot.summary(unit:UnitSystem):String{
+    fun whole(v:Double)=v.roundToInt().toString()
+    val temperature=airTempC?.let{if(unit==UnitSystem.METRIC)"${whole(it)}°C" else "${whole(it*9/5+32)}°F"}
+    val wind=windSpeedKph?.let{"${windDirection.orEmpty()} ${if(unit==UnitSystem.METRIC) whole(it)+" km/h" else whole(it/1.609344)+" mph"}".trim()}
+    val pressure=pressureHpa?.let{if(unit==UnitSystem.METRIC)"${whole(it)} hPa" else String.format("%.2f inHg",it*0.0295299830714)}
+    val moon=moonPhase?.let{"$it moon"}
+    return listOfNotNull(temperature,wind,pressure,moon).joinToString("  ·  ")
+}
+
 /** The day rating, shown exactly as iOS shows it: the word, uppercased, in a coloured pill (TB-P-05). */
 @Composable fun RatingPill(rating:SolunarRating){val colour=when(rating){SolunarRating.EXCELLENT->BrassSoft;SolunarRating.GOOD->Teal;else->Muted}
     Text(rating.title.uppercase(),color=Background,style=MaterialTheme.typography.labelLarge,modifier=Modifier.background(colour,RoundedCornerShape(14.dp)).padding(horizontal=10.dp,vertical=5.dp))}
 // Selected chips and segmented buttons defaulted to the Material purple container rather than the brand brass (TB-A-19).
+// Chips are capsules, as they are on iOS: Material's default is an 8dp rounded rectangle, which read as a
+// different component sitting next to the same content (TB-P-04).
 @Composable fun brassChipColours()=FilterChipDefaults.filterChipColors(selectedContainerColor=Brass,selectedLabelColor=Background,labelColor=Ink,containerColor=Inset)
 fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm"))
 
@@ -173,7 +217,7 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
             OutlinedTextField(name,{name=it},label={Text("Name")},singleLine=true,modifier=Modifier.testTag("waterName"))
             OutlinedTextField(region,{region=it},label={Text("Region")},singleLine=true)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(WaterType.entries.toList()){t->FilterChip(type==t,{type=t},{Text(t.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours())}}}},
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(WaterType.entries.toList()){t->FilterChip(type==t,{type=t},{Text(t.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours(),shape=CircleShape)}}}},
         confirmButton={TextButton({if(name.isNotBlank())onSave(name.trim(),type,region.trim())},enabled=true){Text("Save")}},
         dismissButton={TextButton(onDismiss){Text("Cancel")}})
 }
@@ -196,7 +240,7 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         dismissButton={TextButton({confirmDelete=false}){Text("Cancel")}})
 }
 
-@Composable fun Sessions(s:AppState,vm:MainViewModel){var selected by rememberSaveable{mutableStateOf<Long?>(s.waters.firstOrNull()?.id)};val active=s.sessions.firstOrNull{it.item.endAt==null};Screen("Sessions","Hours on the bank, remembered"){item{HeritageCard{if(active==null){Text("Start a session",style=MaterialTheme.typography.titleLarge);s.waters.forEach{FilterChip(selected==it.id,{selected=it.id},{Text(it.name)},colors=brassChipColours())};Button({vm.startSession(selected)},enabled=s.waters.isNotEmpty()){Text("Start fishing")}}else{Text("Session in progress",color=Teal);Text(active.water?.name?:"Unspecified water",style=MaterialTheme.typography.headlineMedium);Button({vm.stopSession(active.item.id)}){Text("Finish session")}}}};items(s.sessions){x->HeritageCard{Text(x.water?.name?:"Unspecified water",style=MaterialTheme.typography.titleLarge);Text("${x.item.startAt.pretty()} · ${x.catches.size} ${if(x.catches.size==1)"catch" else "catches"}",color=Muted);Text(if(x.item.endAt==null)"LIVE" else "Finished",color=if(x.item.endAt==null)Teal else Brass)}}}}
+@Composable fun Sessions(s:AppState,vm:MainViewModel){var selected by rememberSaveable{mutableStateOf<Long?>(s.waters.firstOrNull()?.id)};val active=s.sessions.firstOrNull{it.item.endAt==null};Screen("Sessions","Hours on the bank, remembered"){item{HeritageCard{if(active==null){Text("Start a session",style=MaterialTheme.typography.titleLarge);s.waters.forEach{FilterChip(selected==it.id,{selected=it.id},{Text(it.name)},colors=brassChipColours(),shape=CircleShape)};Button({vm.startSession(selected)},enabled=s.waters.isNotEmpty()){Text("Start fishing")}}else{Text("Session in progress",color=Teal);Text(active.water?.name?:"Unspecified water",style=MaterialTheme.typography.headlineMedium);Button({vm.stopSession(active.item.id)}){Text("Finish session")}}}};items(s.sessions){x->HeritageCard{Text(x.water?.name?:"Unspecified water",style=MaterialTheme.typography.titleLarge);Text("${x.item.startAt.pretty()} · ${x.catches.size} ${if(x.catches.size==1)"catch" else "catches"}",color=Muted);Text(if(x.item.endAt==null)"LIVE" else "Finished",color=if(x.item.endAt==null)Teal else Brass)}}}}
 
 @Composable fun Insights(s:AppState,nav:NavHostController){val total=s.catches.mapNotNull{it.item.weightGrams}.sum();Screen("Insights","Patterns emerge from patient notes"){item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","landed",Modifier.weight(1f));Stat(total.weight(s.settings.unitSystem),"total weight",Modifier.weight(1f))}};item{HeritageCard(onClick={nav.navigate("year")}){Text("YEAR ON THE WATER",color=Brass);Text("Your season, distilled",style=MaterialTheme.typography.headlineMedium);Text("Open shareable summary →",color=Muted)}};item{Breakdown("Catches over time",s.catches.groupingBy{it.item.caughtAt.atZone(ZoneId.systemDefault()).month.name.take(3)}.eachCount())};item{Breakdown("Species",s.catches.groupingBy{it.species?.name?:"Unknown"}.eachCount())};item{Breakdown("Waters",s.catches.groupingBy{it.water?.name?:"Unspecified"}.eachCount())};item{HeritageCard{Text("Conditions insight",style=MaterialTheme.typography.titleLarge);Text(Insight.conditions(s.catches),color=Muted)}}}}
 @Composable fun Breakdown(title:String,data:Map<String,Int>){HeritageCard{Text(title,style=MaterialTheme.typography.titleLarge);if(data.isEmpty())Text("Not enough data yet",color=Muted) else data.entries.sortedByDescending{it.value}.take(5).forEach{Row(Modifier.padding(top=8.dp)){Text(it.key,Modifier.weight(1f));Text("${it.value}",color=Brass)}}}}
@@ -208,13 +252,15 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
  * lost everything on rotation, and offered an "Identify from photo" button that did nothing (TB-A-02, TB-A-03,
  * TB-A-13, TB-A-15, TB-A-07).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun LogCatch(s:AppState,vm:MainViewModel,nav:NavHostController){
     val metric=s.settings.unitSystem==UnitSystem.METRIC
     val openSession=s.sessions.firstOrNull{it.item.endAt==null}
     // rememberSaveable throughout: the activity is recreated on rotation and none of this survived it (TB-A-15).
     var species by rememberSaveable{mutableStateOf<Long?>(null)}
-    var grams by rememberSaveable{mutableStateOf("")}; var pounds by rememberSaveable{mutableStateOf("")}; var ounces by rememberSaveable{mutableStateOf("")}
-    var length by rememberSaveable{mutableStateOf("")}
+    var kilograms by rememberSaveable{mutableIntStateOf(0)}; var grams by rememberSaveable{mutableIntStateOf(0)}
+    var pounds by rememberSaveable{mutableIntStateOf(0)}; var ounces by rememberSaveable{mutableIntStateOf(0)}
+    var centimetres by rememberSaveable{mutableIntStateOf(0)}; var inches by rememberSaveable{mutableIntStateOf(0)}
     var rig by rememberSaveable{mutableStateOf("")}; var bait by rememberSaveable{mutableStateOf("")}
     var returned by rememberSaveable{mutableStateOf(true)}
     var notes by rememberSaveable{mutableStateOf("")}
@@ -222,52 +268,132 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
     var photos by rememberSaveable{mutableStateOf(listOf<String>())}
     var water by rememberSaveable{mutableStateOf(openSession?.water?.id)}
     var newSpecies by rememberSaveable{mutableStateOf("")}; var addingSpecies by rememberSaveable{mutableStateOf(false)}
+    var addingPreset by rememberSaveable{mutableStateOf<PresetKind?>(null)}; var newPreset by rememberSaveable{mutableStateOf("")}
     val suggestions by vm.suggestions.collectAsStateWithLifecycle()
-    val context=LocalContext.current
 
-    Screen("Log a catch","A quiet record of the moment"){
+    val enteredGrams:Double=if(metric)(kilograms*1000+grams).toDouble() else (Weights.fromPoundsAndOunces(pounds.toString(),ounces.toString())?:0.0)
+    val lengthCm:Double=if(metric)centimetres.toDouble() else inches*2.54
+    val previousBest=species?.let{id->s.catches.filter{it.species?.id==id}.mapNotNull{it.item.weightGrams}.maxOrNull()}
+    val isNewPB=enteredGrams>0 && previousBest!=null && enteredGrams>previousBest
+    val isFirstOfSpecies=enteredGrams>0 && species!=null && previousBest==null
+
+    // Read once when the screen opens, and shown, so the angler can see what will be stamped on the fish and retry
+    // a failed reading before saving. Android captured this silently at save time (TB-P-04).
+    var stamped by remember{mutableStateOf<ConditionsSnapshot?>(null)}
+    var conditionsAttempt by remember{mutableIntStateOf(0)}
+    var reading by remember{mutableStateOf(true)}
+    LaunchedEffect(conditionsAttempt){reading=true;stamped=runCatching{vm.captureConditions()}.getOrNull();reading=false}
+
+    CaptureScaffold("Log a Catch",onCancel={nav.popBackStack()}){
         item{PhotoStrip(photos){photos=it}}
-        item{Text("Species",style=MaterialTheme.typography.titleLarge)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                items(s.species){sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours())}
-                item{FilterChip(false,{addingSpecies=true},{Text("＋ Add species")},colors=brassChipColours())}}}
+        item{SectionLabel("Species")
+            FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                s.species.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}
+                FilterChip(false,{addingSpecies=true},{Text("＋ Add species")},colors=brassChipColours(),shape=CircleShape)}}
         item{SpeciesIdRow(s,vm,photos.firstOrNull(),suggestions,onPick={name->s.species.firstOrNull{it.name.equals(name,true)}?.let{species=it.id} ?: vm.addSpecies(name);vm.clearSuggestions()})}
-        item{Text("Water",style=MaterialTheme.typography.titleLarge)
-            if(s.waters.isEmpty())Text("Add a water on the Waters tab to record where this fish came from.",color=Muted)
-            else LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.waters){w->FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours())}}}
-        item{if(metric)OutlinedTextField(grams,{grams=it},label={Text("Weight (g)")},keyboardOptions=numberKeyboard,modifier=Modifier.fillMaxWidth().testTag("weightGrams"))
-             else Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                 OutlinedTextField(pounds,{pounds=it},label={Text("Weight (lb)")},keyboardOptions=numberKeyboard,modifier=Modifier.weight(1f).testTag("weightPounds"))
-                 OutlinedTextField(ounces,{ounces=it},label={Text("oz")},keyboardOptions=numberKeyboard,modifier=Modifier.weight(1f).testTag("weightOunces"))}}
-        item{OutlinedTextField(length,{length=it},label={Text(if(metric)"Length (cm)" else "Length (in)")},keyboardOptions=numberKeyboard,modifier=Modifier.fillMaxWidth())}
-        item{PresetField(rig,{rig=it},"Rig",s.presets.filter{it.kind==PresetKind.RIG}.map{it.name})
-             PresetField(bait,{bait=it},"Bait",s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name})}
-        item{Row(verticalAlignment=Alignment.CenterVertically){Text("Returned",Modifier.weight(1f));Switch(returned,{returned=it})}}
+        item{SectionLabel("Weight")
+            Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                if(metric){
+                    ValueStepper("KG",kilograms,0..100,modifier=Modifier.weight(1f)){kilograms=it}
+                    // 10 g steps: at 50 g a metric angler could not enter most real weights (TB-I-09 on iOS).
+                    ValueStepper("G",grams,0..990,10,Modifier.weight(1f)){grams=it}
+                }else{
+                    ValueStepper("LB",pounds,0..200,modifier=Modifier.weight(1f)){pounds=it}
+                    ValueStepper("OZ",ounces,0..15,modifier=Modifier.weight(1f)){ounces=it}}}}
+        if(isNewPB)item{Banner("NEW PERSONAL BEST",Icons.Default.AutoAwesome,BrassSoft,"pbBanner")}
+        else if(isFirstOfSpecies)item{Banner("YOUR FIRST ${s.species.firstOrNull{it.id==species}?.name?.uppercase().orEmpty()}",Icons.Default.Star,Teal,"firstOfSpeciesBanner")}
+        item{SectionLabel("Length")
+            Row(Modifier.padding(top=10.dp)){
+                if(metric)ValueStepper("CM",centimetres,0..300,modifier=Modifier.weight(1f)){centimetres=it}
+                else ValueStepper("IN",inches,0..120,modifier=Modifier.weight(1f)){inches=it}}}
+        item{HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){
+            Column(Modifier.weight(1f)){Text("Returned",fontWeight=FontWeight.SemiBold);Text(if(returned)"Put back in the water" else "Kept",color=Muted,style=MaterialTheme.typography.bodyMedium)}
+            Switch(returned,{returned=it})}}}
+        item{SectionLabel("Water")
+            if(s.waters.isEmpty())Text("Add a water on the Waters tab to record where this fish came from.",color=Muted,modifier=Modifier.padding(top=10.dp))
+            else FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                s.waters.forEach{w->FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours(),shape=CircleShape)}}}
+        item{SectionLabel("When");Box(Modifier.padding(top=10.dp)){CaughtAtField(caughtAt){caughtAt=it}}}
+        item{PresetChips("Rig",rig,s.presets.filter{it.kind==PresetKind.RIG}.map{it.name},onPick={rig=it},onAdd={newPreset="";addingPreset=PresetKind.RIG})}
+        item{PresetChips("Bait",bait,s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name},onPick={bait=it},onAdd={newPreset="";addingPreset=PresetKind.BAIT})}
         // Sessions, waters and gear could all carry a note; the catch could not, so the story behind a fish — the
         // thing that makes a journal worth keeping — had nowhere to go.
-        item{OutlinedTextField(notes,{notes=it},label={Text("Notes")},
-            placeholder={Text("Took it on the drop, margin swim, three hours in…")},
-            minLines=3,modifier=Modifier.fillMaxWidth().testTag("catchNotes"))}
-        item{CaughtAtField(caughtAt){caughtAt=it}}
-        item{if(openSession!=null)Text("Will be added to your open session at ${openSession.water?.name?:"an unspecified water"}.",color=Muted,style=MaterialTheme.typography.bodyMedium)}
+        item{SectionLabel("Notes")
+            OutlinedTextField(notes,{notes=it},placeholder={Text("Took it on the drop, margin swim, three hours in…")},
+                minLines=3,modifier=Modifier.fillMaxWidth().padding(top=10.dp).testTag("catchNotes"))}
+        item{ConditionsCard(reading,stamped,s.settings.unitSystem){conditionsAttempt++}}
+        if(openSession!=null)item{Text("Will be added to your open session at ${openSession.water?.name?:"an unspecified water"}.",color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)}
+        item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
+            Icon(Icons.Default.Lock,null,tint=Muted,modifier=Modifier.size(14.dp));Spacer(Modifier.width(6.dp))
+            Text("Your spot stays private",color=Muted,style=MaterialTheme.typography.bodyMedium)}}
         item{Button(onClick={
-                val weightGrams=if(metric) grams.toDoubleOrNull() else Weights.fromPoundsAndOunces(pounds,ounces)
-                val lengthCm=length.toDoubleOrNull()?.let{if(metric)it else it*2.54}
-                vm.addCatch(species,weightGrams,lengthCm,rig,bait,returned,water,photos,notes,Instant.ofEpochMilli(caughtAt)){nav.navigate("catch/$it"){popUpTo("vault")}}
-            },modifier=Modifier.fillMaxWidth().testTag("saveCatch"),enabled=species!=null){Text("Save catch")}}
+                vm.addCatch(species,enteredGrams.takeIf{it>0},lengthCm.takeIf{it>0},rig,bait,returned,water,photos,notes,Instant.ofEpochMilli(caughtAt),stamped){nav.navigate("catch/$it"){popUpTo("vault")}}
+            },modifier=Modifier.fillMaxWidth().height(52.dp).testTag("saveCatch"),shape=RoundedCornerShape(14.dp),
+            enabled=species!=null&&enteredGrams>0){Text("Save to the Vault",fontWeight=FontWeight.Bold)}}
     }
     if(addingSpecies)AlertDialog(onDismissRequest={addingSpecies=false},title={Text("Add a species")},
         text={OutlinedTextField(newSpecies,{newSpecies=it},label={Text("Name")},singleLine=true)},
         confirmButton={TextButton({if(newSpecies.isNotBlank()){vm.addSpecies(newSpecies.trim());newSpecies="";addingSpecies=false}}){Text("Add")}},
         dismissButton={TextButton({addingSpecies=false}){Text("Cancel")}})
+    addingPreset?.let{kind->AlertDialog(onDismissRequest={addingPreset=null},title={Text("Add ${kind.name.lowercase()}")},
+        text={Column{OutlinedTextField(newPreset,{newPreset=it},label={Text("Name")},singleLine=true);Spacer(Modifier.height(8.dp));Text("Save it to My Tacklebox and select it for this catch.",color=Muted,style=MaterialTheme.typography.bodyMedium)}},
+        confirmButton={TextButton({if(newPreset.isNotBlank()){vm.addPreset(newPreset.trim(),kind);if(kind==PresetKind.RIG)rig=newPreset.trim() else bait=newPreset.trim();newPreset="";addingPreset=null}}){Text("Add")}},
+        dismissButton={TextButton({addingPreset=null}){Text("Cancel")}})}
 }
 
-/** Free text that can also be filled from a saved preset — the brief asked for presets, the field was plain text. */
-@Composable fun PresetField(value:String,onChange:(String)->Unit,label:String,presets:List<String>){
-    OutlinedTextField(value,onChange,label={Text(label)},modifier=Modifier.fillMaxWidth())
-    if(presets.isNotEmpty())LazyRow(Modifier.padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-        items(presets){p->FilterChip(value==p,{onChange(if(value==p)"" else p)},{Text(p)},colors=brassChipColours())}}
+/**
+ * The capture screen's frame: a Cancel action and a centred inline title, with no tab bar behind it.
+ *
+ * iOS presents Log a Catch as a modal sheet. Android had it as an ordinary tab destination with the bottom bar
+ * still showing, so the same task looked like a different kind of thing on each platform (TB-P-04).
+ */
+@Composable fun CaptureScaffold(title:String,onCancel:()->Unit,content:LazyListScope.()->Unit){
+    Column(Modifier.fillMaxSize()){
+        Row(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
+            TextButton(onCancel){Text("Cancel",color=BrassSoft,fontWeight=FontWeight.SemiBold)}
+            Spacer(Modifier.weight(1f));Text(title,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(64.dp))}
+        LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(20.dp),content=content)}
 }
+
+/** A record or a first, marked on the form rather than celebrated after the fact. */
+@Composable fun Banner(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,colour:Color,tag:String){
+    Row(Modifier.fillMaxWidth().background(colour,RoundedCornerShape(12.dp)).padding(12.dp).testTag(tag),
+        horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
+        Icon(icon,null,tint=Background,modifier=Modifier.size(16.dp));Spacer(Modifier.width(8.dp))
+        Text(text,color=Background,style=MaterialTheme.typography.labelLarge,letterSpacing=1.sp)}
+}
+
+/** What is about to be stamped on the fish, and a way to try again when the reading failed. */
+@Composable fun ConditionsCard(reading:Boolean,stamped:ConditionsSnapshot?,unit:UnitSystem,onRetry:()->Unit){
+    HeritageCard{
+        Row(verticalAlignment=Alignment.CenterVertically){
+            Icon(Icons.Default.Air,null,tint=Brass,modifier=Modifier.size(15.dp));Spacer(Modifier.width(6.dp))
+            Text("AUTO-STAMPED CONDITIONS",color=Brass,style=MaterialTheme.typography.labelLarge,letterSpacing=1.3.sp)}
+        Spacer(Modifier.height(8.dp))
+        when{
+            reading->Row(verticalAlignment=Alignment.CenterVertically){CircularProgressIndicator(Modifier.size(16.dp),color=BrassSoft,strokeWidth=2.dp);Spacer(Modifier.width(9.dp));Text("Reading conditions…",color=Muted)}
+            stamped?.airTempC==null&&stamped?.pressureHpa==null->{
+                Text("Conditions unavailable — offline or location off",color=Muted)
+                TextButton(onRetry,Modifier.testTag("retryConditions")){Icon(Icons.Default.Refresh,null,tint=BrassSoft,modifier=Modifier.size(15.dp));Spacer(Modifier.width(6.dp));Text("Retry",color=BrassSoft,fontWeight=FontWeight.SemiBold)}}
+            else->Text(stamped!!.summary(unit),color=Ink)}}
+}
+
+/**
+ * Rig and bait, as a grid of saved presets plus an Add.
+ *
+ * The free-text field is gone: iOS has never had one here, and a text box beside chips invites two spellings of
+ * the same rig, which then split the Insights breakdown (TB-P-04). Anything new is added as a preset, so it is
+ * there next time.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable fun PresetChips(label:String,value:String,presets:List<String>,onPick:(String)->Unit,onAdd:()->Unit){
+    SectionLabel(label)
+    FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+        presets.forEach{p->FilterChip(value==p,{onPick(if(value==p)"" else p)},{Text(p)},colors=brassChipColours(),shape=CircleShape)}
+        FilterChip(false,onAdd,{Text("＋ Add")},colors=brassChipColours(),shape=CircleShape)}
+}
+
 
 /** Photo species identification. The button used to be inert with no client behind it (TB-A-07). */
 @Composable fun SpeciesIdRow(s:AppState,vm:MainViewModel,photo:String?,suggestions:LiveState<List<SpeciesSuggestion>>,onPick:(String)->Unit){
@@ -293,11 +419,11 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         items(s.gear){g->HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(g.name,style=MaterialTheme.typography.titleLarge);Text(g.category.name.lowercase().replaceFirstChar(Char::uppercase),color=Muted)};IconButton({vm.deleteGear(g)}){Icon(Icons.Default.Delete,"Delete ${g.name}",tint=Muted)}}}}
         item{OutlinedTextField(name,{name=it},label={Text("New gear or preset")},modifier=Modifier.fillMaxWidth().testTag("gearName"))
             Text("Gear category",color=Muted,style=MaterialTheme.typography.bodyMedium)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(GearCategory.entries.toList()){c->FilterChip(category==c,{category=c},{Text(c.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours())}}
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(GearCategory.entries.toList()){c->FilterChip(category==c,{category=c},{Text(c.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours(),shape=CircleShape)}}
             Row(Modifier.padding(top=8.dp)){Button({if(name.isNotBlank()){vm.addGear(name.trim(),category);name=""}}){Text("Add gear")}
                 Spacer(Modifier.width(8.dp))
                 OutlinedButton({if(name.isNotBlank()){vm.addPreset(name.trim(),kind);name=""}}){Text("Save ${kind.name.lowercase()}")}}
-            LazyRow(Modifier.padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){items(PresetKind.entries.toList()){k->FilterChip(kind==k,{kind=k},{Text(k.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours())}}}
+            LazyRow(Modifier.padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){items(PresetKind.entries.toList()){k->FilterChip(kind==k,{kind=k},{Text(k.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours(),shape=CircleShape)}}}
         item{Text("Quick picks",style=MaterialTheme.typography.titleLarge);if(s.presets.isEmpty())Text("No saved rigs or baits",color=Muted)}
         items(s.presets){p->HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(p.name);Text(p.kind.name.lowercase().replaceFirstChar(Char::uppercase),color=Muted,style=MaterialTheme.typography.bodyMedium)};IconButton({vm.deletePreset(p)}){Icon(Icons.Default.Delete,"Delete ${p.name}",tint=Muted)}}}}
     }
@@ -456,17 +582,17 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
                 TextButton({onChange(CatchFilter())}){Text("Clear")}}
             Text("WHEN",color=Brass,style=MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(CatchFilter.Period.entries.toList()){p->
-                FilterChip(filter.period==p,{onChange(filter.copy(period=p))},{Text(p.title)},colors=brassChipColours())}}
+                FilterChip(filter.period==p,{onChange(filter.copy(period=p))},{Text(p.title)},colors=brassChipColours(),shape=CircleShape)}}
             Text("SPECIES",color=Brass,style=MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.species){sp->
-                FilterChip(filter.speciesName==sp.name,{onChange(filter.copy(speciesName=if(filter.speciesName==sp.name)null else sp.name))},{Text(sp.name)},colors=brassChipColours())}}
+                FilterChip(filter.speciesName==sp.name,{onChange(filter.copy(speciesName=if(filter.speciesName==sp.name)null else sp.name))},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}}
             if(s.waters.isNotEmpty()){
                 Text("WATER",color=Brass,style=MaterialTheme.typography.labelLarge)
                 LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.waters){w->
-                    FilterChip(filter.waterName==w.name,{onChange(filter.copy(waterName=if(filter.waterName==w.name)null else w.name))},{Text(w.name)},colors=brassChipColours())}}}
+                    FilterChip(filter.waterName==w.name,{onChange(filter.copy(waterName=if(filter.waterName==w.name)null else w.name))},{Text(w.name)},colors=brassChipColours(),shape=CircleShape)}}}
             Text("AT LEAST",color=Brass,style=MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(weights){(label,grams)->
-                FilterChip(filter.minimumGrams==grams,{onChange(filter.copy(minimumGrams=if(filter.minimumGrams==grams)null else grams))},{Text(label)},colors=brassChipColours())}}
+                FilterChip(filter.minimumGrams==grams,{onChange(filter.copy(minimumGrams=if(filter.minimumGrams==grams)null else grams))},{Text(label)},colors=brassChipColours(),shape=CircleShape)}}
             Row(verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f)){Text("Personal bests only");Text("Your best fish of each species",color=Muted,style=MaterialTheme.typography.bodyMedium)}
                 Switch(filter.personalBestsOnly,{onChange(filter.copy(personalBestsOnly=it))})}
@@ -504,16 +630,24 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
  * Editing a saved catch. Both apps were append-only: mistype a weight and the only remedy was to delete the catch
  * and enter it again.
  */
+/**
+ * Editing mirrors capture (TB-P-04), as it does on iOS. A screen where a weight is entered with steppers and
+ * corrected with a text field is two designs for one number.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun EditCatch(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
     val row=s.catches.firstOrNull{it.item.id==id}
     if(row==null){Screen("Edit catch"){item{Empty("Catch not found","It may have been deleted.")}};return}
     val metric=s.settings.unitSystem==UnitSystem.METRIC
     val original=row.item
+    val startPounds=original.weightGrams?.let{Weights.toPoundsAndOunces(it)}
     var species by rememberSaveable{mutableStateOf(original.speciesId)}
-    var grams by rememberSaveable{mutableStateOf(if(metric)original.weightGrams?.let{"%.0f".format(it)}.orEmpty() else "")}
-    var pounds by rememberSaveable{mutableStateOf(if(!metric)original.weightGrams?.let{Weights.toPoundsAndOunces(it).first.toString()}.orEmpty() else "")}
-    var ounces by rememberSaveable{mutableStateOf(if(!metric)original.weightGrams?.let{Weights.toPoundsAndOunces(it).second.toString()}.orEmpty() else "")}
-    var length by rememberSaveable{mutableStateOf(original.lengthCm?.let{if(metric)"%.0f".format(it) else "%.1f".format(it/2.54)}.orEmpty())}
+    var kilograms by rememberSaveable{mutableIntStateOf(((original.weightGrams?:0.0)/1000).toInt())}
+    var grams by rememberSaveable{mutableIntStateOf(((original.weightGrams?:0.0).toInt()%1000/10)*10)}
+    var pounds by rememberSaveable{mutableIntStateOf(startPounds?.first?.toInt()?:0)}
+    var ounces by rememberSaveable{mutableIntStateOf(startPounds?.second?.toInt()?:0)}
+    var centimetres by rememberSaveable{mutableIntStateOf((original.lengthCm?:0.0).toInt())}
+    var inches by rememberSaveable{mutableIntStateOf(((original.lengthCm?:0.0)/2.54).toInt())}
     var rig by rememberSaveable{mutableStateOf(original.rig.orEmpty())}
     var bait by rememberSaveable{mutableStateOf(original.bait.orEmpty())}
     var returned by rememberSaveable{mutableStateOf(original.returned)}
@@ -521,35 +655,53 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
     var water by rememberSaveable{mutableStateOf(original.waterId)}
     var caughtAt by rememberSaveable{mutableStateOf(original.caughtAt.toEpochMilli())}
     var photos by rememberSaveable{mutableStateOf(row.allPhotoUris)}
+    var addingPreset by rememberSaveable{mutableStateOf<PresetKind?>(null)}; var newPreset by rememberSaveable{mutableStateOf("")}
 
-    Screen("Edit catch",row.species?.name){
+    val enteredGrams:Double=if(metric)(kilograms*1000+grams).toDouble() else (Weights.fromPoundsAndOunces(pounds.toString(),ounces.toString())?:0.0)
+    val lengthCm:Double=if(metric)centimetres.toDouble() else inches*2.54
+
+    CaptureScaffold("Edit Catch",onCancel={nav.popBackStack()}){
         item{PhotoStrip(photos){photos=it}}
-        item{Text("Species",style=MaterialTheme.typography.titleLarge)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.species){sp->
-                FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours())}}}
-        item{Text("Water",style=MaterialTheme.typography.titleLarge)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.waters){w->
-                FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours())}}}
-        item{if(metric)OutlinedTextField(grams,{grams=it},label={Text("Weight (g)")},keyboardOptions=numberKeyboard,modifier=Modifier.fillMaxWidth())
-             else Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                 OutlinedTextField(pounds,{pounds=it},label={Text("Weight (lb)")},keyboardOptions=numberKeyboard,modifier=Modifier.weight(1f))
-                 OutlinedTextField(ounces,{ounces=it},label={Text("oz")},keyboardOptions=numberKeyboard,modifier=Modifier.weight(1f))}}
-        item{OutlinedTextField(length,{length=it},label={Text(if(metric)"Length (cm)" else "Length (in)")},keyboardOptions=numberKeyboard,modifier=Modifier.fillMaxWidth())}
-        item{PresetField(rig,{rig=it},"Rig",s.presets.filter{it.kind==PresetKind.RIG}.map{it.name})
-             PresetField(bait,{bait=it},"Bait",s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name})}
-        item{Row(verticalAlignment=Alignment.CenterVertically){Text("Returned",Modifier.weight(1f));Switch(returned,{returned=it})}}
-        item{OutlinedTextField(notes,{notes=it},label={Text("Notes")},minLines=3,modifier=Modifier.fillMaxWidth().testTag("editNotes"))}
-        item{CaughtAtField(caughtAt){caughtAt=it}}
+        item{SectionLabel("Species")
+            FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                s.species.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}}}
+        item{SectionLabel("Weight")
+            Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                if(metric){
+                    ValueStepper("KG",kilograms,0..100,modifier=Modifier.weight(1f)){kilograms=it}
+                    ValueStepper("G",grams,0..990,10,Modifier.weight(1f)){grams=it}
+                }else{
+                    ValueStepper("LB",pounds,0..200,modifier=Modifier.weight(1f)){pounds=it}
+                    ValueStepper("OZ",ounces,0..15,modifier=Modifier.weight(1f)){ounces=it}}}}
+        item{SectionLabel("Length")
+            Row(Modifier.padding(top=10.dp)){
+                if(metric)ValueStepper("CM",centimetres,0..300,modifier=Modifier.weight(1f)){centimetres=it}
+                else ValueStepper("IN",inches,0..120,modifier=Modifier.weight(1f)){inches=it}}}
+        item{HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){
+            Column(Modifier.weight(1f)){Text("Returned",fontWeight=FontWeight.SemiBold);Text(if(returned)"Put back in the water" else "Kept",color=Muted,style=MaterialTheme.typography.bodyMedium)}
+            Switch(returned,{returned=it})}}}
+        item{SectionLabel("Water")
+            FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                s.waters.forEach{w->FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours(),shape=CircleShape)}}}
+        item{SectionLabel("When");Box(Modifier.padding(top=10.dp)){CaughtAtField(caughtAt){caughtAt=it}}}
+        item{PresetChips("Rig",rig,s.presets.filter{it.kind==PresetKind.RIG}.map{it.name},onPick={rig=it},onAdd={newPreset="";addingPreset=PresetKind.RIG})}
+        item{PresetChips("Bait",bait,s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name},onPick={bait=it},onAdd={newPreset="";addingPreset=PresetKind.BAIT})}
+        item{SectionLabel("Notes")
+            OutlinedTextField(notes,{notes=it},minLines=3,modifier=Modifier.fillMaxWidth().padding(top=10.dp).testTag("editNotes"))}
         item{Button({
-                val weightGrams=if(metric) grams.toDoubleOrNull() else Weights.fromPoundsAndOunces(pounds,ounces)
-                val lengthCm=length.toDoubleOrNull()?.let{if(metric)it else it*2.54}
-                vm.updateCatch(original.copy(speciesId=species,weightGrams=weightGrams,lengthCm=lengthCm,
+                vm.updateCatch(original.copy(speciesId=species,weightGrams=enteredGrams.takeIf{it>0},lengthCm=lengthCm.takeIf{it>0},
                     rig=rig.ifBlank{null},bait=bait.ifBlank{null},returned=returned,notes=notes.trim(),
                     waterId=water,caughtAt=Instant.ofEpochMilli(caughtAt),photoUri=photos.firstOrNull()),photos)
                 nav.popBackStack()
-            },Modifier.fillMaxWidth().testTag("saveEdit"),enabled=species!=null){Text("Save changes")}}
+            },Modifier.fillMaxWidth().height(52.dp).testTag("saveEdit"),shape=RoundedCornerShape(14.dp),
+            enabled=species!=null&&enteredGrams>0){Text("Save changes",fontWeight=FontWeight.Bold)}}
     }
+    addingPreset?.let{kind->AlertDialog(onDismissRequest={addingPreset=null},title={Text("Add ${kind.name.lowercase()}")},
+        text={OutlinedTextField(newPreset,{newPreset=it},label={Text("Name")},singleLine=true)},
+        confirmButton={TextButton({if(newPreset.isNotBlank()){vm.addPreset(newPreset.trim(),kind);if(kind==PresetKind.RIG)rig=newPreset.trim() else bait=newPreset.trim();newPreset="";addingPreset=null}}){Text("Add")}},
+        dismissButton={TextButton({addingPreset=null}){Text("Cancel")}})}
 }
+
 
 // --- Multiple photos per catch ----------------------------------------------------------------------------------
 /**
