@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -70,7 +71,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
     if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={if(!modal)BottomBar(nav,showFab)}){pad ->
         NavHost(nav,"vault",Modifier.padding(pad)){
             composable("vault"){Vault(state,vm,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
-            composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm)}; composable("year"){YearOnWater(state)}
+            composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm)}; composable("solunar"){Solunar(vm,nav)}; composable("tides"){Tides(vm)}; composable("rivers"){Rivers(vm)}; composable("settings"){Settings(state,vm,nav)}; composable("year"){YearOnWater(state,nav)}
             composable("water/{id}"){WaterPassport(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("species/{id}"){SpeciesDetail(state,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catch/{id}"){CatchDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}
         }
     }
@@ -141,9 +142,48 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
         Spacer(Modifier.width(14.dp))
         Column{Text(title,fontWeight=FontWeight.SemiBold);Text(message,color=Muted,style=MaterialTheme.typography.bodyMedium)}}}
 
-@Composable fun Screen(title:String,subtitle:String?=null,actions:@Composable RowScope.()->Unit={},content:LazyListScope.()->Unit){LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=18.dp,top=18.dp,end=18.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){item{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.headlineLarge);subtitle?.let{Text(it,color=Muted)}};actions()}};content()}}
+/**
+ * A top-level screen: a brass uppercase eyebrow above a serif title, as iOS's `ScreenHeader` has always been.
+ *
+ * Android put a serif title above a sentence-case subtitle instead, so the two apps used different heading systems
+ * on every screen — the same information, arranged the other way up (TB-P-08).
+ */
+@Composable fun Screen(eyebrow:String,title:String,actions:@Composable RowScope.()->Unit={},content:LazyListScope.()->Unit){
+    LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=18.dp,top=18.dp,end=18.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+        item{Row(verticalAlignment=Alignment.CenterVertically){
+            Column(Modifier.weight(1f)){
+                Text(eyebrow.uppercase(),color=Brass,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=1.8.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(title,style=MaterialTheme.typography.displaySmall,maxLines=2)}
+            actions()}}
+        content()}
+}
+
+/**
+ * A screen reached from another, rather than from the tab bar: a back chevron and a centred inline title.
+ *
+ * iOS pushes Catches, Bite windows, Year on the Water and Settings with a `navigationTitle`, which renders exactly
+ * this way. Android showed them with the same large header as a tab root, so a pushed screen and a top-level one
+ * were indistinguishable (TB-P-08).
+ */
+@Composable fun PushedScreen(title:String,onBack:()->Unit,actions:@Composable RowScope.()->Unit={},content:LazyListScope.()->Unit){
+    Column(Modifier.fillMaxSize()){
+        Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
+            IconButton(onBack,Modifier.testTag("back")){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back",tint=BrassSoft)}
+            Spacer(Modifier.weight(1f))
+            Text(title,fontWeight=FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            Row{actions()}
+            Spacer(Modifier.width(4.dp))}
+        LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=18.dp,top=4.dp,end=18.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp),content=content)}
+}
 @Composable fun HeritageCard(modifier:Modifier=Modifier,onClick:(()->Unit)?=null,content:@Composable ColumnScope.()->Unit){Card(modifier=modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Surface),shape=RoundedCornerShape(20.dp),onClick=onClick?:{}){Column(Modifier.padding(18.dp),content=content)}}
-@Composable fun Stat(value:String,label:String,modifier:Modifier=Modifier){Column(modifier.background(Inset,RoundedCornerShape(16.dp)).padding(14.dp)){Text(value,color=BrassSoft,style=MaterialTheme.typography.titleLarge);Text(label,color=Muted,style=MaterialTheme.typography.bodyMedium)}}
+// Matches the iOS StatTile: a serif value in ink over an uppercase letterspaced label. The label was sentence
+// case and the value brass, so the same three tiles read as a different component on each platform (TB-P-09).
+@Composable fun Stat(value:String,label:String,modifier:Modifier=Modifier){
+    Column(modifier.background(Inset,RoundedCornerShape(14.dp)).padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+        Text(value,style=MaterialTheme.typography.headlineMedium,maxLines=1)
+        Text(label.uppercase(),color=Muted,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.3.sp)}}
 // Rounds ounces before splitting, so 15.6 oz reads "1 lb 0 oz" rather than "0 lb 16 oz" (TB-A-13).
 fun Double.weight(unit:UnitSystem)=if(unit==UnitSystem.METRIC) if(this>=1000)"%.2f kg".format(this/1000) else "%.0f g".format(this) else Weights.toPoundsAndOunces(this).let{(lb,oz)->"$lb lb $oz oz"}
 val numberKeyboard=KeyboardOptions(keyboardType=KeyboardType.Decimal)
@@ -154,7 +194,7 @@ val numberKeyboard=KeyboardOptions(keyboardType=KeyboardType.Decimal)
 // "09:40". A hardcoded pattern had the two apps printing the same instant differently on the same phone (TB-P-05).
 fun java.time.LocalTime.hm():String=format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
 /** An uppercase letterspaced section label, matching the iOS capture screen (TB-P-04). */
-@Composable fun SectionLabel(text:String)=Text(text.uppercase(),color=Muted,style=MaterialTheme.typography.labelLarge,letterSpacing=1.5.sp)
+@Composable fun SectionLabel(text:String)=Text(text.uppercase(),color=Muted,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=1.5.sp)
 
 /**
  * A number, its unit, and a minus/plus pair — the iOS weight and length control (TB-P-04).
@@ -205,11 +245,11 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
     LaunchedEffect(Unit){place=vm.solunarPlace()}
     val located=place!=null&&place!=DeviceLocation.FALLBACK_INLAND
     val sol=place?.let{Astronomy.calculate(latitude=it.first,longitude=it.second)}?:Astronomy.calculate()
-    Screen("The Vault","A private ledger of time well spent",actions={IconButton({nav.navigate("catches")},modifier=Modifier.testTag("searchCatches")){Icon(Icons.Default.Search,"Search your catches")};IconButton({nav.navigate("settings")}){Icon(Icons.Default.Settings,"Settings")}}){
+    Screen("Your fishing life","The Vault",actions={IconButton({nav.navigate("catches")},modifier=Modifier.testTag("searchCatches")){Icon(Icons.Default.Search,"Search your catches")};IconButton({nav.navigate("settings")}){Icon(Icons.Default.Settings,"Settings")}}){
         item{FeaturedPersonalBest(pb,s.settings.unitSystem,onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}})}
         item{TodayOnTheBank(sol,located,onClick={nav.navigate("solunar")})}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f).clickable{nav.navigate("catches")});Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}}
-        item{Text("Personal best board",style=MaterialTheme.typography.titleLarge)}
+        item{SectionLabel("PB board")}
         items(s.catches.filter{it.item.weightGrams!=null}.groupBy{it.species?.id}.mapNotNull{(_,v)->v.maxByOrNull{it.item.weightGrams?:0.0}}){c->HeritageCard(onClick={nav.navigate("species/${c.species?.id}")}){Row{Text(c.species?.name?:"Unknown",Modifier.weight(1f));Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft)}}}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){AssistChip({nav.navigate("tackle")},{Text("My Tacklebox")},leadingIcon={Icon(Icons.Default.Inventory2,null)});AssistChip({nav.navigate("solunar")},{Text("Bite windows")},leadingIcon={Icon(Icons.Default.DarkMode,null)})}}}
 }
@@ -292,10 +332,10 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
 
 @Composable fun Waters(s:AppState,vm:MainViewModel,nav:NavHostController){
     var adding by rememberSaveable{mutableStateOf(false)}
-    Screen("Waters","Your places, kept private",actions={IconButton({adding=true}){Icon(Icons.Default.Add,"Add a water")}}){
+    Screen("Private places","Waters",actions={IconButton({adding=true}){Icon(Icons.Default.Add,"Add a water")}}){
         item{HeritageCard(onClick={nav.navigate("rivers")}){Text("River conditions",style=MaterialTheme.typography.titleLarge);Text("Levels and nearby gauges",color=Muted)}}
         item{HeritageCard(onClick={nav.navigate("tides")}){Text("Tides & sea",style=MaterialTheme.typography.titleLarge);Text("Coastal waves and sea state",color=Muted)}}
-        item{Text("Water passports",style=MaterialTheme.typography.titleLarge)}
+        item{SectionLabel("Water passports")}
         if(s.waters.isEmpty())item{Empty("No waters saved","Add a water to build your private map.")}
         items(s.waters){w->HeritageCard(onClick={nav.navigate("water/${w.id}")}){Row{Icon(Icons.Default.Water,null,tint=Teal);Spacer(Modifier.width(12.dp));Column{Text(w.name,style=MaterialTheme.typography.titleLarge);Text("${w.type.name.lowercase().replaceFirstChar(Char::uppercase)} · ${w.region}",color=Muted)}}}}
     }
@@ -319,11 +359,11 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     val w=s.waters.firstOrNull{it.id==id};val catches=s.catches.filter{it.water?.id==id}
     var notes by remember(w?.id){mutableStateOf(w?.swimNotes.orEmpty())}
     var confirmDelete by rememberSaveable{mutableStateOf(false)}
-    Screen(w?.name?:"Water passport",w?.region){
+    Screen("Water passport",w?.name?:"Water passport"){
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${catches.size}","catches",Modifier.weight(1f));Stat("${catches.mapNotNull{it.species}.distinctBy{it.id}.size}","species",Modifier.weight(1f))}}
         item{HeritageCard{Text("Private swim notes",color=Brass)
             OutlinedTextField(notes,{notes=it;w?.let{water->vm.updateWater(water.copy(swimNotes=it))}},placeholder={Text("Reeds on the west bank fish well at dusk…")},modifier=Modifier.fillMaxWidth())}}
-        item{Text("Most productive",style=MaterialTheme.typography.titleLarge);Text(catches.groupingBy{it.species?.name?:"Unknown"}.eachCount().maxByOrNull{it.value}?.key?:"Log catches here to reveal patterns",color=Muted)}
+        item{SectionLabel("Most productive");Text(catches.groupingBy{it.species?.name?:"Unknown"}.eachCount().maxByOrNull{it.value}?.key?:"Log catches here to reveal patterns",color=Muted)}
         item{TextButton({confirmDelete=true},colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete this water")}}
     }
     if(confirmDelete)AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete ${w?.name.orEmpty()}?")},
@@ -332,11 +372,11 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
         dismissButton={TextButton({confirmDelete=false}){Text("Cancel")}})
 }
 
-@Composable fun Sessions(s:AppState,vm:MainViewModel){var selected by rememberSaveable{mutableStateOf<Long?>(s.waters.firstOrNull()?.id)};val active=s.sessions.firstOrNull{it.item.endAt==null};Screen("Sessions","Hours on the bank, remembered"){item{HeritageCard{if(active==null){Text("Start a session",style=MaterialTheme.typography.titleLarge);s.waters.forEach{FilterChip(selected==it.id,{selected=it.id},{Text(it.name)},colors=brassChipColours(),shape=CircleShape)};Button({vm.startSession(selected)},enabled=s.waters.isNotEmpty()){Text("Start fishing")}}else{Text("Session in progress",color=Teal);Text(active.water?.name?:"Unspecified water",style=MaterialTheme.typography.headlineMedium);Button({vm.stopSession(active.item.id)}){Text("Finish session")}}}};items(s.sessions){x->HeritageCard{Text(x.water?.name?:"Unspecified water",style=MaterialTheme.typography.titleLarge);Text("${x.item.startAt.pretty()} · ${x.catches.size} ${if(x.catches.size==1)"catch" else "catches"}",color=Muted);Text(if(x.item.endAt==null)"LIVE" else "Finished",color=if(x.item.endAt==null)Teal else Brass)}}}}
+@Composable fun Sessions(s:AppState,vm:MainViewModel){var selected by rememberSaveable{mutableStateOf<Long?>(s.waters.firstOrNull()?.id)};val active=s.sessions.firstOrNull{it.item.endAt==null};Screen("Time on the bank","Sessions"){item{HeritageCard{if(active==null){Text("Start a session",style=MaterialTheme.typography.titleLarge);s.waters.forEach{FilterChip(selected==it.id,{selected=it.id},{Text(it.name)},colors=brassChipColours(),shape=CircleShape)};Button({vm.startSession(selected)},enabled=s.waters.isNotEmpty()){Text("Start fishing")}}else{Text("Session in progress",color=Teal);Text(active.water?.name?:"Unspecified water",style=MaterialTheme.typography.headlineMedium);Button({vm.stopSession(active.item.id)}){Text("Finish session")}}}};items(s.sessions){x->HeritageCard{Text(x.water?.name?:"Unspecified water",style=MaterialTheme.typography.titleLarge);Text("${x.item.startAt.pretty()} · ${x.catches.size} ${if(x.catches.size==1)"catch" else "catches"}",color=Muted);Text(if(x.item.endAt==null)"LIVE" else "Finished",color=if(x.item.endAt==null)Teal else Brass)}}}}
 
-@Composable fun Insights(s:AppState,nav:NavHostController){val total=s.catches.mapNotNull{it.item.weightGrams}.sum();Screen("Insights","Patterns emerge from patient notes"){item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","landed",Modifier.weight(1f));Stat(total.weight(s.settings.unitSystem),"total weight",Modifier.weight(1f))}};item{HeritageCard(onClick={nav.navigate("year")}){Text("YEAR ON THE WATER",color=Brass);Text("Your season, distilled",style=MaterialTheme.typography.headlineMedium);Text("Open shareable summary →",color=Muted)}};item{Breakdown("Catches over time",s.catches.groupingBy{it.item.caughtAt.atZone(ZoneId.systemDefault()).month.name.take(3)}.eachCount())};item{Breakdown("Species",s.catches.groupingBy{it.species?.name?:"Unknown"}.eachCount())};item{Breakdown("Waters",s.catches.groupingBy{it.water?.name?:"Unspecified"}.eachCount())};item{HeritageCard{Text("Conditions insight",style=MaterialTheme.typography.titleLarge);Text(Insight.conditions(s.catches),color=Muted)}}}}
+@Composable fun Insights(s:AppState,nav:NavHostController){val total=s.catches.mapNotNull{it.item.weightGrams}.sum();Screen("Patterns from the bank","Insights"){item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","landed",Modifier.weight(1f));Stat(total.weight(s.settings.unitSystem),"total weight",Modifier.weight(1f))}};item{HeritageCard(onClick={nav.navigate("year")}){Text("YEAR ON THE WATER",color=Brass);Text("Your season, distilled",style=MaterialTheme.typography.headlineMedium);Text("Open shareable summary →",color=Muted)}};item{Breakdown("Catches over time",s.catches.groupingBy{it.item.caughtAt.atZone(ZoneId.systemDefault()).month.name.take(3)}.eachCount())};item{Breakdown("Species",s.catches.groupingBy{it.species?.name?:"Unknown"}.eachCount())};item{Breakdown("Waters",s.catches.groupingBy{it.water?.name?:"Unspecified"}.eachCount())};item{HeritageCard{Text("Conditions insight",style=MaterialTheme.typography.titleLarge);Text(Insight.conditions(s.catches),color=Muted)}}}}
 @Composable fun Breakdown(title:String,data:Map<String,Int>){HeritageCard{Text(title,style=MaterialTheme.typography.titleLarge);if(data.isEmpty())Text("Not enough data yet",color=Muted) else data.entries.sortedByDescending{it.value}.take(5).forEach{Row(Modifier.padding(top=8.dp)){Text(it.key,Modifier.weight(1f));Text("${it.value}",color=Brass)}}}}
-@Composable fun YearOnWater(s:AppState){val year=Year.now().value;val catches=s.catches.filter{it.item.caughtAt.atZone(ZoneId.systemDefault()).year==year};val biggest=catches.maxByOrNull{it.item.weightGrams?:0.0};val hours=s.sessions.filter{it.item.endAt!=null}.sumOf{Duration.between(it.item.startAt,it.item.endAt!!).toMinutes()}/60;Screen("Year on the Water","$year · a season worth keeping"){item{Card(colors=CardDefaults.cardColors(containerColor=Inset),shape=RoundedCornerShape(28.dp)){Column(Modifier.padding(26.dp)){Text("TACKLEBOX · $year",color=Brass);Text("${catches.size}",style=MaterialTheme.typography.displaySmall);Text("fish landed",color=Muted);HorizontalDivider(Modifier.padding(vertical=16.dp));Text("${catches.mapNotNull{it.item.weightGrams}.sum().weight(s.settings.unitSystem)} carried gently");Text("${biggest?.species?.name?:"No biggest fish yet"} · ${biggest?.item?.weightGrams?.weight(s.settings.unitSystem).orEmpty()}");Text("$hours hours on the bank");Text("Top bait · ${catches.groupingBy{it.item.bait?:"Unrecorded"}.eachCount().maxByOrNull{it.value}?.key?:"—"}",color=BrassSoft)}}};item{val context=LocalContext.current;Button({ShareSheet.season(context,s,year)},Modifier.fillMaxWidth().testTag("shareSeason")){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Share summary")}}}}
+@Composable fun YearOnWater(s:AppState,nav:NavHostController){val year=Year.now().value;val catches=s.catches.filter{it.item.caughtAt.atZone(ZoneId.systemDefault()).year==year};val biggest=catches.maxByOrNull{it.item.weightGrams?:0.0};val hours=s.sessions.filter{it.item.endAt!=null}.sumOf{Duration.between(it.item.startAt,it.item.endAt!!).toMinutes()}/60;PushedScreen("Year on the Water",onBack={nav.popBackStack()}){item{Card(colors=CardDefaults.cardColors(containerColor=Inset),shape=RoundedCornerShape(28.dp)){Column(Modifier.padding(26.dp)){Text("TACKLEBOX · $year",color=Brass);Text("${catches.size}",style=MaterialTheme.typography.displaySmall);Text("fish landed",color=Muted);HorizontalDivider(Modifier.padding(vertical=16.dp));Text("${catches.mapNotNull{it.item.weightGrams}.sum().weight(s.settings.unitSystem)} carried gently");Text("${biggest?.species?.name?:"No biggest fish yet"} · ${biggest?.item?.weightGrams?.weight(s.settings.unitSystem).orEmpty()}");Text("$hours hours on the bank");Text("Top bait · ${catches.groupingBy{it.item.bait?:"Unrecorded"}.eachCount().maxByOrNull{it.value}?.key?:"—"}",color=BrassSoft)}}};item{val context=LocalContext.current;Button({ShareSheet.season(context,s,year)},Modifier.fillMaxWidth().testTag("shareSeason")){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Share summary")}}}}
 
 /**
  * The capture screen. Previously it could not record a water (the waterId argument was hardcoded null and there was
@@ -506,7 +546,7 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     var name by rememberSaveable{mutableStateOf("")}
     var category by rememberSaveable{mutableStateOf(GearCategory.ROD)}
     var kind by rememberSaveable{mutableStateOf(PresetKind.RIG)}
-    Screen("My Tacklebox","Gear that earns its place"){
+    Screen("Ready for the bank","My Tacklebox"){
         item{HeritageCard{Text("Gear performance",color=Brass);Text("Best rig · ${s.catches.mapNotNull{it.item.rig}.filter{it.isNotBlank()}.groupingBy{it}.eachCount().maxByOrNull{it.value}?.key?:"—"}");Text("Top bait · ${s.catches.mapNotNull{it.item.bait}.filter{it.isNotBlank()}.groupingBy{it}.eachCount().maxByOrNull{it.value}?.key?:"—"}",color=Muted)}}
         items(s.gear){g->HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(g.name,style=MaterialTheme.typography.titleLarge);Text(g.category.name.lowercase().replaceFirstChar(Char::uppercase),color=Muted)};IconButton({vm.deleteGear(g)}){Icon(Icons.Default.Delete,"Delete ${g.name}",tint=Muted)}}}}
         item{OutlinedTextField(name,{name=it},label={Text("New gear or preset")},modifier=Modifier.fillMaxWidth().testTag("gearName"))
@@ -516,13 +556,13 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
                 Spacer(Modifier.width(8.dp))
                 OutlinedButton({if(name.isNotBlank()){vm.addPreset(name.trim(),kind);name=""}}){Text("Save ${kind.name.lowercase()}")}}
             LazyRow(Modifier.padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){items(PresetKind.entries.toList()){k->FilterChip(kind==k,{kind=k},{Text(k.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours(),shape=CircleShape)}}}
-        item{Text("Quick picks",style=MaterialTheme.typography.titleLarge);if(s.presets.isEmpty())Text("No saved rigs or baits",color=Muted)}
+        item{SectionLabel("Quick picks");if(s.presets.isEmpty())Text("No saved rigs or baits",color=Muted)}
         items(s.presets){p->HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(p.name);Text(p.kind.name.lowercase().replaceFirstChar(Char::uppercase),color=Muted,style=MaterialTheme.typography.bodyMedium)};IconButton({vm.deletePreset(p)}){Icon(Icons.Default.Delete,"Delete ${p.name}",tint=Muted)}}}}
     }
 }
 
 // Bite windows now follow the device rather than a hardcoded 52.5/-1.5 (TB-A-10), and say so when they cannot.
-@Composable fun Solunar(vm:MainViewModel){
+@Composable fun Solunar(vm:MainViewModel,nav:NavHostController){
     val context=LocalContext.current
     var place by remember{mutableStateOf<Pair<Double,Double>?>(null)}
     // Asking here rather than during onboarding. This is the screen where the permission visibly changes something
@@ -534,18 +574,21 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     LaunchedEffect(reload){place=vm.solunarPlace()}
     val located=place!=null&&place!=DeviceLocation.FALLBACK_INLAND
     val d=place?.let{Astronomy.calculate(latitude=it.first,longitude=it.second)}?:Astronomy.calculate()
-    Screen("Bite windows",if(located)"Calculated on-device for your position" else "Calculated on-device · showing central UK"){
+    PushedScreen("Bite windows",onBack={nav.popBackStack()}){
+        item{Text(if(located)"Calculated on-device for your position" else "Calculated on-device · showing central UK",color=Muted,style=MaterialTheme.typography.bodyMedium)}
         if(!located&&canAsk)item{HeritageCard(onClick={request.launch(Manifest.permission.ACCESS_COARSE_LOCATION)}){Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.LocationOn,null,tint=Brass);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text("Use my location for local times",fontWeight=FontWeight.SemiBold);Text("Approximate only — your precise spot is never stored.",color=Muted,style=MaterialTheme.typography.bodyMedium)}}}}
         item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat(d.rating.title,"day rating",Modifier.weight(1f));Stat(d.moonPhase,"moon",Modifier.weight(1f))}};item{HeritageCard{Text("Sun & moon",style=MaterialTheme.typography.titleLarge);Text("Sunrise ${d.sunrise.hm()}  ·  Sunset ${d.sunset.hm()}",color=Muted);Text("Moonrise ${d.moonrise?.hm() ?: "—"}  ·  Moonset ${d.moonset?.hm() ?: "—"}",color=Muted)}};items(d.windows){w->HeritageCard{Row{Column(Modifier.weight(1f)){Text(w.label);Text(if(w.major)"Major feeding period" else "Minor feeding period",color=if(w.major)Brass else Muted)};Text("${w.start.hm()}–${w.end.hm()}")}}}}}
-@Composable fun Tides(vm:MainViewModel){val live by vm.marine.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.marine()};Screen("Tides & sea","Live coastal outlook · Open-Meteo"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.marine()};is LiveState.Data->{val h=x.value.hourly;if(h==null||h.waveHeight.isEmpty())Empty("No coastal data","You may be inland or outside forecast coverage.") else HeritageCard{Text("Sea state",style=MaterialTheme.typography.headlineMedium);h.time.take(8).forEachIndexed{i,t->Row{Text(t.takeLast(5),Modifier.weight(1f));Text("${h.waveHeight.getOrNull(i)?:0.0} m · ${h.wavePeriod.getOrNull(i)?:0.0} s",color=Teal)}}}}}}}}
-@Composable fun Rivers(vm:MainViewModel){val live by vm.river.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.river()};Screen("River conditions","Environment Agency gauges"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.river()};is LiveState.Data->if(x.value.items.isEmpty())Empty("No nearby gauges","Try again nearer a gauged river.")else Column{Text("Nearby readings",style=MaterialTheme.typography.titleLarge);x.value.items.take(8).forEach{HeritageCard{Text(it.value?.let{"$it m"}?:"Reading unavailable");Text(it.dateTime?:"Latest observation",color=Muted)}}}}}}}
+@Composable fun Tides(vm:MainViewModel){val live by vm.marine.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.marine()};Screen("Coastal outlook","Tides & sea"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.marine()};is LiveState.Data->{val h=x.value.hourly;if(h==null||h.waveHeight.isEmpty())Empty("No coastal data","You may be inland or outside forecast coverage.") else HeritageCard{Text("Sea state",style=MaterialTheme.typography.headlineMedium);h.time.take(8).forEachIndexed{i,t->Row{Text(t.takeLast(5),Modifier.weight(1f));Text("${h.waveHeight.getOrNull(i)?:0.0} m · ${h.wavePeriod.getOrNull(i)?:0.0} s",color=Teal)}}}}}}}}
+@Composable fun Rivers(vm:MainViewModel){val live by vm.river.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.river()};Screen("Live water","River conditions"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.river()};is LiveState.Data->if(x.value.items.isEmpty())Empty("No nearby gauges","Try again nearer a gauged river.")else Column{SectionLabel("Nearby readings");x.value.items.take(8).forEach{HeritageCard{Text(it.value?.let{"$it m"}?:"Reading unavailable");Text(it.dateTime?:"Latest observation",color=Muted)}}}}}}}
 
-@Composable fun SpeciesDetail(s:AppState,id:Long?,nav:NavHostController){val sp=s.species.firstOrNull{it.id==id};val catches=s.catches.filter{it.species?.id==id};Screen(sp?.name?:"Species record",sp?.scientificName){item{Box(Modifier.fillMaxWidth().height(170.dp).background(Inset,RoundedCornerShape(22.dp)),contentAlignment=Alignment.Center){Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(64.dp))}};item{Text(sp?.about?:"A personal record built from your catches.",color=Muted)};item{Text("Catch history",style=MaterialTheme.typography.titleLarge)};items(catches){c->HeritageCard(onClick={nav.navigate("catch/${c.item.id}")}){Text(c.item.caughtAt.pretty());Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",color=Brass)}}}}
+@Composable fun SpeciesDetail(s:AppState,id:Long?,nav:NavHostController){val sp=s.species.firstOrNull{it.id==id};val catches=s.catches.filter{it.species?.id==id};Screen("Species record",sp?.name?:"Species record"){sp?.scientificName?.let{n->item{Text(n,color=Muted,fontStyle=androidx.compose.ui.text.font.FontStyle.Italic)}};item{Box(Modifier.fillMaxWidth().height(170.dp).background(Inset,RoundedCornerShape(22.dp)),contentAlignment=Alignment.Center){Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(64.dp))}};item{Text(sp?.about?:"A personal record built from your catches.",color=Muted)};item{SectionLabel("Catch history")};items(catches){c->HeritageCard(onClick={nav.navigate("catch/${c.item.id}")}){Text(c.item.caughtAt.pretty());Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",color=Brass)}}}}
 @Composable fun CatchDetail(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
     val c=s.catches.firstOrNull{it.item.id==id}
     var confirmDelete by rememberSaveable{mutableStateOf(false)}
     val context=LocalContext.current
-    Screen(c?.species?.name?:"Catch detail",c?.item?.caughtAt?.pretty()){
+    PushedScreen("Catch",onBack={nav.popBackStack()}){
+        item{Text(c?.species?.name?:"Catch detail",style=MaterialTheme.typography.displaySmall)
+             c?.item?.caughtAt?.let{Text(it.pretty(),color=Muted)}}
         item{val gallery=c?.allPhotoUris.orEmpty()
             if(gallery.isNotEmpty())PhotoGallery(gallery)
             else Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(22.dp)).background(Inset),contentAlignment=Alignment.Center){Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(72.dp))}}
@@ -574,7 +617,7 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
         dismissButton={TextButton({confirmDelete=false}){Text("Cancel")}})
 }
 
-@Composable fun Settings(s:AppState,vm:MainViewModel){
+@Composable fun Settings(s:AppState,vm:MainViewModel,nav:NavHostController){
     var token by rememberSaveable(s.settings.speciesIdToken){mutableStateOf(s.settings.speciesIdToken)}
     var confirm by rememberSaveable{mutableStateOf(false)}
     val context=LocalContext.current
@@ -585,14 +628,14 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     val importPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->uri?.let(vm::planImport)}
     // Hand the finished file straight to the share sheet, then clear it so rotating does not re-open the chooser.
     LaunchedEffect(exported){exported?.let{ShareSheet.file(context,it,"application/json","Export your Tacklebox journal");vm.clearExport()}}
-    Screen("Settings","Your data, your choices"){
-        item{HeritageCard{Text("Units",style=MaterialTheme.typography.titleLarge);SingleChoiceSegmentedButtonRow{UnitSystem.entries.forEachIndexed{i,u->SegmentedButton(s.settings.unitSystem==u,{vm.settings(s.settings.copy(unitSystem=u))},SegmentedButtonDefaults.itemShape(i,2),colors=SegmentedButtonDefaults.colors(activeContainerColor=Brass,activeContentColor=Background,inactiveContainerColor=Inset,inactiveContentColor=Ink)){Text(u.name.lowercase().replaceFirstChar(Char::uppercase))}}}}}
+    PushedScreen("Settings",onBack={nav.popBackStack()}){
+        item{HeritageCard{SectionLabel("Units");SingleChoiceSegmentedButtonRow{UnitSystem.entries.forEachIndexed{i,u->SegmentedButton(s.settings.unitSystem==u,{vm.settings(s.settings.copy(unitSystem=u))},SegmentedButtonDefaults.itemShape(i,2),colors=SegmentedButtonDefaults.colors(activeContainerColor=Brass,activeContentColor=Background,inactiveContainerColor=Inset,inactiveContentColor=Ink)){Text(u.name.lowercase().replaceFirstChar(Char::uppercase))}}}}}
         // The Drive switch only ever persisted a boolean — there is no Drive code, no OAuth client and no
         // GoogleSignIn dependency in the app. Rather than keep a control that implies a backup is happening, say
         // plainly that it is not built yet and point at the export that does work.
-        item{HeritageCard{Text("Backup",style=MaterialTheme.typography.titleLarge);Text("Cloud backup isn’t built yet. Your journal lives on this device only — use Export below to keep a copy.",color=Muted)}}
+        item{HeritageCard{SectionLabel("Backup");Text("Cloud backup isn’t built yet. Your journal lives on this device only — use Export below to keep a copy.",color=Muted)}}
         item{OutlinedTextField(token,{token=it},label={Text("Species-ID API token")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth());Text("An iNaturalist token, used only to identify a photo. It expires after about a day.",color=Muted,style=MaterialTheme.typography.bodyMedium);Button({vm.settings(s.settings.copy(speciesIdToken=token))}){Text("Save token")}}
-        item{HeritageCard{Text("Data",style=MaterialTheme.typography.titleLarge)
+        item{HeritageCard{SectionLabel("Data")
             OutlinedButton({vm.exportJson()},Modifier.fillMaxWidth().testTag("exportJson")){Icon(Icons.Default.FileDownload,null);Text(" Export JSON")}
             // Export alone is an escape hatch; import is what makes the journal portable — between devices, after
             // a wiped phone, or in from another app.
@@ -624,7 +667,7 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     var showFilters by rememberSaveable{mutableStateOf(false)}
     val bests=remember(s.catches){CatchFilter.personalBests(s.catches)}
     val results=remember(s.catches,filter){filter.apply(s.catches)}
-    Screen("Catches","Everything you have landed",actions={
+    PushedScreen("Catches",onBack={nav.popBackStack()},actions={
         IconButton({showFilters=true},modifier=Modifier.testTag("filterCatches")){
             Icon(if(filter.isActive)Icons.Default.FilterAlt else Icons.Default.FilterAltOff,"Filter catches",tint=Brass)}}){
         item{OutlinedTextField(filter.text,{filter=filter.copy(text=it)},
@@ -729,7 +772,7 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun EditCatch(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
     val row=s.catches.firstOrNull{it.item.id==id}
-    if(row==null){Screen("Edit catch"){item{Empty("Catch not found","It may have been deleted.")}};return}
+    if(row==null){PushedScreen("Edit catch",onBack={nav.popBackStack()}){item{Empty("Catch not found","It may have been deleted.")}};return}
     val metric=s.settings.unitSystem==UnitSystem.METRIC
     val original=row.item
     val startPounds=original.weightGrams?.let{Weights.toPoundsAndOunces(it)}
