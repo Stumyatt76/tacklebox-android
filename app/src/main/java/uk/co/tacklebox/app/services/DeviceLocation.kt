@@ -26,8 +26,13 @@ import kotlin.math.roundToInt
  * behaviour and the promise in the privacy policy that a precise swim is never stored or transmitted.
  */
 object DeviceLocation {
-    /** Central England / the Solent — used when permission is refused or no fix is available. */
-    val FALLBACK_INLAND = 52.5 to -1.5
+    /**
+     * Central England / the Solent — used when permission is refused or no fix is available.
+     *
+     * The inland point matches iOS's `SolunarPlace.fallback` exactly. It used to be 52.5/-1.5 against iOS's
+     * 52.36/-1.17, which put the two apps a minute apart on sunrise and sunset for the same unlocated user.
+     */
+    val FALLBACK_INLAND = 52.36 to -1.17
     val FALLBACK_COASTAL = 50.7 to -1.9
 
     fun hasPermission(context:Context):Boolean =

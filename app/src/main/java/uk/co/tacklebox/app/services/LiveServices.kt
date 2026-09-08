@@ -46,27 +46,6 @@ object Services {
     val vision:VisionApi=api("https://api.inaturalist.org/",VisionApi::class.java)
 }
 
-data class BiteWindow(val label:String,val start:LocalTime,val end:LocalTime,val major:Boolean)
-data class SolunarDay(val sunrise:LocalTime,val sunset:LocalTime,val moonrise:LocalTime,val rating:Int,val moonPhase:String,val windows:List<BiteWindow>)
-object Astronomy {
-    fun calculate(date:LocalDate=LocalDate.now(), latitude:Double=52.5, longitude:Double=-1.5):SolunarDay {
-        val n=date.dayOfYear; val lat=Math.toRadians(latitude)
-        val decl=0.409*sin(2*PI*n/365-1.39); val hour=acos((-0.01454-sin(lat)*sin(decl))/(cos(lat)*cos(decl))).coerceIn(0.0,PI)
-        val daylight=hour*24/PI; val noon=12.0-longitude/15.0
-        fun time(h:Double)=LocalTime.of(((h%24+24)%24).toInt(),((((h%1)+1)%1)*60).toInt())
-        val rise=time(noon-daylight/2); val set=time(noon+daylight/2)
-        val age=((date.toEpochDay()+4)%29.53059+29.53059)%29.53059; val moonHour=(age/29.53059*24+6)%24
-        val moonrise=time(moonHour); val opposite=time(moonHour+12); val phase=when { age<2->"New moon"; age<7.4->"Waxing crescent"; age<9.5->"First quarter"; age<14.8->"Waxing gibbous"; age<17->"Full moon"; age<22.1->"Waning gibbous"; age<24.3->"Last quarter"; else->"Waning crescent" }
-        fun window(label:String,center:LocalTime,mins:Long,major:Boolean)=BiteWindow(label,center.minusMinutes(mins),center.plusMinutes(mins),major)
-        val windows=listOf(window("Moon overhead",moonrise,60,true),window("Moon underfoot",opposite,60,true),window("Dawn",rise,35,false),window("Dusk",set,35,false)).sortedBy{it.start}
-        // Parentheses matter here. Without them Kotlin binds the trailing `+ if(...)` into the `else` branch, so the
-        // score could only ever be 3 or 4 while both screens advertised "/5" (TB-A-16).
-        val moonScore=if(age<2||abs(age-14.8)<2) 2 else 1
-        val daylightScore=if(daylight in 10.0..15.0) 1 else 0
-        val rating=(2+moonScore+daylightScore).coerceIn(1,5)
-        return SolunarDay(rise,set,moonrise,rating,phase,windows)
-    }
-}
 // --- Species identification (iNaturalist computer vision) -------------------------------------------------------
 // The Log screen offered an "Identify from photo" button whose onClick was empty and had no client behind it at all
 // (TB-A-07). This mirrors the iOS SpeciesIDService: multipart upload, bearer token, top suggestions by score.
