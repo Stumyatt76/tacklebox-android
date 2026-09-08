@@ -36,12 +36,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 import uk.co.tacklebox.app.data.*
 import uk.co.tacklebox.app.services.*
 import uk.co.tacklebox.app.ui.*
@@ -70,17 +72,65 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
 @Composable fun BottomBar(nav:NavHostController,showFab:Boolean){val back by nav.currentBackStackEntryAsState();Box{NavigationBar(containerColor=Surface){tabs.forEachIndexed{i,t->if(i==2)Spacer(Modifier.weight(.65f));NavigationBarItem(selected=back?.destination?.route==t.route,onClick={nav.navigate(t.route){popUpTo("vault"){saveState=true};launchSingleTop=true;restoreState=true}},icon={Icon(t.icon,null)},label={Text(t.label)},modifier=Modifier.testTag("tab_${t.route}"),colors=NavigationBarItemDefaults.colors(selectedIconColor=Brass,selectedTextColor=Brass,indicatorColor=Inset))}};if(showFab)FloatingActionButton(onClick={nav.navigate("log")},containerColor=Brass,contentColor=Background,shape=CircleShape,modifier=Modifier.align(Alignment.Center).testTag("logCatchFab")){Icon(Icons.Default.Add,"Log a catch")}}}
 
 // safeDrawingPadding keeps the wordmark clear of the status bar; without it the header collided with the clock (TB-A-01).
-@Composable fun Onboarding(vm:MainViewModel){var page by rememberSaveable{mutableIntStateOf(0)};val request=rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()){};BackHandler(enabled=page>0){page-=1};Column(Modifier.fillMaxSize().safeDrawingPadding().padding(28.dp),verticalArrangement=Arrangement.SpaceBetween){Column{Text("TACKLEBOX",color=Brass,style=MaterialTheme.typography.labelLarge);Spacer(Modifier.height(48.dp))
-    Text(when(page){0->"Your water.\nYour story.";1->"Make it yours.";else->"Private by design."},style=MaterialTheme.typography.displaySmall);Spacer(Modifier.height(18.dp))
-    Text(when(page){0->"A calm, offline home for catches, waters and days on the bank.";1->"Choose how weights and lengths appear. You can change this any time in Settings.";else->"Your precise fishing spots are never stored. Location is used only when you ask for live conditions."},color=Muted,style=MaterialTheme.typography.bodyLarge)
-    // iOS asks for units during onboarding; Android did not, so the locale guess was never confirmed (TB-A-14).
-    if(page==1){Spacer(Modifier.height(24.dp));val settings by vm.state.collectAsStateWithLifecycle()
-        SingleChoiceSegmentedButtonRow{UnitSystem.entries.forEachIndexed{i,u->SegmentedButton(settings.settings.unitSystem==u,{vm.settings(settings.settings.copy(unitSystem=u))},SegmentedButtonDefaults.itemShape(i,2),colors=SegmentedButtonDefaults.colors(activeContainerColor=Brass,activeContentColor=Background,inactiveContainerColor=Inset,inactiveContentColor=Ink)){Text(u.name.lowercase().replaceFirstChar(Char::uppercase))}}}}}
-Column{when(page){
-    0->Button(onClick={page=1},modifier=Modifier.fillMaxWidth()){Text("Continue")}
-    1->Button(onClick={page=2},modifier=Modifier.fillMaxWidth()){Text("Continue")}
-    else->{Button(onClick={request.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))},modifier=Modifier.fillMaxWidth()){Text("Allow live conditions")};Spacer(Modifier.height(10.dp));Button(onClick={vm.seed(true)},modifier=Modifier.fillMaxWidth()){Text("Begin with sample waters")};TextButton(onClick={vm.seed(false)},modifier=Modifier.fillMaxWidth()){Text("Start with an empty vault")}}}
-    Text("No account · No tracking · Works offline",Modifier.fillMaxWidth().padding(top=14.dp),textAlign=TextAlign.Center,color=Muted)}}}
+/**
+ * Onboarding, matching iOS page for page (TB-P-06).
+ *
+ * The two apps used to share only a brand here: Android was left-aligned with no icon, no page indicator and no
+ * way to skip, under different titles on every page. This is the iOS flow — shield hero, brass eyebrow above a
+ * serif title, centred, dots, Skip — with Android's genuinely better last page kept and now on both platforms:
+ * the angler chooses whether to start with sample waters or an empty vault.
+ *
+ * The upfront location request is gone. Its result was discarded (the callback was empty) and DeviceLocation only
+ * ever *checks* the permission, so the button was the sole place Android could obtain it. It is now asked in
+ * context, on the Bite windows screen, at the moment local times would actually change — which is where iOS asks,
+ * and converts far better than a cold prompt before the app has shown anything.
+ */
+@Composable fun Onboarding(vm:MainViewModel){
+    val pager=rememberPagerState(pageCount={3});val scope=rememberCoroutineScope()
+    BackHandler(enabled=pager.currentPage>0){scope.launch{pager.animateScrollToPage(pager.currentPage-1)}}
+    Column(Modifier.fillMaxSize().safeDrawingPadding()){
+        Row(Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically){
+            Text("TACKLEBOX",color=Brass,style=MaterialTheme.typography.labelLarge,letterSpacing=2.sp)
+            Spacer(Modifier.weight(1f))
+            // Skipping means an empty vault. It must never quietly hand someone content they did not ask for, and
+            // empty is the recoverable option: waters can be added, invented ones have to be found and deleted.
+            TextButton(onClick={vm.seed(false)}){Text("Skip",color=Muted,fontWeight=FontWeight.SemiBold)}}
+        HorizontalPager(pager,Modifier.weight(1f)){page->when(page){
+            0->OnboardingPage(Icons.Default.Shield,"YOUR PRIVATE JOURNAL","Welcome to Tacklebox","A quiet place for every catch, water and session — your fishing life, kept together.")
+            1->OnboardingPage(null,"MAKE IT YOURS","Set up your vault","Choose how weights and lengths appear. You can change this any time in Settings."){
+                val state by vm.state.collectAsStateWithLifecycle()
+                SingleChoiceSegmentedButtonRow{UnitSystem.entries.forEachIndexed{i,u->SegmentedButton(state.settings.unitSystem==u,{vm.settings(state.settings.copy(unitSystem=u))},SegmentedButtonDefaults.itemShape(i,2),colors=SegmentedButtonDefaults.colors(activeContainerColor=Brass,activeContentColor=Background,inactiveContainerColor=Inset,inactiveContentColor=Ink),icon={}){Text(u.name.lowercase().replaceFirstChar(Char::uppercase))}}}}
+            else->OnboardingPage(null,"PRIVATE BY DESIGN","Useful context, kept discreet","We'll ask only when a feature needs access."){
+                HeritageCard{
+                    PrivacyRow(Icons.Default.NearMe,"Location with restraint","Used for weather, tides and bite times. Your precise spot is never stored.")
+                    HorizontalDivider(Modifier.padding(vertical=18.dp),color=Muted.copy(alpha=.2f))
+                    PrivacyRow(Icons.Default.Photo,"Photos stay with you","Catch photos stay on your device as part of your private vault.")}}}}
+        Row(Modifier.fillMaxWidth().padding(bottom=20.dp),horizontalArrangement=Arrangement.Center){
+            repeat(3){i->Box(Modifier.padding(horizontal=4.dp).size(width=if(i==pager.currentPage)24.dp else 8.dp,height=8.dp).background(if(i==pager.currentPage)Brass else Inset,RoundedCornerShape(4.dp)))}}
+        Column(Modifier.padding(horizontal=24.dp).padding(bottom=24.dp)){
+            if(pager.currentPage==2){
+                Button(onClick={vm.seed(true)},Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp)){Text("Begin with sample waters",fontWeight=FontWeight.Bold)}
+                Spacer(Modifier.height(10.dp))
+                TextButton(onClick={vm.seed(false)},Modifier.fillMaxWidth().height(44.dp)){Text("Start with an empty vault",color=BrassSoft,fontWeight=FontWeight.SemiBold)}}
+            else Button(onClick={scope.launch{pager.animateScrollToPage(pager.currentPage+1)}},Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp)){Text("Continue",fontWeight=FontWeight.Bold)}}}}
+
+/** One onboarding page: optional hero icon, brass eyebrow, serif title, muted body, then anything the page adds. */
+@Composable private fun OnboardingPage(icon:androidx.compose.ui.graphics.vector.ImageVector?,eyebrow:String,title:String,message:String,extra:@Composable ColumnScope.()->Unit={}){
+    Column(Modifier.fillMaxSize().padding(28.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
+        icon?.let{Box(Modifier.size(112.dp).background(Teal.copy(alpha=.14f),CircleShape),contentAlignment=Alignment.Center){Icon(it,null,tint=Teal,modifier=Modifier.size(46.dp))};Spacer(Modifier.height(22.dp))}
+        Text(eyebrow,color=Brass,style=MaterialTheme.typography.labelLarge,letterSpacing=1.7.sp,textAlign=TextAlign.Center)
+        Spacer(Modifier.height(10.dp))
+        Text(title,style=MaterialTheme.typography.headlineLarge,textAlign=TextAlign.Center)
+        Spacer(Modifier.height(10.dp))
+        Text(message,color=Muted,style=MaterialTheme.typography.bodyLarge,textAlign=TextAlign.Center)
+        Spacer(Modifier.height(24.dp))
+        extra()}}
+
+@Composable private fun PrivacyRow(icon:androidx.compose.ui.graphics.vector.ImageVector,title:String,message:String){
+    Row(verticalAlignment=Alignment.Top){
+        Icon(icon,null,tint=Teal,modifier=Modifier.size(32.dp))
+        Spacer(Modifier.width(14.dp))
+        Column{Text(title,fontWeight=FontWeight.SemiBold);Text(message,color=Muted,style=MaterialTheme.typography.bodyMedium)}}}
 
 @Composable fun Screen(title:String,subtitle:String?=null,actions:@Composable RowScope.()->Unit={},content:LazyListScope.()->Unit){LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=18.dp,top=18.dp,end=18.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){item{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.headlineLarge);subtitle?.let{Text(it,color=Muted)}};actions()}};content()}}
 @Composable fun HeritageCard(modifier:Modifier=Modifier,onClick:(()->Unit)?=null,content:@Composable ColumnScope.()->Unit){Card(modifier=modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Surface),shape=RoundedCornerShape(20.dp),onClick=onClick?:{}){Column(Modifier.padding(18.dp),content=content)}}
@@ -247,11 +297,20 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
 
 // Bite windows now follow the device rather than a hardcoded 52.5/-1.5 (TB-A-10), and say so when they cannot.
 @Composable fun Solunar(vm:MainViewModel){
+    val context=LocalContext.current
     var place by remember{mutableStateOf<Pair<Double,Double>?>(null)}
-    LaunchedEffect(Unit){place=vm.solunarPlace()}
+    // Asking here rather than during onboarding. This is the screen where the permission visibly changes something
+    // — the times stop being central UK and become the angler's own — so the prompt arrives with a reason attached.
+    // `reload` re-runs the lookup once the choice is made, whichever way it goes.
+    var reload by remember{mutableIntStateOf(0)}
+    var canAsk by remember{mutableStateOf(!DeviceLocation.hasPermission(context))}
+    val request=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){canAsk=false;reload++}
+    LaunchedEffect(reload){place=vm.solunarPlace()}
     val located=place!=null&&place!=DeviceLocation.FALLBACK_INLAND
     val d=place?.let{Astronomy.calculate(latitude=it.first,longitude=it.second)}?:Astronomy.calculate()
-    Screen("Bite windows",if(located)"Calculated on-device for your position" else "Calculated on-device · showing central UK"){item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${d.rating}/5","day rating",Modifier.weight(1f));Stat(d.moonPhase,"moon",Modifier.weight(1f))}};item{HeritageCard{Text("Sun & moon",style=MaterialTheme.typography.titleLarge);Text("Sunrise ${d.sunrise}  ·  Sunset ${d.sunset}",color=Muted);Text("Moonrise ${d.moonrise}",color=Muted)}};items(d.windows){w->HeritageCard{Row{Column(Modifier.weight(1f)){Text(w.label);Text(if(w.major)"Major feeding period" else "Minor feeding period",color=if(w.major)Brass else Muted)};Text("${w.start}–${w.end}")}}}}}
+    Screen("Bite windows",if(located)"Calculated on-device for your position" else "Calculated on-device · showing central UK"){
+        if(!located&&canAsk)item{HeritageCard(onClick={request.launch(Manifest.permission.ACCESS_COARSE_LOCATION)}){Row(verticalAlignment=Alignment.CenterVertically){Icon(Icons.Default.LocationOn,null,tint=Brass);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text("Use my location for local times",fontWeight=FontWeight.SemiBold);Text("Approximate only — your precise spot is never stored.",color=Muted,style=MaterialTheme.typography.bodyMedium)}}}}
+        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${d.rating}/5","day rating",Modifier.weight(1f));Stat(d.moonPhase,"moon",Modifier.weight(1f))}};item{HeritageCard{Text("Sun & moon",style=MaterialTheme.typography.titleLarge);Text("Sunrise ${d.sunrise}  ·  Sunset ${d.sunset}",color=Muted);Text("Moonrise ${d.moonrise}",color=Muted)}};items(d.windows){w->HeritageCard{Row{Column(Modifier.weight(1f)){Text(w.label);Text(if(w.major)"Major feeding period" else "Minor feeding period",color=if(w.major)Brass else Muted)};Text("${w.start}–${w.end}")}}}}}
 @Composable fun Tides(vm:MainViewModel){val live by vm.marine.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.marine()};Screen("Tides & sea","Live coastal outlook · Open-Meteo"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.marine()};is LiveState.Data->{val h=x.value.hourly;if(h==null||h.waveHeight.isEmpty())Empty("No coastal data","You may be inland or outside forecast coverage.") else HeritageCard{Text("Sea state",style=MaterialTheme.typography.headlineMedium);h.time.take(8).forEachIndexed{i,t->Row{Text(t.takeLast(5),Modifier.weight(1f));Text("${h.waveHeight.getOrNull(i)?:0.0} m · ${h.wavePeriod.getOrNull(i)?:0.0} s",color=Teal)}}}}}}}}
 @Composable fun Rivers(vm:MainViewModel){val live by vm.river.collectAsStateWithLifecycle();LaunchedEffect(Unit){vm.river()};Screen("River conditions","Environment Agency gauges"){item{when(val x=live){LiveState.Idle,LiveState.Loading->Loading();is LiveState.Error->ErrorCard(x.message){vm.river()};is LiveState.Data->if(x.value.items.isEmpty())Empty("No nearby gauges","Try again nearer a gauged river.")else Column{Text("Nearby readings",style=MaterialTheme.typography.titleLarge);x.value.items.take(8).forEach{HeritageCard{Text(it.value?.let{"$it m"}?:"Reading unavailable");Text(it.dateTime?:"Latest observation",color=Muted)}}}}}}}
 
