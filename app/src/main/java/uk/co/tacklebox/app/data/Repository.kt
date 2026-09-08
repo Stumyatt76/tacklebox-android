@@ -29,7 +29,9 @@ class TackleboxRepository(context: Context) {
         // presets exist, leaving Android with bare Rig and Bait text fields where iOS offers a chip grid (TB-P-02).
         // The same eleven as SeedData.swift, in the same order, so the two apps open identically.
         if (dao.presetsOnce().isEmpty()) seedPresets.forEach { dao.addPreset(it) }
-        if (samples && dao.waterCount()==0) dao.addWaters(listOf(Water(name="Willow Mere",type=WaterType.LAKE,region="Norfolk",disciplines=listOf("COARSE"),swimNotes="Reeds on the west bank fish well at dusk."), Water(name="Upper Avon",type=WaterType.RIVER,region="Wiltshire",disciplines=listOf("GAME","COARSE"),swimNotes="Travel light; watch the level after rain.")))
+        // The same two waters as SeedData.swift, so "Begin with sample waters" means the same thing on both
+        // platforms. iOS's names win because they are the ones in the committed App Store screenshots.
+        if (samples && dao.waterCount()==0) dao.addWaters(sampleWaters)
         // Merge onto what is already stored. saveSettings is REPLACE on id=1, so writing defaults() wholesale
         // discarded any unit choice, the species-ID token and the backup flag (TB-A-14).
         dao.saveSettings((dao.settings().first() ?: defaults()).copy(onboardingComplete=true))
@@ -125,6 +127,17 @@ class TackleboxRepository(context: Context) {
 
     suspend fun deleteAllUserData() { dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
     companion object {
+        /**
+         * The same two waters as `SeedData.swift`, so "Begin with sample waters" means the same thing on both
+         * platforms. iOS's names win because they are the ones in the committed App Store screenshots.
+         *
+         * Alder Mere is a *syndicate* on iOS and a lake here, because Android's `WaterType` has five values to
+         * iOS's ten and no syndicate among them. That enum divergence is real but is a model problem, not an
+         * onboarding one; it is recorded separately as TB-P-14.
+         */
+        val sampleWaters = listOf(
+            Water(name="Alder Mere", type=WaterType.LAKE, region="Oxfordshire", disciplines=listOf("CARP","COARSE"), swimNotes="Reeds on the west bank fish well at dusk."),
+            Water(name="River Lea", type=WaterType.RIVER, region="Hertfordshire", disciplines=listOf("COARSE"), swimNotes="Travel light; watch the level after rain."))
         val seedPresets = listOf("Ronnie rig","Hair rig","Method feeder","Waggler","Ledger").map { TacklePreset(name=it, kind=PresetKind.RIG) } +
             listOf("Boilie","Sweetcorn","Maggots","Pellets","Bread","Worm").map { TacklePreset(name=it, kind=PresetKind.BAIT) }
         val seedSpecies=listOf(
