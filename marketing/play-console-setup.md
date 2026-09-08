@@ -19,7 +19,7 @@ Play Console → **All apps → Create app**
 - **Feature graphic:** `marketing/store-assets/feature.png` (1024×500)
 - **Phone screenshots:** the 6 in `~/Downloads/tacklebox-play-screenshots/` (1080×2160)
 - **App category:** Sports  *(alt: Lifestyle)*
-- **Contact email:** myattstuart1976@gmail.com
+- **Contact email:** support@caddro.co.uk  *(must match the address in the privacy policy — Play shows this on the listing)*
 
 ## 3. App content  (Policy → App content)
 Fill each section using `marketing/play-data-safety.md`:
