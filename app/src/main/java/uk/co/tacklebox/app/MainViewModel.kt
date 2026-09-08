@@ -39,9 +39,12 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      * passports and session catch counts were permanently zero (TB-A-02, TB-A-03); and only the moon phase was
      * recorded, while the detail screen blamed the network for the rest (TB-A-09).
      */
-    fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),onDone:(Long)->Unit)=viewModelScope.launch{
+    fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),stamped:ConditionsSnapshot?=null,onDone:(Long)->Unit)=viewModelScope.launch{
         val openSession=repo.openSession()
-        val conditions=captureConditions()
+        // The capture screen reads the conditions when it opens and shows them, so the angler can see what is being
+        // stamped and retry a failed reading before saving. Falling back to a fresh capture keeps any other caller
+        // working, and keeps a save honest if the screen never managed one.
+        val conditions=stamped ?: captureConditions()
         val id=repo.addCatch(
             Catch(speciesId=speciesId,weightGrams=weight,lengthCm=length,rig=rig?.ifBlank{null},bait=bait?.ifBlank{null},returned=returned,
                   waterId=waterId ?: openSession?.waterId, sessionId=openSession?.id, photoUri=photos.firstOrNull(), caughtAt=caughtAt, notes=notes.trim()),
@@ -51,7 +54,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     }
 
     /** Best-effort: a failed or slow weather call must never stop a catch being saved, so the moon phase is the floor. */
-    private suspend fun captureConditions():ConditionsSnapshot {
+    suspend fun captureConditions():ConditionsSnapshot {
         val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_INLAND
         val moon=Astronomy.calculate(latitude=lat,longitude=lon).moonPhase
         val current=runCatching{Services.weather.current(lat,lon).current}.getOrNull()
