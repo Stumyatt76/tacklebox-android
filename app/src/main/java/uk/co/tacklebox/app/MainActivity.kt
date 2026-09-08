@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -59,7 +60,10 @@ import kotlin.math.roundToInt
 
 class MainActivity:ComponentActivity(){override fun onCreate(b:Bundle?){super.onCreate(b);setContent{TackleboxTheme{TackleboxRoot()}}}}
 data class Tab(val route:String,val label:String,val icon:androidx.compose.ui.graphics.vector.ImageVector)
-val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Icons.Default.Water),Tab("sessions","Sessions",Icons.Default.Schedule),Tab("insights","Insights",Icons.Default.BarChart))
+// The same four symbols as the iOS tab bar, in their outline weight: shield, drop, calendar, chart.bar. Android
+// had a house, waves and a clock against iOS's shield, droplet and calendar — three of the four icons on the one
+// piece of chrome that is on screen the entire time (TB-P-10).
+val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters",Icons.Outlined.WaterDrop),Tab("sessions","Sessions",Icons.Outlined.CalendarMonth),Tab("insights","Insights",Icons.Outlined.BarChart))
 
 @Composable fun TackleboxRoot(vm:MainViewModel=viewModel()){
     val state by vm.state.collectAsStateWithLifecycle(); val nav=rememberNavController()
@@ -79,7 +83,10 @@ val tabs=listOf(Tab("vault","Vault",Icons.Default.Home),Tab("waters","Waters",Ic
 // The log button is docked into the bar rather than floated over the content: a centre-docked FAB sat on top of the
 // Vault's chip row and the Log screen's Save button (TB-A-04, TB-A-12). saveState/restoreState keep each tab's
 // scroll position and back stack across tab switches.
-@Composable fun BottomBar(nav:NavHostController,showFab:Boolean){val back by nav.currentBackStackEntryAsState();Box{NavigationBar(containerColor=Surface){tabs.forEachIndexed{i,t->if(i==2)Spacer(Modifier.weight(.65f));NavigationBarItem(selected=back?.destination?.route==t.route,onClick={nav.navigate(t.route){popUpTo("vault"){saveState=true};launchSingleTop=true;restoreState=true}},icon={Icon(t.icon,null)},label={Text(t.label)},modifier=Modifier.testTag("tab_${t.route}"),colors=NavigationBarItemDefaults.colors(selectedIconColor=Brass,selectedTextColor=Brass,indicatorColor=Inset))}};if(showFab)FloatingActionButton(onClick={nav.navigate("log")},containerColor=Brass,contentColor=Background,shape=CircleShape,modifier=Modifier.align(Alignment.Center).testTag("logCatchFab")){Icon(Icons.Default.Add,"Log a catch")}}}
+@Composable fun BottomBar(nav:NavHostController,showFab:Boolean){val back by nav.currentBackStackEntryAsState();Box{NavigationBar(containerColor=Surface){tabs.forEachIndexed{i,t->if(i==2)Spacer(Modifier.weight(.65f));NavigationBarItem(selected=back?.destination?.route==t.route,onClick={nav.navigate(t.route){popUpTo("vault"){saveState=true};launchSingleTop=true;restoreState=true}},icon={Icon(t.icon,null)},label={Text(t.label,fontSize=10.sp,fontWeight=FontWeight.SemiBold)},modifier=Modifier.testTag("tab_${t.route}"),
+            // No selection pill and brassSoft on the selected item, as iOS does it — Material's filled indicator
+            // capsule put a shape behind one tab that has no counterpart on the other platform (TB-P-10).
+            colors=NavigationBarItemDefaults.colors(selectedIconColor=BrassSoft,selectedTextColor=BrassSoft,unselectedIconColor=Muted.copy(alpha=.6f),unselectedTextColor=Muted.copy(alpha=.6f),indicatorColor=Color.Transparent))}};if(showFab)FloatingActionButton(onClick={nav.navigate("log")},containerColor=Brass,contentColor=Background,shape=CircleShape,modifier=Modifier.align(Alignment.Center).testTag("logCatchFab")){Icon(Icons.Default.Add,"Log a catch")}}}
 
 // safeDrawingPadding keeps the wordmark clear of the status bar; without it the header collided with the clock (TB-A-01).
 /**
