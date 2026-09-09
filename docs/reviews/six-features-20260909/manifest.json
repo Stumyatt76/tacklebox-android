@@ -1,0 +1,92 @@
+[
+  {
+    "source": "six-ui/ios/six-final-ios-unlimited-normal.png",
+    "file": "images/01-ios.png",
+    "sha256": "b73919e3b166770794f3d2cee36d981dc9e90d7d3f28b09d365042e24e712e77"
+  },
+  {
+    "source": "six-ui/android/six-final-android-unlimited.png",
+    "file": "images/01-android.png",
+    "sha256": "944e0511bcf5ced603313f950d2bb2804d1a5a33276a182e5a894a40e21a1176"
+  },
+  {
+    "source": "six-ui/ios/six-ios-planner-nextday.png",
+    "file": "images/02-ios.png",
+    "sha256": "4ce3c22c1e3b15610c45713d1b9958ff0f3293765cf3beedb7a8f5bb5a0a29bc"
+  },
+  {
+    "source": "six-ui/android/six-android-planner-denied.png",
+    "file": "images/02-android.png",
+    "sha256": "ebf12848e0e1c874fbfb2c1978081d5a9a352d2e17d6c092b275f61951790b0e"
+  },
+  {
+    "source": "six-ui/ios/six-ios-photo-backup.png",
+    "file": "images/03-ios.png",
+    "sha256": "d6d41e7fd380f6ac08525d4f83eee11e4f04e6e7fc9ecc21439e1d76a5a1c9c5"
+  },
+  {
+    "source": "six-ui/android/six-final-android-photo-backup.png",
+    "file": "images/03-android.png",
+    "sha256": "aee6d4322a7f21d521194d31efd845ac3749f9a70899da63823b81aeec938c1a"
+  },
+  {
+    "source": "six-ui/ios/six-ios-book-selection.png",
+    "file": "images/04-ios.png",
+    "sha256": "2316a72f0deab79bdf12045390d27a918e0cf60b9da57794756e72f120e1d70d"
+  },
+  {
+    "source": "six-ui/android/six-final-android-book-selection.png",
+    "file": "images/04-android.png",
+    "sha256": "15c8bb7bf69039d1af4047b897bb226e9beb5b1f722d46124be5dbce4311d676"
+  },
+  {
+    "source": "six-ui/ios/six-ios-book-preview.png",
+    "file": "images/05-ios.png",
+    "sha256": "424a0c547faae3156b6e93940715e7cfaac92d2e63886fa7e9ff2a3a414d0b28"
+  },
+  {
+    "source": "six-ui/android/six-final-android-book-preview.png",
+    "file": "images/05-android.png",
+    "sha256": "9267c72ad0c389ee5c22e8dceec2799fbb96973335fba689152be17275502b94"
+  },
+  {
+    "source": "final-documents/qa-season-ios-1.png",
+    "file": "images/06-ios.png",
+    "sha256": "7d9505ecc30f4bf667ce5e7544aa0a84fd1315c96dc16b9eb1f9c55dadf7629d"
+  },
+  {
+    "source": "final-documents/qa-season-android-1.png",
+    "file": "images/06-android.png",
+    "sha256": "bd754d595d7d73be791b06d2f9131e38bca35e16c621da1d72c8b8ad7a91270f"
+  },
+  {
+    "source": "final-documents/qa-season-ios-2.png",
+    "file": "images/07-ios.png",
+    "sha256": "4c3ef1d6e12944afe7e51445e30f4a6e6337fade03c390a9149f7eac5f4dc13c"
+  },
+  {
+    "source": "final-documents/qa-season-android-2.png",
+    "file": "images/07-android.png",
+    "sha256": "ed5b6e2b310617527a6bfcdd9eb243276f787cbbdb394db3c584e76a74319b13"
+  },
+  {
+    "source": "six-ui/ios/six-ios-session-detail-edited.png",
+    "file": "images/08-ios.png",
+    "sha256": "dff0c63e47be8c5354c22167e837e5026e5d6fc47b73a897c258be1497a156cd"
+  },
+  {
+    "source": "six-ui/android/six-android-session-edited.png",
+    "file": "images/08-android.png",
+    "sha256": "ce0aef67b16e04d176d259e68c02bf8e6e95558c4937c02fac24f3a5147ccc16"
+  },
+  {
+    "source": "six-ui/ios/six-ios-live-island.png",
+    "file": "images/09-ios.png",
+    "sha256": "a190c520e1f2665cba22bbd01a9e5c60ab795c66eca91740c0aae4ede90a1372"
+  },
+  {
+    "source": "six-ui/android/six-final-android-notification-actual.png",
+    "file": "images/09-android.png",
+    "sha256": "dee122870c4b314b7c3c4e04655c8357226fdbb67b5e8ee0e3221f99ec6e3265"
+  }
+]

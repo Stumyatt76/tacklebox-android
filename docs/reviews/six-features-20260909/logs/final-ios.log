@@ -1,0 +1,714 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project Tacklebox.xcodeproj -scheme Tacklebox -configuration Debug -destination "platform=iOS Simulator,id=9F2AE336-BC12-4506-AA92-091D7F66353F" -derivedDataPath /tmp/tacklebox-six-features-20260909/derived -resultBundlePath /tmp/tacklebox-six-features-20260909/final-tests.xcresult CODE_SIGNING_ALLOWED=NO test
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+
+Writing result bundle at path:
+	/tmp/tacklebox-six-features-20260909/final-tests.xcresult
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (3 targets)
+    Target 'TackleboxTests' in project 'Tacklebox'
+        ➜ Explicit dependency on target 'Tacklebox' in project 'Tacklebox'
+    Target 'Tacklebox' in project 'Tacklebox'
+        ➜ Explicit dependency on target 'TackleboxWidget' in project 'Tacklebox'
+    Target 'TackleboxWidget' in project 'Tacklebox' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Volumes/working /recovery-2026-08-27/tacklebox-ios/Tacklebox/Resources/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+Build description signature: c41baff3b2e07fe06c297c442f324225
+Build description path: /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/XCBuildData/c41baff3b2e07fe06c297c442f324225.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -o /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache
+
+SwiftDriver TackleboxWidget normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TackleboxWidget -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ TackleboxWidget (in target 'TackleboxWidget' from project 'Tacklebox')
+
+EmitSwiftModule normal arm64 (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for TackleboxWidget (in target 'TackleboxWidget' from project 'Tacklebox')
+
+SwiftDriver\ Compilation\ Requirements TackleboxWidget normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TackleboxWidget -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.swiftmodule/arm64-apple-ios-simulator.abi.json /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.abi.json (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.abi.json /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.swiftsourceinfo (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.swiftsourceinfo /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+SwiftDriver Tacklebox normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Tacklebox -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+ProcessInfoPlistFile /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.appex/Info.plist /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxWidget/Info.plist (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-infoPlistUtility /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxWidget/Info.plist -producttype com.apple.product-type.app-extension -expandbuildsettings -format binary -platform iphonesimulator -o /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.appex/Info.plist
+
+SwiftCompile normal arm64 Compiling\ SessionLiveActivity.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxWidget/SessionLiveActivity.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxWidget/SessionLiveActivity.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ SessionActivityAttributes.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionActivityAttributes.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionActivityAttributes.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ BiteWindowWidget.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxWidget/BiteWindowWidget.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxWidget/BiteWindowWidget.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling SessionActivityAttributes.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SessionLiveActivity.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling BiteWindowWidget.swift (in target 'TackleboxWidget' from project 'Tacklebox')
+
+SwiftDriver\ Compilation TackleboxWidget normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TackleboxWidget -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -application-extension -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+ExtractAppIntentsMetadata (in target 'TackleboxWidget' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name TackleboxWidget --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F113 --platform-family iOS --deployment-target 17.0 --bundle-identifier com.tacklebox.ios.widget --output /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.appex --target-triple arm64-apple-ios17.0-simulator --binary-file /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxWidget.appex/TackleboxWidget --dependency-file /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget_dependency_info.dat --stringsdata-file /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.SwiftFileList --metadata-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget.DependencyMetadataFileList --static-metadata-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/TackleboxWidget.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxWidget.build/Objects-normal/arm64/TackleboxWidget.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-09 12:43:28.782 appintentsmetadataprocessor[87711:81172497] Starting appintentsmetadataprocessor export
+2026-09-09 12:43:28.913 appintentsmetadataprocessor[87711:81172497] Extracted no relevant App Intents symbols, skipping writing output
+
+SwiftCompile normal arm64 Compiling\ PhotoBackupView.swift,\ RootView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Backup/PhotoBackupView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Shell/RootView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Backup/PhotoBackupView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Shell/RootView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ PhotoBackup.swift,\ PhotoBackupFormat.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Data/PhotoBackup.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Data/PhotoBackupFormat.swift (in target 'Tacklebox' from project 'Tacklebox')
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Data/PhotoBackup.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Data/PhotoBackupFormat.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ LogCatchView.swift,\ Models.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/LogCatch/LogCatchView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Domain/Models.swift (in target 'Tacklebox' from project 'Tacklebox')
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/LogCatch/LogCatchView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Domain/Models.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ SeasonBook.swift,\ SeasonBookView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/YearReview/SeasonBook.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/YearReview/SeasonBookView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/YearReview/SeasonBook.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/YearReview/SeasonBookView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ Tacklebox (in target 'Tacklebox' from project 'Tacklebox')
+
+EmitSwiftModule normal arm64 (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ UnlimitedStore.swift,\ VaultView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Access/UnlimitedStore.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Vault/VaultView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Access/UnlimitedStore.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Vault/VaultView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ SessionsView.swift,\ SolunarView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionsView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Solunar/SolunarView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionsView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Solunar/SolunarView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ YearOnTheWaterView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/YearReview/YearOnTheWaterView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/YearReview/YearOnTheWaterView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ TripForecast.swift,\ TripPlannerView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Planner/TripForecast.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Planner/TripPlannerView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Planner/TripForecast.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Planner/TripPlannerView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ SpeciesConnection.swift,\ SpeciesIDService.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Species/SpeciesConnection.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Species/SpeciesIDService.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Species/SpeciesConnection.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Species/SpeciesIDService.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ SeedData.swift,\ SessionActivityAttributes.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Data/SeedData.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionActivityAttributes.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Data/SeedData.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionActivityAttributes.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ TackleboxApp.swift,\ TackleboxView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/App/TackleboxApp.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Tacklebox/TackleboxView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/App/TackleboxApp.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Tacklebox/TackleboxView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ SessionActivityManager.swift,\ SessionEditorView.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionActivityManager.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionEditorView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionActivityManager.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Features/Sessions/SessionEditorView.swift (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling SpeciesConnection.swift, SpeciesIDService.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SeedData.swift, SessionActivityAttributes.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling TripForecast.swift, TripPlannerView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SeasonBook.swift, SeasonBookView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PhotoBackupView.swift, RootView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling YearOnTheWaterView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PhotoBackup.swift, PhotoBackupFormat.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling TackleboxApp.swift, TackleboxView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SessionsView.swift, SolunarView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling SessionActivityManager.swift, SessionEditorView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling UnlimitedStore.swift, VaultView.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling LogCatchView.swift, Models.swift (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriver\ Compilation Tacklebox normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Tacklebox -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for Tacklebox (in target 'Tacklebox' from project 'Tacklebox')
+
+SwiftDriver\ Compilation\ Requirements Tacklebox normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name Tacklebox -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.SwiftFileList -DDEBUG -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.swiftmodule/arm64-apple-ios-simulator.swiftmodule /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftmodule (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftmodule /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.swiftmodule/arm64-apple-ios-simulator.abi.json /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.abi.json (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.abi.json /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftsourceinfo (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftsourceinfo /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+Ld /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox.debug.dylib normal (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -filelist /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.LinkFileList -install_name @rpath/Tacklebox.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -dead_strip -Xlinker -object_path_lto -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.swiftmodule @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -o /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox.debug.dylib
+
+ConstructStubExecutorLinkFileList /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-ExecutorLinkFileList-normal-arm64.txt (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    construct-stub-executor-link-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'Tacklebox' from project 'Tacklebox')
+
+Ld /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox normal (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/Frameworks -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox-ExecutorLinkFileList-normal-arm64.txt /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox.debug.dylib -o /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox
+
+ExtractAppIntentsMetadata (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name Tacklebox --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F113 --platform-family iOS --deployment-target 17.0 --bundle-identifier com.tacklebox.ios --output /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app --target-triple arm64-apple-ios17.0-simulator --binary-file /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox --dependency-file /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox_dependency_info.dat --stringsdata-file /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.SwiftFileList --metadata-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox.DependencyMetadataFileList --static-metadata-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Tacklebox.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/Objects-normal/arm64/Tacklebox.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-09 12:43:43.846 appintentsmetadataprocessor[87819:81175356] Starting appintentsmetadataprocessor export
+2026-09-09 12:43:43.859 appintentsmetadataprocessor[87819:81175356] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox.debug.dylib --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Frameworks --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/SystemExtensions --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+Ignoring --strip-bitcode because --sign was not passed
+
+ProcessInfoPlistFile /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Info.plist /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Info.plist (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-infoPlistUtility /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/Tacklebox/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/Tacklebox.build/assetcatalog_generated_info.plist -scanforprivacyfile /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxWidget.appex -o /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Info.plist
+
+SwiftDriver TackleboxTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TackleboxTests -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+ProcessInfoPlistFile /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/Info.plist /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/empty-TackleboxTests.plist (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-infoPlistUtility /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/empty-TackleboxTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -format binary -platform iphonesimulator -o /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/Info.plist
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ TackleboxTests (in target 'TackleboxTests' from project 'Tacklebox')
+
+EmitSwiftModule normal arm64 (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ CatchPhotoTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchPhotoTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchPhotoTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ JournalImportTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/JournalImportTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/JournalImportTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ CatchWaterTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchWaterTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchWaterTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ PhotoBackupTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/PhotoBackupTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/PhotoBackupTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ AuditRegressionTests.swift,\ BiteWindowWidgetTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/AuditRegressionTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/BiteWindowWidgetTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/AuditRegressionTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/BiteWindowWidgetTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ CatchEditingTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchEditingTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchEditingTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ OnboardingSeedTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/OnboardingSeedTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/OnboardingSeedTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ FeatureExpansionTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/FeatureExpansionTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/FeatureExpansionTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ SolunarRatingTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/SolunarRatingTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/SolunarRatingTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ CatchFilterTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchFilterTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchFilterTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ JournalExportTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/JournalExportTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/JournalExportTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftCompile normal arm64 Compiling\ CatchMetricsTests.swift /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchMetricsTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftCompile normal arm64 /Volumes/working\ /recovery-2026-08-27/tacklebox-ios/TackleboxTests/CatchMetricsTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling SolunarRatingTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling OnboardingSeedTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for TackleboxTests (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriver\ Compilation\ Requirements TackleboxTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TackleboxTests -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxTests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftsourceinfo (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftsourceinfo /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxTests.swiftmodule/Project/arm64-apple-ios-simulator.swiftsourceinfo
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxTests.swiftmodule/arm64-apple-ios-simulator.swiftmodule /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftmodule (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftmodule /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxTests.swiftmodule/arm64-apple-ios-simulator.swiftmodule
+
+Copy /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxTests.swiftmodule/arm64-apple-ios-simulator.abi.json /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.abi.json (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.abi.json /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/TackleboxTests.swiftmodule/arm64-apple-ios-simulator.abi.json
+
+SwiftDriverJobDiscovery normal arm64 Compiling CatchWaterTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CatchEditingTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CatchPhotoTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling FeatureExpansionTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling JournalExportTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling PhotoBackupTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CatchFilterTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CatchMetricsTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling AuditRegressionTests.swift, BiteWindowWidgetTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriverJobDiscovery normal arm64 Compiling JournalImportTests.swift (in target 'TackleboxTests' from project 'Tacklebox')
+
+SwiftDriver\ Compilation TackleboxTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TackleboxTests -Onone @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -target arm64-apple-ios17.0-simulator -g -module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/tacklebox-six-features-20260909/derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -F /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -c -j12 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/tacklebox-six-features-20260909/derived/SDKStatCaches.noindex/iphonesimulator26.5-23F81a-6cfe768891a92b912361537c460fe42b.sdkstatcache -output-file-map /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -sdk-module-cache-path /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/tacklebox-six-features-20260909/derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-generated-files.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-own-target-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests-project-headers.hmap -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/include -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources/arm64 -Xcc -I/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests-Swift.h -working-directory /Volumes/working\ /recovery-2026-08-27/tacklebox-ios -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/TackleboxTests normal (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-ios17.0-simulator -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk -O0 -L/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -L/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -L/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib -F/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug-iphonesimulator -F/tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/Library/Frameworks -iframework /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk/Developer/Library/Frameworks -filelist /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -dead_strip -bundle_loader /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox -Xlinker -object_path_lto -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -objc_abi_version -Xlinker 2 -Xlinker -dependency_info -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/iphonesimulator -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.swiftmodule @/tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/Tacklebox.debug.dylib -o /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/TackleboxTests
+
+CopySwiftLibs /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/TackleboxTests --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/Frameworks --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/PlugIns --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/SystemExtensions --scan-folder /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/Extensions --platform iphonesimulator --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'TackleboxTests' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name TackleboxTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.5.sdk --xcode-version 17F113 --platform-family iOS --deployment-target 17.0 --bundle-identifier com.tacklebox.ios.tests --output /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest --target-triple arm64-apple-ios17.0-simulator --binary-file /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app/PlugIns/TackleboxTests.xctest/TackleboxTests --dependency-file /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests_dependency_info.dat --stringsdata-file /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.SwiftFileList --metadata-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests.DependencyMetadataFileList --static-metadata-file-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/TackleboxTests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/tacklebox-six-features-20260909/derived/Build/Intermediates.noindex/Tacklebox.build/Debug-iphonesimulator/TackleboxTests.build/Objects-normal/arm64/TackleboxTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-09-09 12:43:55.495 appintentsmetadataprocessor[87900:81177348] Starting appintentsmetadataprocessor export
+2026-09-09 12:43:55.502 appintentsmetadataprocessor[87900:81177348] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+Validate /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app (in target 'Tacklebox' from project 'Tacklebox')
+    cd /Volumes/working\ /recovery-2026-08-27/tacklebox-ios
+    builtin-validationUtility /tmp/tacklebox-six-features-20260909/derived/Build/Products/Debug-iphonesimulator/Tacklebox.app -shallow-bundle -infoplist-subpath Info.plist
+
+Test Suite 'All tests' started at 2026-09-09 12:44:23.848.
+Test Suite 'All tests' passed at 2026-09-09 12:44:23.849.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+◇ Test run started.
+↳ Testing Library Version: 1902
+↳ Target Platform: arm64-apple-ios13.0-simulator
+◇ Suite AuditRegressionTests started.
+◇ Test barbelRejectsBirdAndSelectsExactFish() started.
+✔ Test barbelRejectsBirdAndSelectsExactFish() passed after 0.001 seconds.
+◇ Test wrongFishAndMissingTaxonomyAreRejected() started.
+✔ Test wrongFishAndMissingTaxonomyAreRejected() passed after 0.001 seconds.
+◇ Test ambiguousCustomNamesAreNotGuessed() started.
+✔ Test ambiguousCustomNamesAreNotGuessed() passed after 0.001 seconds.
+◇ Test startupRepairsKnownWrongTaxonomyWithoutDeletingCatches() started.
+✔ Test startupRepairsKnownWrongTaxonomyWithoutDeletingCatches() passed after 0.048 seconds.
+◇ Test deletingSessionWaterPreservesCatchPhotosAndSession() started.
+✔ Test deletingSessionWaterPreservesCatchPhotosAndSession() passed after 0.026 seconds.
+◇ Test resetClearsAllJournalEntitiesAndReplaysOnboarding() started.
+✔ Test resetClearsAllJournalEntitiesAndReplaysOnboarding() passed after 0.024 seconds.
+◇ Test repeatAndStaleImportPlansReuseSessionsAndLinkNewCatches() started.
+✔ Test repeatAndStaleImportPlansReuseSessionsAndLinkNewCatches() passed after 0.018 seconds.
+◇ Test sessionOnlyFilesAreImportableAndDistinctSessionsSurvive() started.
+✔ Test sessionOnlyFilesAreImportableAndDistinctSessionsSurvive() passed after 0.011 seconds.
+◇ Test currentWeatherNeverStampsBackdatedOrFutureCatch() started.
+✔ Test currentWeatherNeverStampsBackdatedOrFutureCatch() passed after 0.001 seconds.
+◇ Test quickLogDoesNotInventOrJoinALaterSession() started.
+✔ Test quickLogDoesNotInventOrJoinALaterSession() passed after 0.001 seconds.
+✔ Suite AuditRegressionTests passed after 0.134 seconds.
+◇ Suite BiteWindowWidgetTests started.
+◇ Test readingAPlaceNeverThrowsEvenWithoutTheAppGroup() started.
+✔ Test readingAPlaceNeverThrowsEvenWithoutTheAppGroup() passed after 0.008 seconds.
+◇ Test aSavedPlaceComesBackWhenTheAppGroupIsAvailable() started.
+✔ Test aSavedPlaceComesBackWhenTheAppGroupIsAvailable() passed after 0.010 seconds.
+◇ Test aStalePlaceIsIgnored() started.
+✔ Test aStalePlaceIsIgnored() passed after 0.008 seconds.
+◇ Test clearingRemovesTheStoredPlace() started.
+✔ Test clearingRemovesTheStoredPlace() passed after 0.009 seconds.
+◇ Test theNextWindowIsTheFirstThatHasNotFinished() started.
+✔ Test theNextWindowIsTheFirstThatHasNotFinished() passed after 0.001 seconds.
+◇ Test aWindowInProgressIsStillTheNextWindow() started.
+✔ Test aWindowInProgressIsStillTheNextWindow() passed after 0.001 seconds.
+◇ Test afterTheLastWindowThereIsNoneLeftToday() started.
+✔ Test afterTheLastWindowThereIsNoneLeftToday() passed after 0.001 seconds.
+◇ Test aDayAlwaysOffersWindowsAndARating() started.
+✔ Test aDayAlwaysOffersWindowsAndARating() passed after 0.001 seconds.
+◇ Test windowsAreOrderedByStart() started.
+✔ Test windowsAreOrderedByStart() passed after 0.001 seconds.
+✔ Suite BiteWindowWidgetTests passed after 0.041 seconds.
+◇ Suite CatchEditingTests started.
+◇ Test aNewCatchStartsWithNoNote() started.
+✔ Test aNewCatchStartsWithNoNote() passed after 0.003 seconds.
+◇ Test aNoteIsStoredAndReadBack() started.
+✔ Test aNoteIsStoredAndReadBack() passed after 0.004 seconds.
+◇ Test editingKeepsTheSameRecordRatherThanCreatingAnother() started.
+✔ Test editingKeepsTheSameRecordRatherThanCreatingAnother() passed after 0.005 seconds.
+◇ Test editingAWeightMovesThePersonalBest() started.
+✔ Test editingAWeightMovesThePersonalBest() passed after 0.004 seconds.
+◇ Test clearingAWeightLeavesTheCatchUnweighedRatherThanZero() started.
+✔ Test clearingAWeightLeavesTheCatchUnweighedRatherThanZero() passed after 0.003 seconds.
+◇ Test aNotedCatchStillMatchesTheFilterOnItsOtherFields() started.
+✔ Test aNotedCatchStillMatchesTheFilterOnItsOtherFields() passed after 0.002 seconds.
+✔ Suite CatchEditingTests passed after 0.025 seconds.
+◇ Suite CatchFilterTests started.
+◇ Test textMatchesSpeciesWaterRigAndBait() started.
+✔ Test textMatchesSpeciesWaterRigAndBait() passed after 0.003 seconds.
+◇ Test textIgnoresCaseAndSurroundingSpace() started.
+✔ Test textIgnoresCaseAndSurroundingSpace() passed after 0.003 seconds.
+◇ Test textAlsoMatchesTheScientificName() started.
+✔ Test textAlsoMatchesTheScientificName() passed after 0.003 seconds.
+◇ Test aTermThatMatchesNothingReturnsNothing() started.
+✔ Test aTermThatMatchesNothingReturnsNothing() passed after 0.003 seconds.
+◇ Test speciesAndWaterNarrowIndependently() started.
+✔ Test speciesAndWaterNarrowIndependently() passed after 0.003 seconds.
+◇ Test aMinimumWeightExcludesLighterAndUnweighedFish() started.
+✔ Test aMinimumWeightExcludesLighterAndUnweighedFish() passed after 0.004 seconds.
+◇ Test personalBestsOnlyKeepsTheHeaviestOfEachSpecies() started.
+✔ Test personalBestsOnlyKeepsTheHeaviestOfEachSpecies() passed after 0.003 seconds.
+◇ Test thePeriodIsMeasuredFromTheSuppliedClock() started.
+✔ Test thePeriodIsMeasuredFromTheSuppliedClock() passed after 0.003 seconds.
+◇ Test clausesCombine() started.
+✔ Test clausesCombine() passed after 0.004 seconds.
+◇ Test resultsComeBackNewestFirst() started.
+✔ Test resultsComeBackNewestFirst() passed after 0.003 seconds.
+◇ Test anEmptyFilterIsNotActiveAndKeepsEverything() started.
+✔ Test anEmptyFilterIsNotActiveAndKeepsEverything() passed after 0.003 seconds.
+◇ Test whitespaceOnlyTextDoesNotCountAsAFilter() started.
+✔ Test whitespaceOnlyTextDoesNotCountAsAFilter() passed after 0.001 seconds.
+◇ Test theSummaryDescribesEveryActiveClause() started.
+✔ Test theSummaryDescribesEveryActiveClause() passed after 0.001 seconds.
+✔ Suite CatchFilterTests passed after 0.042 seconds.
+◇ Suite CatchMetricsTests started.
+◇ Test metricUsesGramsBelowAKiloAndKilogramsAbove() started.
+✔ Test metricUsesGramsBelowAKiloAndKilogramsAbove() passed after 0.001 seconds.
+◇ Test imperialSplitsIntoPoundsAndOunces() started.
+✔ Test imperialSplitsIntoPoundsAndOunces() passed after 0.001 seconds.
+◇ Test ouncesCarryIntoPounds() started.
+✔ Test ouncesCarryIntoPounds() passed after 0.001 seconds.
+◇ Test anUnweighedCatchFormatsAsADash() started.
+✔ Test anUnweighedCatchFormatsAsADash() passed after 0.001 seconds.
+◇ Test lengthFollowsTheUnitSystem() started.
+✔ Test lengthFollowsTheUnitSystem() passed after 0.001 seconds.
+◇ Test personalBestIsTheHeaviestOfEachSpecies() started.
+✔ Test personalBestIsTheHeaviestOfEachSpecies() passed after 0.003 seconds.
+◇ Test unweighedCatchesCannotBeAPersonalBest() started.
+✔ Test unweighedCatchesCannotBeAPersonalBest() passed after 0.002 seconds.
+◇ Test speciesLookupIgnoresCaseAndSurroundingSpace() started.
+✔ Test speciesLookupIgnoresCaseAndSurroundingSpace() passed after 0.003 seconds.
+◇ Test insertingAnExistingSpeciesReusesItRatherThanDuplicating() started.
+✔ Test insertingAnExistingSpeciesReusesItRatherThanDuplicating() passed after 0.002 seconds.
+◇ Test deviceDefaultFollowsTheMeasurementSystem() started.
+✔ Test deviceDefaultFollowsTheMeasurementSystem() passed after 0.001 seconds.
+✔ Suite CatchMetricsTests passed after 0.013 seconds.
+◇ Suite CatchPhotoTests started.
+◇ Test aCatchWithNoPhotoHasNone() started.
+✔ Test aCatchWithNoPhotoHasNone() passed after 0.004 seconds.
+◇ Test aSinglePhotoBecomesTheCoverAndCreatesNoExtraRows() started.
+✔ Test aSinglePhotoBecomesTheCoverAndCreatesNoExtraRows() passed after 0.004 seconds.
+◇ Test extraPhotosComeBackInOrderAfterTheCover() started.
+✔ Test extraPhotosComeBackInOrderAfterTheCover() passed after 0.004 seconds.
+◇ Test orderSurvivesAShuffledRelationship() started.
+✔ Test orderSurvivesAShuffledRelationship() passed after 0.005 seconds.
+◇ Test replacingTheSetSwapsTheCoverAndRemovesTheOldRows() started.
+✔ Test replacingTheSetSwapsTheCoverAndRemovesTheOldRows() passed after 0.006 seconds.
+◇ Test clearingRemovesEveryPhotoIncludingTheCover() started.
+✔ Test clearingRemovesEveryPhotoIncludingTheCover() passed after 0.004 seconds.
+◇ Test aLegacySinglePhotoCatchStillWorks() started.
+✔ Test aLegacySinglePhotoCatchStillWorks() passed after 0.004 seconds.
+◇ Test deletingACatchCascadesToItsPhotos() started.
+✔ Test deletingACatchCascadesToItsPhotos() passed after 0.007 seconds.
+◇ Test extrasStillShowWhenTheCoverIsSomehowMissing() started.
+✔ Test extrasStillShowWhenTheCoverIsSomehowMissing() passed after 0.004 seconds.
+✔ Suite CatchPhotoTests passed after 0.047 seconds.
+◇ Suite CatchWaterTests started.
+◇ Test aCatchRecordsItsOwnWaterWithNoSession() started.
+✔ Test aCatchRecordsItsOwnWaterWithNoSession() passed after 0.004 seconds.
+◇ Test aCatchWithoutItsOwnWaterFallsBackToTheSession() started.
+✔ Test aCatchWithoutItsOwnWaterFallsBackToTheSession() passed after 0.003 seconds.
+◇ Test theCatchWaterWinsOverTheSessionAndLeavesItAlone() started.
+✔ Test theCatchWaterWinsOverTheSessionAndLeavesItAlone() passed after 0.003 seconds.
+◇ Test deletingAWaterKeepsTheCatch() started.
+✔ Test deletingAWaterKeepsTheCatch() passed after 0.005 seconds.
+◇ Test theWaterFilterSeesACatchLoggedWithoutASession() started.
+✔ Test theWaterFilterSeesACatchLoggedWithoutASession() passed after 0.003 seconds.
+✔ Suite CatchWaterTests passed after 0.020 seconds.
+◇ Suite FeatureExpansionTests started.
+◇ Test twoFreeSessionsThirdBlockedAndResetDoesNotRenewAllowance() started.
+✔ Test twoFreeSessionsThirdBlockedAndResetDoesNotRenewAllowance() passed after 0.019 seconds.
+◇ Test concurrentStartIsRejectedWithoutSpendingSecondAllowance() started.
+✔ Test concurrentStartIsRejectedWithoutSpendingSecondAllowance() passed after 0.004 seconds.
+◇ Test pkceUsesRFC7636VectorAndRejectsWrongOrDuplicateState() started.
+✔ Test pkceUsesRFC7636VectorAndRejectsWrongOrDuplicateState() passed after 0.010 seconds.
+◇ Test forecastKeepsMissingValuesMissingAndRejectsMismatchedArrays() started.
+✔ Test forecastKeepsMissingValuesMissingAndRejectsMismatchedArrays() passed after 0.002 seconds.
+◇ Test seasonBookPaginatesLongNotesAndOmitsThemWhenRequested() started.
+✔ Test seasonBookPaginatesLongNotesAndOmitsThemWhenRequested() passed after 0.105 seconds.
+✔ Suite FeatureExpansionTests passed after 0.142 seconds.
+◇ Suite JournalExportTests started.
+◇ Test payloadCarriesEveryTopLevelSection() started.
+✔ Test payloadCarriesEveryTopLevelSection() passed after 0.037 seconds.
+◇ Test aCatchCarriesItsSpeciesWeightWaterAndTackle() started.
+✔ Test aCatchCarriesItsSpeciesWeightWaterAndTackle() passed after 0.004 seconds.
+◇ Test catchesReferenceTheirSessionByItsExportedNumber() started.
+✔ Test catchesReferenceTheirSessionByItsExportedNumber() passed after 0.003 seconds.
+◇ Test photosAreFlaggedButNotEmbedded() started.
+✔ Test photosAreFlaggedButNotEmbedded() passed after 0.004 seconds.
+◇ Test anUnweighedCatchOmitsWeightRatherThanWritingZero() started.
+✔ Test anUnweighedCatchOmitsWeightRatherThanWritingZero() passed after 0.004 seconds.
+◇ Test aCatchNoteIsExportedWhenPresentAndOmittedWhenBlank() started.
+✔ Test aCatchNoteIsExportedWhenPresentAndOmittedWhenBlank() passed after 0.003 seconds.
+◇ Test imperialSettingsAreRecordedSoTheFileIsSelfDescribing() started.
+✔ Test imperialSettingsAreRecordedSoTheFileIsSelfDescribing() passed after 0.003 seconds.
+◇ Test theWrittenFileIsValidJsonAndReadableBack() started.
+✔ Test theWrittenFileIsValidJsonAndReadableBack() passed after 0.004 seconds.
+◇ Test exportingTwiceReusesTheSameFilename() started.
+✔ Test exportingTwiceReusesTheSameFilename() passed after 0.005 seconds.
+◇ Test anEmptyVaultStillProducesAValidFile() started.
+✔ Test anEmptyVaultStillProducesAValidFile() passed after 0.001 seconds.
+✔ Suite JournalExportTests passed after 0.074 seconds.
+◇ Suite JournalImportTests started.
+◇ Test rubbishIsRejectedWithoutTouchingTheVault() started.
+✔ Test rubbishIsRejectedWithoutTouchingTheVault() passed after 0.008 seconds.
+◇ Test someoneElsesJsonIsRejected() started.
+✔ Test someoneElsesJsonIsRejected() passed after 0.003 seconds.
+◇ Test aNewerFormatIsRefusedRatherThanMisread() started.
+✔ Test aNewerFormatIsRefusedRatherThanMisread() passed after 0.007 seconds.
+◇ Test aJournalExportedByThisAppImportsBackIntact() started.
+✔ Test aJournalExportedByThisAppImportsBackIntact() passed after 0.060 seconds.
+◇ Test importingTheSameFileTwiceAddsNothingTheSecondTime() started.
+✔ Test importingTheSameFileTwiceAddsNothingTheSecondTime() passed after 0.014 seconds.
+◇ Test duplicatesInsideTheFileAreCollapsed() started.
+✔ Test duplicatesInsideTheFileAreCollapsed() passed after 0.011 seconds.
+◇ Test existingCatchesAndWatersSurviveAnImport() started.
+✔ Test existingCatchesAndWatersSurviveAnImport() passed after 0.013 seconds.
+◇ Test aWaterThatAlreadyExistsIsReusedNotDuplicated() started.
+✔ Test aWaterThatAlreadyExistsIsReusedNotDuplicated() passed after 0.010 seconds.
+◇ Test aSpeciesThatAlreadyExistsIsReusedNotDuplicated() started.
+✔ Test aSpeciesThatAlreadyExistsIsReusedNotDuplicated() passed after 0.011 seconds.
+◇ Test anAndroidShapedJournalImports() started.
+✔ Test anAndroidShapedJournalImports() passed after 0.018 seconds.
+◇ Test aRealAndroidExportImports() started.
+✔ Test aRealAndroidExportImports() passed after 0.014 seconds.
+◇ Test aCurrentAndroidExportImportsWithItsWaterTypesIntact() started.
+✔ Test aCurrentAndroidExportImportsWithItsWaterTypesIntact() passed after 0.003 seconds.
+◇ Test unknownEnumSpellingsFallBackRatherThanFailing() started.
+✔ Test unknownEnumSpellingsFallBackRatherThanFailing() passed after 0.001 seconds.
+✔ Suite JournalImportTests passed after 0.179 seconds.
+◇ Suite OnboardingSeedTests started.
+◇ Test aFreshInstallSeedsPresetsAndSpeciesButNoWaters() started.
+✔ Test aFreshInstallSeedsPresetsAndSpeciesButNoWaters() passed after 0.015 seconds.
+◇ Test choosingSamplesAddsTheSameTwoWatersAsAndroid() started.
+✔ Test choosingSamplesAddsTheSameTwoWatersAsAndroid() passed after 0.018 seconds.
+◇ Test seedingSamplesTwiceAddsThemOnce() started.
+✔ Test seedingSamplesTwiceAddsThemOnce() passed after 0.019 seconds.
+◇ Test notChoosingSamplesLeavesTheVaultEmpty() started.
+✔ Test notChoosingSamplesLeavesTheVaultEmpty() passed after 0.007 seconds.
+✔ Suite OnboardingSeedTests passed after 0.061 seconds.
+◇ Suite PhotoBackupTests started.
+◇ Test completeRestorePreservesPhotosDecimalsAndRelationships() started.
+✔ Test completeRestorePreservesPhotosDecimalsAndRelationships() passed after 0.027 seconds.
+◇ Test repeatedRestoreKeepsEditsUntilReplacementIsSelected() started.
+✔ Test repeatedRestoreKeepsEditsUntilReplacementIsSelected() passed after 0.021 seconds.
+◇ Test damagedPhotoAndMissingRelationshipsLeaveJournalUnchanged() started.
+✔ Test damagedPhotoAndMissingRelationshipsLeaveJournalUnchanged() passed after 0.011 seconds.
+◇ Test checksumAndFutureVersionAreRejected() started.
+✔ Test checksumAndFutureVersionAreRejected() passed after 0.001 seconds.
+◇ Test actualAndroidReexportRestoresBackToIOS() started.
+✔ Test actualAndroidReexportRestoresBackToIOS() passed after 0.016 seconds.
+◇ Test sessionDatesMustContainTheirCatches() started.
+✔ Test sessionDatesMustContainTheirCatches() passed after 0.001 seconds.
+✔ Suite PhotoBackupTests passed after 0.079 seconds.
+◇ Suite SolunarRatingTests started.
+◇ Test newAndFullMoonsRateBestAndQuartersNeverRateWell() started.
+✔ Test newAndFullMoonsRateBestAndQuartersNeverRateWell() passed after 0.043 seconds.
+◇ Test everyRatingIsReachableAcrossAYear() started.
+✔ Test everyRatingIsReachableAcrossAYear() passed after 0.042 seconds.
+◇ Test theEighthOfSeptember2026IsAWaningCrescent() started.
+✔ Test theEighthOfSeptember2026IsAWaningCrescent() passed after 0.001 seconds.
+◇ Test majorsComeFromTheMoonTransits() started.
+✔ Test majorsComeFromTheMoonTransits() passed after 0.001 seconds.
+◇ Test sunriseFallsBeforeSunsetInTheNorthernSummer() started.
+✔ Test sunriseFallsBeforeSunsetInTheNorthernSummer() passed after 0.001 seconds.
+✔ Suite SolunarRatingTests passed after 0.088 seconds.
+✔ Test run with 105 tests in 13 suites passed after 0.953 seconds.
+2026-09-09 12:44:25.153 xcodebuild[87585:81168566] [MT] IDETestOperationsObserverDebug: 29.491 elapsed -- Testing started completed.
+2026-09-09 12:44:25.153 xcodebuild[87585:81168566] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-09-09 12:44:25.153 xcodebuild[87585:81168566] [MT] IDETestOperationsObserverDebug: 29.491 sec, +29.491 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/tacklebox-six-features-20260909/final-tests.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started
