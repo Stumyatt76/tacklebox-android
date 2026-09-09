@@ -39,10 +39,13 @@ object JournalImport {
         val presets: List<PresetRecord> = emptyList(),
         val duplicateCatches: Int = 0,
         val newWaters: Int = 0,
-        val newSpecies: Int = 0
+        val newSpecies: Int = 0,
+        val newSessions: Int = 0,
+        val newGear: Int = 0,
+        val newPresets: Int = 0
     ) {
         val newCatches: Int get() = catches.count { !it.isDuplicate }
-        val isEmpty: Boolean get() = catches.isEmpty() && waters.isEmpty() && gear.isEmpty() && presets.isEmpty()
+        val isEmpty: Boolean get() = catches.isEmpty() && waters.isEmpty() && sessions.isEmpty() && gear.isEmpty() && presets.isEmpty()
     }
 
     data class CatchRecord(
@@ -113,23 +116,36 @@ object JournalImport {
             seen += key
         }
 
-        val newWaters = waters.count { it.name.lowercase() !in existing.waterNames }
+        val knownWaters = existing.waterNames.toMutableSet()
+        val newWaters = waters.count { knownWaters.add(it.name.lowercase()) }
         val newSpecies = catches.mapNotNull { it.species?.lowercase() }.toSet().minus(existing.speciesNames).size
 
-        return Plan(catches, waters, sessions, gear, presets, duplicates, newWaters, newSpecies)
+        val knownSessions = existing.sessionFingerprints.toMutableSet()
+        val newSessions = sessions.count { knownSessions.add(sessionFingerprint(it.startAt, it.endAt, it.water, it.notes)) }
+        val knownGear = existing.gearNames.toMutableSet()
+        val newGear = gear.count { knownGear.add(it.name.lowercase()) }
+        val knownPresets = existing.presetKeys.toMutableSet()
+        val newPresets = presets.count { knownPresets.add("${it.kind}:${it.name.lowercase()}") }
+        return Plan(catches, waters, sessions, gear, presets, duplicates, newWaters, newSpecies, newSessions, newGear, newPresets)
     }
 
     /** What the vault already holds, so a plan can be worked out without the importer touching the database. */
     data class ExistingVault(
         val catchFingerprints: Set<String>,
         val waterNames: Set<String>,
-        val speciesNames: Set<String>
+        val speciesNames: Set<String>,
+        val sessionFingerprints: Set<String> = emptySet(),
+        val gearNames: Set<String> = emptySet(),
+        val presetKeys: Set<String> = emptySet()
     ) {
         companion object {
             fun from(state: AppState) = ExistingVault(
                 catchFingerprints = state.catches.map { fingerprint(it.species?.name, it.item.caughtAt) }.toSet(),
                 waterNames = state.waters.map { it.name.lowercase() }.toSet(),
-                speciesNames = state.species.map { it.name.lowercase() }.toSet()
+                speciesNames = state.species.map { it.name.lowercase() }.toSet(),
+                sessionFingerprints = state.sessions.map { sessionFingerprint(it.item.startAt, it.item.endAt, it.water?.name, it.item.notes) }.toSet(),
+                gearNames = state.gear.map { it.name.lowercase() }.toSet(),
+                presetKeys = state.presets.map { "${it.kind}:${it.name.lowercase()}" }.toSet()
             )
         }
     }
@@ -137,6 +153,9 @@ object JournalImport {
     /** Same species, same instant. Two catches of one species at the same moment are the same fish. */
     fun fingerprint(species: String?, caughtAt: Instant) =
         "${species?.lowercase() ?: "?"}@${caughtAt.epochSecond}"
+
+    fun sessionFingerprint(start: Instant, end: Instant?, water: String?, notes: String): String =
+        Gson().toJson(listOf(start.epochSecond.toString(), end?.epochSecond?.toString().orEmpty(), water?.trim()?.lowercase().orEmpty(), notes))
 
     // --- Lenient decoding ---------------------------------------------------------------------------------------
     // The two apps spell their enums differently — iOS `dayTicket`, Android `DAY_TICKET` — and each has members the

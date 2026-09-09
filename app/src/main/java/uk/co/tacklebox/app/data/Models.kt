@@ -92,6 +92,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     // the orphaned references have to be cleared by hand.
     @Query("DELETE FROM ConditionsSnapshot WHERE catchId=:id") suspend fun deleteConditionsFor(id:Long)
     @Query("DELETE FROM Catch WHERE id=:id") suspend fun deleteCatch(id:Long)
+    @Query("DELETE FROM ConditionsSnapshot") suspend fun clearConditions()
     @Query("DELETE FROM CatchPhoto") suspend fun clearPhotos()
     @Query("DELETE FROM Water WHERE id=:id") suspend fun deleteWater(id:Long)
     @Query("UPDATE Catch SET waterId=NULL WHERE waterId=:id") suspend fun detachCatchesFromWater(id:Long)

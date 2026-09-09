@@ -6,12 +6,14 @@ package uk.co.tacklebox.app.data
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.*
 import java.time.Instant
 import java.util.Locale
 
-class TackleboxRepository(context: Context) {
-    private val db = Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db").addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+class TackleboxRepository internal constructor(private val db: TackleboxDatabase) {
+    constructor(context: Context) : this(Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db")
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build())
     private val dao = db.dao()
     val settings = dao.settings().map { it ?: defaults() }.distinctUntilChanged()
     val species = dao.species()
@@ -40,6 +42,13 @@ class TackleboxRepository(context: Context) {
         // discarded any unit choice, the species-ID token and the backup flag (TB-A-14).
         dao.saveSettings((dao.settings().first() ?: defaults()).copy(onboardingComplete=true))
     }
+    suspend fun repairSpeciesMetadata() = db.withTransaction {
+        for (item in dao.speciesOnce()) {
+            val expected = seedSpecies.firstOrNull { it.name.equals(item.name, ignoreCase=true) }?.scientificName ?: continue
+            if (item.scientificName != expected) dao.updateSpecies(item.copy(scientificName=expected,
+                commonName=null, about=null, referencePhotoUrl=null, photoAttribution=null))
+        }
+    }
     suspend fun saveSettings(v:AppSettings)=dao.saveSettings(v)
     suspend fun addSpecies(name:String):Long=dao.addSpecies(Species(name=name, discipline=Discipline.COARSE))
     suspend fun addWater(v:Water)=dao.addWater(v)
@@ -48,7 +57,12 @@ class TackleboxRepository(context: Context) {
     suspend fun existingWaters():List<Water> = dao.watersOnce()
     suspend fun existingGear():List<GearItem> = dao.gearOnce()
     suspend fun existingPresets():List<TacklePreset> = dao.presetsOnce()
-    suspend fun addCatch(v:Catch, conditions:ConditionsSnapshot?=null):Long { val id=dao.addCatch(v); conditions?.let { dao.addConditions(it.copy(catchId=id)) }; return id }
+    suspend fun addCatch(v:Catch, conditions:ConditionsSnapshot?=null, photos:List<String> = emptyList()):Long = db.withTransaction {
+        val id=dao.addCatch(v)
+        conditions?.let { dao.addConditions(it.copy(catchId=id)) }
+        savePhotos(id, photos)
+        id
+    }
     suspend fun startSession(waterId:Long?)=dao.addSession(FishingSession(waterId=waterId))
     suspend fun stopSession(id:Long)=dao.stopSession(id)
     suspend fun addGear(v:GearItem)=dao.addGear(v)
@@ -64,15 +78,15 @@ class TackleboxRepository(context: Context) {
         if (uris.size > 1) dao.addPhotos(uris.drop(1).mapIndexed { index, uri -> CatchPhoto(catchId=catchId, uri=uri, order=index) })
     }
     suspend fun openSession():FishingSession?=dao.openSession()
-    suspend fun deleteCatch(id:Long){ dao.deleteConditionsFor(id); dao.clearPhotosFor(id); dao.deleteCatch(id) }
+    suspend fun deleteCatch(id:Long) = db.withTransaction { dao.deleteConditionsFor(id); dao.clearPhotosFor(id); dao.deleteCatch(id) }
     /** Deleting a water keeps its catches and sessions; there are no foreign keys, so detach them explicitly. */
-    suspend fun deleteWater(id:Long){ dao.detachCatchesFromWater(id); dao.detachSessionsFromWater(id); dao.deleteWater(id) }
+    suspend fun deleteWater(id:Long) = db.withTransaction { dao.detachCatchesFromWater(id); dao.detachSessionsFromWater(id); dao.deleteWater(id) }
     fun species(id:Long)=dao.species(id); fun water(id:Long)=dao.water(id); fun catchById(id:Long)=dao.catchById(id)
     /**
      * Merges an import plan. Nothing existing is deleted or overwritten: waters, species, gear and presets are
      * matched by name and reused, and catches already present were flagged as duplicates during planning.
      */
-    suspend fun applyImport(plan: uk.co.tacklebox.app.JournalImport.Plan): uk.co.tacklebox.app.JournalImport.Result {
+    suspend fun applyImport(plan: uk.co.tacklebox.app.JournalImport.Plan): uk.co.tacklebox.app.JournalImport.Result = db.withTransaction {
         val result = uk.co.tacklebox.app.JournalImport.Result()
 
         val waters = existingWaters().associateBy { it.name.lowercase() }.toMutableMap()
@@ -83,12 +97,15 @@ class TackleboxRepository(context: Context) {
             result.waters++
         }
 
-        // Session ids in a file are local to that file, so they are recreated and remapped.
+        val knownSessions = dao.sessions().first().associate {
+            uk.co.tacklebox.app.JournalImport.sessionFingerprint(it.item.startAt, it.item.endAt, it.water?.name, it.item.notes) to it.item.id
+        }.toMutableMap()
         val sessionsByFileId = mutableMapOf<Int, Long>()
         for (record in plan.sessions) {
-            val waterId = record.water?.let { waters[it.lowercase()]?.id }
-            val id = dao.addSession(FishingSession(waterId=waterId, startAt=record.startAt, endAt=record.endAt, notes=record.notes))
-            result.sessions++
+            val key = uk.co.tacklebox.app.JournalImport.sessionFingerprint(record.startAt, record.endAt, record.water, record.notes)
+            val id = knownSessions[key] ?: dao.addSession(FishingSession(
+                waterId=record.water?.let { waters[it.lowercase()]?.id }, startAt=record.startAt, endAt=record.endAt, notes=record.notes
+            )).also { knownSessions[key] = it; result.sessions++ }
             record.id?.let { sessionsByFileId[it] = id }
         }
 
@@ -107,12 +124,14 @@ class TackleboxRepository(context: Context) {
         }
 
         val species = existingSpecies().associateBy { it.name.lowercase() }.toMutableMap()
-        for (record in plan.catches.filter { !it.isDuplicate }) {
+        val knownCatches = dao.catches().first().map { uk.co.tacklebox.app.JournalImport.fingerprint(it.species?.name, it.item.caughtAt) }.toMutableSet()
+        for (record in plan.catches) {
+            if (!knownCatches.add(uk.co.tacklebox.app.JournalImport.fingerprint(record.species, record.caughtAt))) continue
             var speciesId: Long? = null
             record.species?.takeIf { it.isNotBlank() }?.let { name ->
                 val found = species[name.lowercase()]
-                speciesId = found?.id ?: dao.addSpecies(Species(name=name, discipline=Discipline.COARSE, scientificName=record.scientificName)).also {
-                    species[name.lowercase()] = Species(id=it, name=name, discipline=Discipline.COARSE, scientificName=record.scientificName)
+                speciesId = found?.id ?: dao.addSpecies(Species(name=name, discipline=Discipline.COARSE, scientificName=uk.co.tacklebox.app.services.SpeciesLookup.canonicalName(name) ?: record.scientificName)).also {
+                    species[name.lowercase()] = Species(id=it, name=name, discipline=Discipline.COARSE, scientificName=uk.co.tacklebox.app.services.SpeciesLookup.canonicalName(name) ?: record.scientificName)
                     result.species++
                 }
             }
@@ -127,10 +146,10 @@ class TackleboxRepository(context: Context) {
             }
             result.catches++
         }
-        return result
+        result
     }
 
-    suspend fun deleteAllUserData() { dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
+    suspend fun deleteAllUserData() = db.withTransaction { dao.clearConditions(); dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
     companion object {
         /**
          * The same two waters as `SeedData.swift`, so "Begin with sample waters" means the same thing on both

@@ -14,13 +14,13 @@ Private, offline fishing journal — your catches, waters and days on the bank. 
 
 Tacklebox is a calm, private home for your fishing — a place to keep every catch, every water, and every day on the bank.
 
-Built offline-first, it works fully without a signal. No account, no adverts, no tracking. Your journal lives on your device and nowhere else.
+Built offline-first, the journal works without a signal; live data services require a connection. No account, no adverts, no tracking. Your journal lives on your device and nowhere else.
 
 THE VAULT
 Your featured personal best, today's bite windows, and a running tally of fish landed, species caught and waters kept — with a personal-best board that grows as you do.
 
 LOG A CATCH
-Add a photo, pick a species — carp, coarse, predator, game and sea — record the water, and note weight, length, rig and bait. Tacklebox stamps the moment with the day's conditions automatically, and celebrates a new personal best when you beat one.
+Add a photo, pick a species — carp, coarse, predator, game and sea — record the water, and note weight, length, rig and bait. Tacklebox adds available current conditions to recent catches, and celebrates a new personal best when you beat one.
 
 BITE WINDOWS (SOLUNAR)
 Major and minor feeding periods, sunrise and sunset, moon phase and a day rating — all calculated on your device from the date and your location. No connection needed.
@@ -28,7 +28,7 @@ Major and minor feeding periods, sunrise and sunset, moon phase and a day rating
 LIVE CONDITIONS
 When you want them, pull nearby weather, coastal tides and sea state, and river levels and flow from public sources (Open-Meteo, NOAA, the UK Environment Agency and the USGS). Everything degrades gracefully when you're offline.
 
-Tide predictions come from NOAA free of charge in the contiguous United States. Elsewhere they need a free WorldTides key, which you add in Settings; the rest of the app never asks for one.
+Tide predictions come from NOAA free of charge in the contiguous United States. Elsewhere they need a WorldTides key, which you add in Settings; the rest of the app never asks for one.
 
 WATERS & SESSIONS
 Keep a private passport for each water, with your own swim notes and per-water insights. Start and stop sessions to remember your hours on the bank.
@@ -42,7 +42,7 @@ A tidy inventory of your gear and your rig and bait presets, plus a performance 
 PRIVATE BY DESIGN
 • No account, no login, no social feed
 • No adverts, no analytics, no tracking
-• Your data stays on your device; export your whole journal to a file whenever you like
+• Your data stays on your device; export journal records to JSON; catch photos are not included
 • Your precise fishing spots are never stored
 
 ONE-TIME PURCHASE

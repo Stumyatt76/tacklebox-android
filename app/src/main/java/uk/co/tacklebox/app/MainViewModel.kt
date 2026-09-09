@@ -28,10 +28,12 @@ sealed interface LiveState<out T>{ data object Idle:LiveState<Nothing>; data obj
 
 class MainViewModel(app:Application):AndroidViewModel(app){
     val repo=(app as TackleboxApp).repository
+    init { viewModelScope.launch { repo.repairSpeciesMetadata() } }
     val state=combine(repo.settings,repo.species,repo.waters,repo.catches,repo.sessions,repo.gear,repo.presets){ a:Array<Any?> ->
         @Suppress("UNCHECKED_CAST") AppState(true,a[0] as AppSettings,a[1] as List<Species>,a[2] as List<Water>,a[3] as List<CatchRow>,a[4] as List<SessionRow>,a[5] as List<GearItem>,a[6] as List<TacklePreset>)
     }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),AppState())
     val marine=MutableStateFlow<LiveState<MarineResponse>>(LiveState.Idle); val river=MutableStateFlow<LiveState<RiverResult>>(LiveState.Idle)
+    val marinePlace=MutableStateFlow(""); val riverPlace=MutableStateFlow("")
     val tides=MutableStateFlow<LiveState<TideResult>>(LiveState.Idle)
     val suggestions=MutableStateFlow<LiveState<List<SpeciesSuggestion>>>(LiveState.Idle)
     val exported=MutableStateFlow<Uri?>(null)
@@ -49,22 +51,23 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      * recorded, while the detail screen blamed the network for the rest (TB-A-09).
      */
     fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),stamped:ConditionsSnapshot?=null,onDone:(Long)->Unit)=viewModelScope.launch{
-        val openSession=repo.openSession()
+        val openSession=repo.openSession()?.takeIf { !caughtAt.isBefore(it.startAt) }
         // The capture screen reads the conditions when it opens and shows them, so the angler can see what is being
         // stamped and retry a failed reading before saving. Falling back to a fresh capture keeps any other caller
         // working, and keeps a save honest if the screen never managed one.
-        val conditions=stamped ?: captureConditions()
+        val conditions=if (CapturePolicy.canStampCurrentWeather(caughtAt)) stamped else null
+        try {
         val id=repo.addCatch(
             Catch(speciesId=speciesId,weightGrams=weight,lengthCm=length,rig=rig?.ifBlank{null},bait=bait?.ifBlank{null},returned=returned,
                   waterId=waterId ?: openSession?.waterId, sessionId=openSession?.id, photoUri=photos.firstOrNull(), caughtAt=caughtAt, notes=notes.trim()),
-            conditions)
-        repo.savePhotos(id, photos)
+            conditions, photos)
         onDone(id)
+        } catch (_: Exception) { notice.value="Couldn’t save this catch. Your entries are still here; please try again." }
     }
 
     /** Best-effort: a failed or slow weather call must never stop a catch being saved, so the moon phase is the floor. */
-    suspend fun captureConditions():ConditionsSnapshot {
-        val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_INLAND
+    suspend fun captureConditions():ConditionsSnapshot? {
+        val (lat,lon)=DeviceLocation.current(getApplication()) ?: return null
         val moon=Astronomy.calculate(latitude=lat,longitude=lon).moonPhase
         val weather=runCatching{Services.weather.current(lat,lon)}.getOrNull()
         val current=weather?.current
@@ -106,7 +109,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      */
     fun enrichSpecies(species:Species)=viewModelScope.launch{
         if(!species.referencePhotoUrl.isNullOrBlank()) return@launch
-        val info=SpeciesLookup.enrich(species.name) ?: return@launch
+        val info=SpeciesLookup.enrich(species.name, species.scientificName) ?: return@launch
         repo.saveSpecies(species.copy(
             scientificName=species.scientificName ?: info.scientificName,
             commonName=species.commonName ?: info.commonName,
@@ -117,7 +120,9 @@ class MainViewModel(app:Application):AndroidViewModel(app){
 
     fun marine()=viewModelScope.launch{
         marine.value=LiveState.Loading
-        val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_COASTAL
+        val place=DeviceLocation.current(getApplication())
+        marinePlace.value=if(place==null) "Reference location: the Solent — your location is unavailable" else "Near your approximate location"
+        val (lat,lon)=place ?: DeviceLocation.FALLBACK_COASTAL
         marine.value=runCatching{LiveState.Data(Services.marine.forecast(lat,lon))}.getOrElse{LiveState.Error("Couldn’t update the sea forecast. Try again.")}
     }
     /**
@@ -129,14 +134,18 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      */
     fun tides()=viewModelScope.launch{
         tides.value=LiveState.Loading
-        val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_COASTAL
+        val place=DeviceLocation.current(getApplication())
+        marinePlace.value=if(place==null) "Reference location: the Solent — your location is unavailable" else "Near your approximate location"
+        val (lat,lon)=place ?: DeviceLocation.FALLBACK_COASTAL
         val key=repo.settings.first().worldTidesKey
         tides.value=runCatching{LiveState.Data(Tides.tides(lat,lon,key))}
             .getOrElse{LiveState.Error(it.message ?: "Couldn’t update tide predictions. Try again.")}
     }
     fun river()=viewModelScope.launch{
         river.value=LiveState.Loading
-        val (lat,lon)=DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_INLAND
+        val place=DeviceLocation.current(getApplication())
+        riverPlace.value=if(place==null) "Reference location: central England — your location is unavailable" else "Near your approximate location"
+        val (lat,lon)=place ?: DeviceLocation.FALLBACK_INLAND
         river.value=runCatching{LiveState.Data(Rivers.gauges(lat,lon))}
             .getOrElse{LiveState.Error(it.message ?: "Couldn’t update river gauges. Try again.")}
     }
@@ -176,8 +185,10 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     fun confirmImport()=viewModelScope.launch{
         val plan=importPlan.value ?: return@launch
         importPlan.value=null
-        importResult.value=repo.applyImport(plan)
+        runCatching { repo.applyImport(plan) }
+            .onSuccess { importResult.value=it }
+            .onFailure { notice.value="The import could not be saved. No imported records were kept. Try again." }
     }
 
-    fun deleteData()=viewModelScope.launch{repo.deleteAllUserData()}
+    fun deleteData()=viewModelScope.launch{runCatching { repo.deleteAllUserData() }.onFailure { notice.value="Couldn’t delete your journal. Please try again." }}
 }
