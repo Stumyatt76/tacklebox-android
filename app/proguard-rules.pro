@@ -15,6 +15,17 @@
 # Room entities and relation POJOs — keep field names stable.
 -keep class uk.co.tacklebox.app.data.** { *; }
 
+# Root-package DTOs that Gson (de)serialises reflectively: the portable photo-backup
+# envelope, the OAuth token record and the planner forecast cache. Release minifies,
+# so their field names MUST stay stable or written JSON becomes unreadable (the
+# photo-backup decoder matches literal field-name keys → silent restore failure).
+-keep class uk.co.tacklebox.app.BackupPayload { *; }
+-keep class uk.co.tacklebox.app.BackupRecord { *; }
+-keep class uk.co.tacklebox.app.SpeciesAuthorization { *; }
+-keep class uk.co.tacklebox.app.PendingSpeciesSignIn { *; }
+-keep class uk.co.tacklebox.app.TripForecast { *; }
+-keep class uk.co.tacklebox.app.TripForecastDay { *; }
+
 # Any field annotated with @SerializedName keeps its name even if its class is renamed.
 -keepclassmembers,allowobfuscation class * {
     @com.google.gson.annotations.SerializedName <fields>;
