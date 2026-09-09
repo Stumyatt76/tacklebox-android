@@ -13,8 +13,9 @@ import java.util.Locale
 
 class TackleboxRepository internal constructor(private val db: TackleboxDatabase) {
     constructor(context: Context) : this(Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db")
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build())
-    private val dao = db.dao()
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build())
+    internal val dao = db.dao()
+    suspend fun <T> transaction(block: suspend () -> T): T = db.withTransaction { block() }
     val settings = dao.settings().map { it ?: defaults() }.distinctUntilChanged()
     val species = dao.species()
     val waters = dao.waters()
@@ -49,7 +50,10 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
                 commonName=null, about=null, referencePhotoUrl=null, photoAttribution=null))
         }
     }
-    suspend fun saveSettings(v:AppSettings)=dao.saveSettings(v)
+    suspend fun saveSettings(v:AppSettings)=db.withTransaction {
+        val used=dao.settings().first()?.freeSessionsStarted ?: 0
+        dao.saveSettings(v.copy(freeSessionsStarted=maxOf(used,v.freeSessionsStarted)))
+    }
     suspend fun addSpecies(name:String):Long=dao.addSpecies(Species(name=name, discipline=Discipline.COARSE))
     suspend fun addWater(v:Water)=dao.addWater(v)
     suspend fun addSession(v:FishingSession)=dao.addSession(v)
@@ -63,7 +67,24 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         savePhotos(id, photos)
         id
     }
-    suspend fun startSession(waterId:Long?)=dao.addSession(FishingSession(waterId=waterId))
+    suspend fun startSession(waterId:Long?,unlimited:Boolean=false) = db.withTransaction {
+        require(dao.openSession()==null) { "A fishing session is already running." }
+        val current=dao.settings().first() ?: defaults()
+        require(uk.co.tacklebox.app.SessionAllowance.canStart(current.freeSessionsStarted,unlimited)) { "Your two free sessions are complete. Unlock Unlimited to start another." }
+        if(!unlimited)dao.saveSettings(current.copy(freeSessionsStarted=current.freeSessionsStarted+1))
+        dao.addSession(FishingSession(waterId=waterId,isTrialSession=!unlimited))
+    }
+    suspend fun saveSession(value:FishingSession) = db.withTransaction {
+        val current=dao.sessions().first().firstOrNull { it.item.id==value.id }
+            ?: error("This session is no longer in the journal.")
+        val problem=uk.co.tacklebox.app.SessionRules.error(value.startAt,value.endAt,current.catches.map { it.caughtAt })
+        require(problem==null) { problem.orEmpty() }
+        dao.updateSession(value)
+    }
+    suspend fun saveGear(value:GearItem) {
+        require(value.name.isNotBlank()) { "Give this gear a name." }
+        if(value.id==0L)dao.addGear(value) else dao.updateGear(value)
+    }
     suspend fun stopSession(id:Long)=dao.stopSession(id)
     suspend fun addGear(v:GearItem)=dao.addGear(v)
     suspend fun deleteGear(v:GearItem)=dao.deleteGear(v)

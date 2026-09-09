@@ -57,7 +57,7 @@ object DeviceLocation {
                 }
             }
         } catch (e:CancellationException) { throw e } catch (_:SecurityException) { null } catch (_:Exception) { null }
-        return location?.let { coarse(it.latitude) to coarse(it.longitude) }
+        return location?.let { coarse(it.latitude) to coarse(it.longitude) }?.also { uk.co.tacklebox.app.SessionNotification.recordPlace(context,it.first,it.second) }
     }
 
     private fun coarse(value:Double) = (value * 100).roundToInt() / 100.0

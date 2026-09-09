@@ -1,0 +1,39 @@
+{
+  "iosTests": 105,
+  "androidUnitTests": 133,
+  "androidDeviceTests": 12,
+  "total": 250,
+  "codeCommit": "29fb33c0563c4ac475f58ee2eff1a1ffc2b570ac",
+  "base": "3f7c9bec005d8e47a33f0dad73c6817d10ee61f3",
+  "identity": {
+    "ios": 82,
+    "android": 83
+  },
+  "externalTests": "not run: store purchase lifecycle, real OAuth/CV, signed physical/cloud longevity",
+  "pdf": [
+    {
+      "file": "qa-season-android-private.pdf",
+      "pages": 2,
+      "notesOmitted": true,
+      "sha256": "de5e65a5a42116e13f093b44b140d19b806604161d172bcc5ae85543d68bbbfb"
+    },
+    {
+      "file": "qa-season-android.pdf",
+      "pages": 6,
+      "notesOmitted": false,
+      "sha256": "0fe37ae1d6a28af6ef039f4c2062f19366904e8b56a7b065a450432bf31f7603"
+    },
+    {
+      "file": "qa-season-ios-private.pdf",
+      "pages": 2,
+      "notesOmitted": true,
+      "sha256": "815ed4c8bc7ec440d8aa6c01acaaf7c18ace19084950c8c95ce7c3192804acf7"
+    },
+    {
+      "file": "qa-season-ios.pdf",
+      "pages": 6,
+      "notesOmitted": false,
+      "sha256": "1ecb9e7d3cb85cda30ff47808fd8417c94252da8aea1d31b16cb1335481d0207"
+    }
+  ]
+}

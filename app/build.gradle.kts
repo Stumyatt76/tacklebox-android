@@ -23,11 +23,13 @@ android {
     namespace = "uk.co.tacklebox.app"
     compileSdk = 36
     defaultConfig {
+        buildConfigField("String", "INATURALIST_CLIENT_ID", "\"" + (providers.gradleProperty("tackleboxINaturalistClientId").orNull ?: "") + "\"")
+        buildConfigField("String", "PLAY_BILLING_PUBLIC_KEY", "\"" + (providers.gradleProperty("tackleboxPlayBillingPublicKey").orNull ?: "") + "\"")
         applicationId = "uk.co.tacklebox.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.1"
+        versionCode = 13
+        versionName = "2.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -57,6 +59,7 @@ android {
 }
 
 dependencies {
+    implementation("com.android.billingclient:billing:9.1.0")
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)

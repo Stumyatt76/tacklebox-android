@@ -18,7 +18,7 @@ enum class Discipline { CARP, COARSE, MATCH, GAME, SEA, PREDATOR }
 // no "sea". Alder Mere read "Syndicate · Oxfordshire" on one platform and "Lake · Oxfordshire" on the other from
 // the same sample data (TB-P-14). SEA becomes SHORE, which is what the importers already mapped it to.
 enum class WaterType { LAKE, POND, RESERVOIR, RIVER, CANAL, SHORE, BOAT, SYNDICATE, DAY_TICKET, COMMERCIAL }
-enum class GearCategory { ROD, REEL, LINE, HOOK, LURE, NET, CLOTHING, OTHER }
+enum class GearCategory { ROD, REEL, LINE, HOOK, TERMINAL, LURE, NET, CLOTHING, OTHER }
 enum class PresetKind { RIG, BAIT }
 
 class Converters {
@@ -28,11 +28,11 @@ class Converters {
     @TypeConverter fun strings(v: List<String>): String = v.joinToString("|")
 }
 
-@Entity data class AppSettings(@PrimaryKey val id: Int = 1, val unitSystem: UnitSystem = UnitSystem.METRIC, val activeDisciplines: List<String> = Discipline.entries.map { it.name }, val onboardingComplete: Boolean = false, val backupEnabled: Boolean = false, val speciesIdToken: String = "", val worldTidesKey: String = "")
-@Entity data class Species(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val discipline: Discipline, val scientificName: String? = null, val commonName: String? = null, val about: String? = null, val referencePhotoUrl: String? = null, val photoAttribution: String? = null)
-@Entity data class Water(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val type: WaterType, val region: String, val disciplines: List<String> = emptyList(), val swimNotes: String = "")
-@Entity(indices = [Index("waterId")]) data class FishingSession(@PrimaryKey(autoGenerate = true) val id: Long = 0, val waterId: Long? = null, val startAt: Instant = Instant.now(), val endAt: Instant? = null, val notes: String = "")
-@Entity(indices = [Index("speciesId"), Index("sessionId"), Index("waterId")]) data class Catch(@PrimaryKey(autoGenerate = true) val id: Long = 0, val speciesId: Long? = null, val weightGrams: Double? = null, val lengthCm: Double? = null, val returned: Boolean = true, val photoUri: String? = null, val rig: String? = null, val bait: String? = null, val caughtAt: Instant = Instant.now(), val sessionId: Long? = null, val waterId: Long? = null, val notes: String = "")
+@Entity data class AppSettings(@PrimaryKey val id: Int = 1, val unitSystem: UnitSystem = UnitSystem.METRIC, val activeDisciplines: List<String> = Discipline.entries.map { it.name }, val onboardingComplete: Boolean = false, val backupEnabled: Boolean = false, val speciesIdToken: String = "", val worldTidesKey: String = "", @ColumnInfo(defaultValue="0") val freeSessionsStarted:Int = 0)
+@Entity data class Species(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val discipline: Discipline, val scientificName: String? = null, val commonName: String? = null, val about: String? = null, val referencePhotoUrl: String? = null, val photoAttribution: String? = null, @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
+@Entity data class Water(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val type: WaterType, val region: String, val disciplines: List<String> = emptyList(), val swimNotes: String = "", @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
+@Entity(indices = [Index("waterId")]) data class FishingSession(@ColumnInfo(defaultValue="0") val isTrialSession:Boolean = false, @PrimaryKey(autoGenerate = true) val id: Long = 0, val waterId: Long? = null, val startAt: Instant = Instant.now(), val endAt: Instant? = null, val notes: String = "", @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
+@Entity(indices = [Index("speciesId"), Index("sessionId"), Index("waterId")]) data class Catch(@PrimaryKey(autoGenerate = true) val id: Long = 0, val speciesId: Long? = null, val weightGrams: Double? = null, val lengthCm: Double? = null, val returned: Boolean = true, val photoUri: String? = null, val rig: String? = null, val bait: String? = null, val caughtAt: Instant = Instant.now(), val sessionId: Long? = null, val waterId: Long? = null, val notes: String = "", @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
 @Entity(indices = [Index(value=["catchId"], unique=true)]) data class ConditionsSnapshot(@PrimaryKey(autoGenerate = true) val id: Long = 0, val catchId: Long, val airTempC: Double? = null, val windDirection: String? = null, val windSpeedKph: Double? = null, val pressureHpa: Double? = null, val pressureTrend: String? = null, val moonPhase: String? = null)
 /**
  * One of a catch's extra photos.
@@ -42,8 +42,8 @@ class Converters {
  * stored twice.
  */
 @Entity(indices = [Index("catchId")]) data class CatchPhoto(@PrimaryKey(autoGenerate = true) val id: Long = 0, val catchId: Long, val uri: String, val order: Int = 0)
-@Entity data class GearItem(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val category: GearCategory, val notes: String = "")
-@Entity data class TacklePreset(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val kind: PresetKind)
+@Entity data class GearItem(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val category: GearCategory, val notes: String = "", @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
+@Entity data class TacklePreset(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val kind: PresetKind, @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
 
 data class CatchRow(@Embedded val item: Catch, @Relation(parentColumn="speciesId", entityColumn="id") val species: Species?, @Relation(parentColumn="waterId", entityColumn="id") val water: Water?, @Relation(parentColumn="id", entityColumn="catchId") val conditions: ConditionsSnapshot?, @Relation(parentColumn="id", entityColumn="catchId") val extraPhotos: List<CatchPhoto> = emptyList()) {
     /** Every photo, cover first, then the extras in the order the angler arranged them. */
@@ -81,6 +81,9 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("SELECT * FROM TacklePreset ORDER BY kind,name") fun presets(): Flow<List<TacklePreset>>
     @Insert suspend fun addPreset(value:TacklePreset)
     @Delete suspend fun deletePreset(value:TacklePreset)
+    @Update suspend fun updateSession(value:FishingSession)
+    @Update suspend fun updateGear(value:GearItem)
+    @Update suspend fun updatePreset(value:TacklePreset)
     @Update suspend fun updateSpecies(value:Species)
     @Update suspend fun updateWater(value:Water)
     @Update suspend fun updateCatch(value:Catch)
@@ -104,7 +107,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM TacklePreset") suspend fun clearPresets()
 }
 
-@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=5, exportSchema=true)
+@Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=6, exportSchema=true)
 @TypeConverters(Converters::class)
 abstract class TackleboxDatabase: RoomDatabase() { abstract fun dao(): TackleboxDao }
 
@@ -153,5 +156,17 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
 val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `AppSettings` ADD COLUMN `worldTidesKey` TEXT NOT NULL DEFAULT ''")
+    }
+}
+
+/** Stable identities survive edits and cross-platform photo backup round trips. */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `AppSettings` ADD COLUMN `freeSessionsStarted` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `FishingSession` ADD COLUMN `isTrialSession` INTEGER NOT NULL DEFAULT 0")
+        listOf("Species","Water","FishingSession","Catch","GearItem","TacklePreset").forEach { table ->
+            db.execSQL("ALTER TABLE " + table + " ADD COLUMN portableID TEXT NOT NULL DEFAULT ''")
+            db.execSQL("UPDATE " + table + " SET portableID = lower(hex(randomblob(16)))")
+        }
     }
 }
