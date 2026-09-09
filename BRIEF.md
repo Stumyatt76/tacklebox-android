@@ -1,4 +1,4 @@
-Build **Tacklebox for Android** — a native Android port of an existing iOS SwiftUI app. It is a private, offline-first fishing app for anglers, sold as a one-time paid download with full access (NO subscriptions, NO in-app purchases). Target feature parity with the iOS app described below.
+Build **Tacklebox for Android** — a native Android port of an existing iOS SwiftUI app. It is a private, offline-first fishing app for anglers, offered as a free download with two fishing sessions, then a one-time Unlimited in-app purchase (no subscription). Target feature parity with the iOS app described below.
 
 ## Stack
 - Kotlin + Jetpack Compose, Material 3 with a custom dark theme (the app is dark-only).
@@ -46,7 +46,7 @@ No advertising, no tracking, no analytics SDKs.
 ## Product rules
 - **Offline-first**: all logging, sessions, waters, gear, insights and solunar work fully offline. Only live river/tide/weather need a connection and must fail gracefully ("couldn't update, try again").
 - **Private**: no account, no login, no social feed. Data lives on-device; optional user-owned cloud backup only.
-- **Paid, full access**: every feature included; NO in-app purchases or subscriptions anywhere in the app or store listing.
+- **Two free sessions, then Unlimited**: every feature included in each session; a non-consumable purchase unlocks further sessions. Existing records and exports stay accessible. No subscription.
 - Missing photos (e.g. species reference images) simply fall back to a tasteful fish-glyph placeholder; users can add their own photo.
 
 ## Deliverable

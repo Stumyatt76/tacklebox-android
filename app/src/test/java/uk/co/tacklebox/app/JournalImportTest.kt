@@ -123,7 +123,7 @@ class JournalImportTest {
         // dayTicket used to have no Android equivalent and landed on LAKE. With the enums aligned (TB-P-14) an
         // iOS journal keeps what the water actually was.
         assertEquals(WaterType.DAY_TICKET, plan.waters.single().type)
-        assertEquals(GearCategory.OTHER, plan.gear.single().category)
+        assertEquals(GearCategory.TERMINAL, plan.gear.single().category)
         assertEquals(PresetKind.BAIT, plan.presets.single().kind)
     }
 

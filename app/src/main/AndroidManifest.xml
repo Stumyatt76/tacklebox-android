@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!--
       allowBackup is off deliberately. With it on and no extraction rules, Android Auto Backup silently copied the
@@ -24,12 +26,23 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".SpeciesOAuthCallbackActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="uk.co.tacklebox.app" android:host="oauth" android:path="/inaturalist" />
+            </intent-filter>
+        </activity>
         <!-- The bite-window widget. Computed locally from date and position, so it needs no data or network. -->
         <receiver android:name=".widget.BiteWindowWidgetReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/bite_window_widget_info" />
+        </receiver>
+        <receiver android:name=".SessionNotificationReceiver" android:exported="false">
+            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>
         </receiver>
         <provider
             android:name="androidx.core.content.FileProvider"

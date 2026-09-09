@@ -42,13 +42,13 @@ A tidy inventory of your gear and your rig and bait presets, plus a performance 
 PRIVATE BY DESIGN
 • No account, no login, no social feed
 • No adverts, no analytics, no tracking
-• Your data stays on your device; export journal records to JSON; catch photos are not included
+• Keep your journal on-device; export JSON records, a portable photo backup, or a Season Book PDF
 • Your precise fishing spots are never stored
 
 ONE-TIME PURCHASE
-Every feature is included. No subscriptions and no in-app purchases — buy it once, keep it for good.
+Free download with two complete fishing sessions, then a one-time Unlimited in-app purchase. No subscription. Existing journals and exports remain accessible.
 
-Optional extras such as AI species identification use a recognition service token you provide, and are never required.
+Optional photo identification uses iNaturalist sign-in and requires provider recognition access. Manual species selection is always available.
 
 Tight lines.
 
@@ -71,5 +71,4 @@ them because each would have been a promise on a public listing that the app doe
 
 Still to confirm before publishing, because they are store settings rather than code:
 
-- **"ONE-TIME PURCHASE"** assumes the Play listing is priced, not free. The code half is verifiable —
-  there is no billing library, so "no subscriptions and no in-app purchases" is true either way.
+- Set the download to free, create `tacklebox_unlimited`, configure its price and public verification key, then exercise the real Play purchase lifecycle. The new build uses Google Play Billing. No console changes have been made by this code change.

@@ -10,6 +10,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import uk.co.tacklebox.app.data.*
 import uk.co.tacklebox.app.services.*
 import java.time.Instant
@@ -27,17 +29,53 @@ data class AppState(val loaded:Boolean=false,val settings:AppSettings=AppSetting
 sealed interface LiveState<out T>{ data object Idle:LiveState<Nothing>; data object Loading:LiveState<Nothing>; data class Data<T>(val value:T):LiveState<T>; data class Error(val message:String):LiveState<Nothing> }
 
 class MainViewModel(app:Application):AndroidViewModel(app){
+    val connection=(app as TackleboxApp).speciesConnection
+    val store=(app as TackleboxApp).unlimitedStore
+    val showAccess=MutableStateFlow(false)
     val repo=(app as TackleboxApp).repository
     init { viewModelScope.launch { repo.repairSpeciesMetadata() } }
     val state=combine(repo.settings,repo.species,repo.waters,repo.catches,repo.sessions,repo.gear,repo.presets){ a:Array<Any?> ->
         @Suppress("UNCHECKED_CAST") AppState(true,a[0] as AppSettings,a[1] as List<Species>,a[2] as List<Water>,a[3] as List<CatchRow>,a[4] as List<SessionRow>,a[5] as List<GearItem>,a[6] as List<TacklePreset>)
-    }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),AppState())
+    }.onEach { SessionNotification.update(app,it.sessions.firstOrNull { row->row.item.endAt==null }) }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),AppState())
     val marine=MutableStateFlow<LiveState<MarineResponse>>(LiveState.Idle); val river=MutableStateFlow<LiveState<RiverResult>>(LiveState.Idle)
     val marinePlace=MutableStateFlow(""); val riverPlace=MutableStateFlow("")
     val tides=MutableStateFlow<LiveState<TideResult>>(LiveState.Idle)
     val suggestions=MutableStateFlow<LiveState<List<SpeciesSuggestion>>>(LiveState.Idle)
     val exported=MutableStateFlow<Uri?>(null)
     val notice=MutableStateFlow<String?>(null)
+    val photoBackupPlan=MutableStateFlow<BackupPayload?>(null)
+    val photoBackupBusy=MutableStateFlow(false)
+    val photoBackupExport=MutableStateFlow<Uri?>(null)
+    fun createPhotoBackup()=viewModelScope.launch {
+        if(photoBackupBusy.value)return@launch
+        photoBackupBusy.value=true
+        try { photoBackupExport.value=withContext(Dispatchers.IO){PhotoBackup.write(getApplication(),state.value)} }
+        catch(e:Exception){notice.value=e.message ?: "Could not create this photo backup."}
+        finally { photoBackupBusy.value=false }
+    }
+    fun previewPhotoBackup(uri:Uri)=viewModelScope.launch {
+        if(photoBackupBusy.value)return@launch
+        photoBackupPlan.value=null
+        photoBackupBusy.value=true
+        try {
+            photoBackupPlan.value=withContext(Dispatchers.IO){
+                val data=getApplication<Application>().contentResolver.openInputStream(uri)?.use(PhotoBackupFormat::readBounded)
+                    ?: error("The selected backup cannot be opened.")
+                PhotoBackupFormat.decode(data)
+            }
+        } catch(e:Exception){notice.value=e.message ?: "The selected backup is invalid."}
+        finally { photoBackupBusy.value=false }
+    }
+    fun restorePhotoBackup(replace:Boolean)=viewModelScope.launch {
+        if(photoBackupBusy.value)return@launch
+        val payload=photoBackupPlan.value ?: return@launch
+        photoBackupBusy.value=true
+        try {
+            val restored=withContext(Dispatchers.IO){PhotoBackup.restore(getApplication(),repo,payload,replace)}
+            photoBackupPlan.value=null;notice.value="Restored "+restored+" records. Catch photos are included."
+        } catch(e:Exception){notice.value="The backup could not be restored. No imported records were kept. "+(e.message ?: "")}
+        finally { photoBackupBusy.value=false }
+    }
     val importPlan=MutableStateFlow<JournalImport.Plan?>(null)
     val importResult=MutableStateFlow<JournalImport.Result?>(null)
 
@@ -52,6 +90,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      */
     fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),stamped:ConditionsSnapshot?=null,onDone:(Long)->Unit)=viewModelScope.launch{
         val openSession=repo.openSession()?.takeIf { !caughtAt.isBefore(it.startAt) }
+        if(!store.state.value.unlimited && openSession?.isTrialSession!=true) { showAccess.value=true;return@launch }
         // The capture screen reads the conditions when it opens and shows them, so the angler can see what is being
         // stamped and retry a failed reading before saving. Falling back to a fresh capture keeps any other caller
         // working, and keeps a save honest if the screen never managed one.
@@ -88,11 +127,23 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     suspend fun solunarPlace():Pair<Double,Double> = DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_INLAND
 
     fun addWater(name:String,type:WaterType,region:String)=viewModelScope.launch{repo.addWater(Water(name=name,type=type,region=region))}
-    fun updateWater(v:Water)=viewModelScope.launch{repo.saveWater(v)}
+    fun updateWater(v:Water,onDone:()->Unit={})=viewModelScope.launch {
+        runCatching { repo.saveWater(v) }.onSuccess { onDone() }.onFailure { notice.value="Could not save this water. Please try again." }
+    }
     fun updateCatch(v:Catch,photos:List<String>?=null)=viewModelScope.launch{repo.saveCatch(v);photos?.let{repo.savePhotos(v.id,it)}}
     fun addSpecies(name:String)=viewModelScope.launch{repo.addSpecies(name)}
-    fun startSession(water:Long?)=viewModelScope.launch{repo.startSession(water)}
-    fun stopSession(id:Long)=viewModelScope.launch{repo.stopSession(id)}
+    fun startSession(water:Long?)=viewModelScope.launch {
+        runCatching { repo.startSession(water,store.state.value.unlimited) }.onFailure { notice.value=it.message ?: "Could not start this session." }
+    }
+    fun saveSession(value:FishingSession,onDone:()->Unit={})=viewModelScope.launch {
+        runCatching { repo.saveSession(value) }.onSuccess { onDone() }.onFailure { notice.value=it.message ?: "Could not save this session." }
+    }
+    fun saveGear(value:GearItem,onDone:()->Unit={})=viewModelScope.launch {
+        runCatching { repo.saveGear(value) }.onSuccess { onDone() }.onFailure { notice.value=it.message ?: "Could not save this gear." }
+    }
+    fun stopSession(id:Long)=viewModelScope.launch {
+        runCatching { repo.stopSession(id) }.onFailure { notice.value="Could not end this session. Please try again." }
+    }
     fun addGear(name:String,category:GearCategory)=viewModelScope.launch{repo.addGear(GearItem(name=name,category=category))}
     fun deleteGear(v:GearItem)=viewModelScope.launch{repo.deleteGear(v)}
     fun addPreset(name:String,kind:PresetKind)=viewModelScope.launch{repo.addPreset(TacklePreset(name=name,kind=kind))}
@@ -156,7 +207,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
         suggestions.value=runCatching{
             val bytes=getApplication<Application>().contentResolver.openInputStream(Uri.parse(photoUri))?.use{it.readBytes()}
                 ?: throw SpeciesIdException("That photo could not be read.")
-            LiveState.Data(SpeciesId.identify(bytes,token))
+            LiveState.Data(SpeciesId.identify(bytes,connection.apiToken(token)))
         }.getOrElse{LiveState.Error(it.message ?: "Identification failed.")}
     }
     fun clearSuggestions(){suggestions.value=LiveState.Idle}

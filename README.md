@@ -3,7 +3,7 @@
 [![Android CI](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/android.yml/badge.svg)](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/android.yml)
 [![Release](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/release.yml/badge.svg)](https://github.com/Stumyatt76/tacklebox-android/actions/workflows/release.yml)
 
-Tacklebox is a private, dark-only fishing journal for Android. It stores the angler's waters, sessions, catches, conditions, gear and presets locally with Room; there are no accounts, advertisements, analytics, subscriptions or in-app purchases.
+Tacklebox is a private, dark-only fishing journal for Android. It stores the angler's waters, sessions, catches, conditions, gear and presets locally with Room; no Tacklebox account, advertisements, analytics or subscriptions are required. Free download with two complete fishing sessions, then a one-time Unlimited in-app purchase. No subscription. Existing journals and exports remain accessible. Optional species identification uses iNaturalist sign-in.
 
 ## Requirements
 

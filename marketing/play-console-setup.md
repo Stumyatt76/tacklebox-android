@@ -7,7 +7,7 @@ Play Console → **All apps → Create app**
 - **App name:** `Tacklebox — Fishing Journal`
 - **Default language:** English (United Kingdom) – en-GB
 - **App or game:** App
-- **Free or paid:** **Paid**
+- **Free or paid:** **Free**, with a non-consumable Unlimited in-app purchase
 - **Declarations:** tick Developer Program Policies + US export laws
 - Click **Create app**
 
@@ -36,7 +36,7 @@ Fill each section using `marketing/play-data-safety.md`:
 - **Government / financial / health:** none apply
 
 ## 4. Pricing  (Monetize → Products / Pricing)
-- Paid app → set up a **payments/merchant profile** first (required for paid apps), then set the price.
+- Set up the payments/merchant profile for in-app purchases; create `tacklebox_unlimited` and select its localized price. The download itself is free.
 
 ## 5. Production release  (Release → Production → Create new release)
 - Upload **`tacklebox-1.9.aab`** (from the v1.9 GitHub release)

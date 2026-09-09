@@ -35,15 +35,14 @@
 <header>
   <p class="eyebrow">Tacklebox for Android</p>
   <h1>Privacy Policy</h1>
-  <p class="muted">Effective 8 September 2026</p>
+  <p class="muted">Draft updated 9 September 2026</p>
 </header>
 
 <div class="tldr">
   <strong>In short:</strong> Tacklebox is a private, offline-first fishing journal.
-  There are no accounts, no advertising, no analytics, and no tracking. Your catches,
+  No Tacklebox account is required. There is no advertising, analytics or tracking. Your catches,
   photos, waters, sessions and gear are stored only on your device. The app connects to
-  the internet only when you ask for live conditions, and only shares what is needed to
-  fetch that data.
+  the internet for requested live data, optional iNaturalist connection and Google Play entitlement checks.
 </div>
 
 <h2>Who we are</h2>
@@ -52,7 +51,7 @@ explains what data the app handles and why. It applies to the app only.</p>
 
 <h2>Our approach</h2>
 <ul>
-  <li>No account and no sign-in. The app does not create a user profile.</li>
+  <li>No Tacklebox account. Optional iNaturalist sign-in uses that provider’s account.</li>
   <li>No advertising, no analytics SDKs, and no third-party tracking.</li>
   <li>We do not sell, rent, or share your personal data for marketing.</li>
   <li>Your journal data lives on your device. Every core feature works fully offline.</li>
@@ -78,16 +77,13 @@ device — not your coordinates.</p>
 stored locally on your device. They are not uploaded anywhere unless you use the optional
 features described below.</p>
 
-<h3>Optional cloud backup (off by default)</h3>
-<p>You may turn on backup to <strong>your own Google Drive</strong> (app-data scope). When
-enabled, a copy of your app data is stored in your personal Google Drive account, which you
-control. We do not receive or have access to it. This option is off unless you turn it on.</p>
+<h3>Portable backups and PDF exports</h3>
+<p>Create a photo backup or Season Book PDF locally, then choose its destination through Android’s share sheet. Backups are not encrypted. Protect exported copies and delete them from each destination when no longer needed. There is no direct Google Drive integration.</p>
 
-<h3>Optional AI species identification (opt-in)</h3>
-<p>If you add your own image-recognition API token in Settings and choose to identify a
-species from a photo, that photo is sent to the third-party recognition service you have
-configured, in order to return a suggested species. This happens only when you actively use
-the feature. We do not operate that service and do not receive the image.</p>
+<h3>Optional species identification</h3>
+<p>Sign in to iNaturalist through your browser. Tacklebox never sees your password. OAuth connection tokens are encrypted using Android Keystore. The legacy manually supplied API token remains in the app’s private database; credentials are excluded from backups. Identification sends the selected photo and applicable approximate location only when requested. Disconnect removes the local connection; revoke provider access in your iNaturalist account.</p>
+<h3>Purchases and session notifications</h3>
+<p>Two sessions are free. The optional one-time Unlimited purchase is processed by Google Play. Tacklebox verifies and caches the signed purchase receipt on-device; no card details or receipts are sent to a developer server. Resetting the journal does not reset the allowance. Optional notifications show session time and catch count without water names or photos. A rounded location and timestamp may be kept locally for bite windows.</p>
 
 <h2>Third-party services</h2>
 <p>When you use live conditions or optional features, requests go directly from your device
@@ -95,11 +91,12 @@ to the relevant provider. Depending on which features you use, these may include
 <ul>
   <li><strong>Open-Meteo</strong> — weather and marine/tide conditions (receives approximate coordinates).</li>
   <li><strong>Environment Agency (UK) real-time flood-monitoring</strong> — river gauge data (receives approximate coordinates).</li>
-  <li><strong>An image-recognition provider you configure</strong> — only if you use species identification (receives the photo you choose).</li>
-  <li><strong>Google Drive</strong> — only if you enable backup (stores data in your own account).</li>
+  <li><strong>iNaturalist</strong> — only if you use species identification (receives the photo you choose).</li>
+  <li><strong>Google Play</strong> — optional purchases and entitlement checks.</li>
+  <li><strong>USGS, NOAA and WorldTides</strong> — relevant river and tide information.</li>
 </ul>
 <p class="muted">These providers handle any data they receive under their own privacy policies.
-The app sends them only what is needed for the requested feature, and no account identifiers.</p>
+Requests use only the data needed for the feature; optional iNaturalist and Google Play requests use their respective account authorizations.</p>
 
 <h2>Permissions</h2>
 <div class="card">
@@ -112,8 +109,7 @@ does not affect the app’s offline journaling features.</p>
 <h2>Keeping and deleting your data</h2>
 <p>Because your data is stored on your device, you are in control of it. You can delete your
 catches, waters, sessions, gear and presets from within the app (Settings → delete), or
-remove everything by uninstalling the app. If you enabled Google Drive backup, manage or
-delete that copy from your Google Drive account.</p>
+remove everything by uninstalling the app. Manage or delete exported backups in each destination you chose.</p>
 
 <h2>Children</h2>
 <p>Tacklebox is not directed to children under 13, and we do not knowingly collect personal
