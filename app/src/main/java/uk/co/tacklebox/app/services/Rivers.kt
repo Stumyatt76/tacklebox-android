@@ -9,6 +9,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import retrofit2.http.GET
 import retrofit2.http.Url
+import java.util.Locale
+import kotlinx.coroutines.CancellationException
 import java.time.Instant
 import java.time.OffsetDateTime
 import kotlin.math.abs
@@ -111,6 +113,7 @@ object Rivers {
             val sorted = found.sortedBy { it.distanceKm }.take(8)
             cache = Triple(latitude, longitude, sorted)
             RiverResult(sorted, cached = false)
+        } catch (e: CancellationException) { throw e
         } catch (e: RiverError) {
             // "No gauges nearby" is an answer, not a failure — do not paper over it with stale ones.
             if (e is RiverError.NoGauges) throw e
@@ -124,12 +127,12 @@ object Rivers {
         cache?.takeIf { Tides.distanceKm(latitude, longitude, it.first, it.second) < CACHE_RADIUS_KM }
             ?.let { RiverResult(it.third, cached = true) }
 
-    private suspend fun environmentAgency(latitude: Double, longitude: Double): List<RiverGauge> = coroutineScope {
+    internal suspend fun environmentAgency(latitude: Double, longitude: Double, api: RiverStationsApi = this.api): List<RiverGauge> = coroutineScope {
         fun url(parameter: String) =
             "https://environment.data.gov.uk/flood-monitoring/id/stations" +
-                "?lat=${"%.2f".format(latitude)}&long=${"%.2f".format(longitude)}&dist=25&parameter=$parameter"
-        val levels = async { runCatching { api.stations(url("level")).items }.getOrDefault(emptyList()) }
-        val flows = async { runCatching { api.stations(url("flow")).items }.getOrDefault(emptyList()) }
+                "?lat=${"%.2f".format(Locale.US, latitude)}&long=${"%.2f".format(Locale.US, longitude)}&dist=25&parameter=$parameter"
+        val levels = async { api.stations(url("level")).items }
+        val flows = async { api.stations(url("flow")).items }
 
         // A station can appear under both parameters; merge on its reference so it is listed once with both.
         val merged = LinkedHashMap<String, EAStation>()
@@ -150,7 +153,7 @@ object Rivers {
             async {
                 val primary = station.measures.firstOrNull { it.parameter?.lowercase() == "level" }
                     ?: station.measures.firstOrNull()
-                val history = history(primary)
+                val history = history(primary, api)
                 val latest = history.lastOrNull()
                 if (latest == null) null else {
                     val measurement = RiverMeasurement(latest.value, primary?.unitName.orEmpty())
@@ -167,22 +170,20 @@ object Rivers {
         }.mapNotNull { it.await() }
     }
 
-    private suspend fun history(measure: EAMeasure?): List<RiverReading> {
+    private suspend fun history(measure: EAMeasure?, api: RiverStationsApi): List<RiverReading> {
         val id = measure?.id?.substringAfterLast('/') ?: return emptyList()
         val url = "https://environment.data.gov.uk/flood-monitoring/id/measures/$id/readings?_sorted&_limit=12"
-        return runCatching {
-            api.readings(url).items.mapNotNull { r ->
+        return api.readings(url).items.mapNotNull { r ->
                 val at = r.dateTime?.let(::instant) ?: return@mapNotNull null
                 val v = r.value ?: return@mapNotNull null
                 RiverReading(at, v)
             }.sortedBy { it.at }
-        }.getOrDefault(emptyList())
     }
 
     private suspend fun usgs(latitude: Double, longitude: Double): List<RiverGauge> {
         val url = "https://waterservices.usgs.gov/nwis/iv/?format=json&parameterCd=00065,00060&siteStatus=active" +
-            "&bBox=${"%.4f".format(longitude - 0.3)},${"%.4f".format(latitude - 0.3)}," +
-            "${"%.4f".format(longitude + 0.3)},${"%.4f".format(latitude + 0.3)}"
+            "&bBox=${"%.4f".format(Locale.US, longitude - 0.3)},${"%.4f".format(Locale.US, latitude - 0.3)}," +
+            "${"%.4f".format(Locale.US, longitude + 0.3)},${"%.4f".format(Locale.US, latitude + 0.3)}"
         val response = api.usgs(url)
         data class Site(val name: String, val lat: Double, val lon: Double,
                         var level: Pair<List<RiverReading>, String?>? = null,

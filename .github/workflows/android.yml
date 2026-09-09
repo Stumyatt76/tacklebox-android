@@ -15,6 +15,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Check Tacklebox product identity
+        run: python3 scripts/check-product-identity.py
+
       - name: Check license headers
         run: ./scripts/check-license-headers.sh
 

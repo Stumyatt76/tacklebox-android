@@ -12,6 +12,9 @@ import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.CancellationException
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 
@@ -44,12 +47,16 @@ object DeviceLocation {
         if (!hasPermission(context)) return null
         val client = LocationServices.getFusedLocationProviderClient(context)
         val location:Location? = try {
-            suspendCancellableCoroutine { cont ->
-                client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
-                    .addOnSuccessListener { cont.resume(it) }
-                    .addOnFailureListener { cont.resume(null) }
+            withTimeoutOrNull(8_000) {
+                suspendCancellableCoroutine { cont ->
+                    val token = CancellationTokenSource()
+                    cont.invokeOnCancellation { token.cancel() }
+                    client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, token.token)
+                        .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
+                        .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+                }
             }
-        } catch (_:SecurityException) { null } catch (_:Exception) { null }
+        } catch (e:CancellationException) { throw e } catch (_:SecurityException) { null } catch (_:Exception) { null }
         return location?.let { coarse(it.latitude) to coarse(it.longitude) }
     }
 

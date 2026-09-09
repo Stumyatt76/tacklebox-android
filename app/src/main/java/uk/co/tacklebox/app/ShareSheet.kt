@@ -33,8 +33,7 @@ object ShareSheet {
     fun season(context:Context, state:AppState, year:Int) {
         val catches = state.catches.filter { it.item.caughtAt.atZone(ZoneId.systemDefault()).year == year }
         val biggest = catches.maxByOrNull { it.item.weightGrams ?: 0.0 }
-        val hours = state.sessions.filter { it.item.endAt != null }
-            .sumOf { Duration.between(it.item.startAt, it.item.endAt!!).toMinutes() } / 60
+        val hours = SeasonMetrics.hours(state.sessions, year)
         val lines = listOfNotNull(
             "My $year on the water",
             "${catches.size} fish landed",
