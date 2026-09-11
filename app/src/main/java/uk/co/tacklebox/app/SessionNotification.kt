@@ -39,9 +39,9 @@ object SessionNotification {
         return lat to lon
     }
     private fun window(context:Context):String {
-        val (lat,lon)=lastPlace(context) ?: return "Open Tacklebox for bite windows"
+        val (lat,lon)=lastPlace(context) ?: return "Open Tacklebox to update bite windows"
         val next=BiteWindows.next(Astronomy.calculate(latitude=lat,longitude=lon).windows,LocalTime.now())
-        return next?.let { "${LocalDate.now().pretty()}: ${it.start.hm()}–${it.end.hm()} bite window" } ?: "No more bite windows today"
+        return next?.let { "Bite window ${it.start.hm()}–${it.end.hm()}" } ?: "No more bite windows today"
     }
     fun enabled(context:Context)=context.getSharedPreferences("tacklebox-live",Context.MODE_PRIVATE).getBoolean("enabled",false)
     fun setEnabled(context:Context,value:Boolean) { context.getSharedPreferences("tacklebox-live",Context.MODE_PRIVATE).edit().putBoolean("enabled",value).apply() }

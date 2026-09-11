@@ -51,14 +51,16 @@ import java.time.ZoneId
             bitmap=result.first;pages=result.second
         } catch(_:Exception){message="The PDF preview could not be opened."}
     }
-    PushedScreen("Season Book",onBack={nav.popBackStack()}) {
-        item { SectionLabel("Made to keep") }
+    PushedScreen(if(file==null)"" else "PDF preview",onBack={if(file==null)nav.popBackStack() else {file=null;bitmap=null}},eyebrow=if(file==null)"Made to keep" else null,heading=if(file==null)"Season Book" else null,
+        actions={if(file!=null)TextButton({file?.let { ShareSheet.file(context,SeasonBook.shareUri(context,it),"application/pdf","Share Season Book") }}) { Text("Share PDF",color=BrassSoft) }}) {
         if(file==null) {
-            item { Row { years.forEach { value->TextButton({year=value}) { Text(if(year==value)"[$value]" else value.toString()) } } } }
+            item { HeritageCard { Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) { SectionLabel("Season");Spacer(Modifier.weight(1f))
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { years.forEach { value->FilterChip(year==value,{year=value},{Text(value.toString())},colors=brassChipColours(),shape=androidx.compose.foundation.shape.CircleShape) } } } } }
             item { Row { Checkbox(photos,{photos=it},modifier=Modifier.semantics { contentDescription="Include catch photos" });Text("Include catch photos") };Row { Checkbox(notes,{notes=it},modifier=Modifier.semantics { contentDescription="Include personal notes" });Text("Include personal notes") } }
             item { Text("Choose your catches, then preview the PDF before sharing. Up to 500 catches per book.",color=Muted) }
             if(season.isEmpty())item { Text("No catches recorded in this year.") }
             items(season,key={it.item.id}) { fish->Row { Checkbox(fish.item.id !in omitted,{ checked->omitted=if(checked)omitted-fish.item.id else omitted+fish.item.id },modifier=Modifier.semantics { contentDescription="Include "+(fish.species?.name ?: "Unidentified catch")+" from "+fish.item.caughtAt.pretty() });Text((fish.species?.name ?: "Unidentified catch")+" · "+fish.item.caughtAt.pretty()) } }
+            if(busy)item { Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(18.dp),color=Brass,strokeWidth=2.dp);Spacer(Modifier.width(10.dp));Text("Creating your book…",color=Muted) } }
             item { Button({
                 val selected=season.filter { it.item.id !in omitted };busy=true;message=null
                 scope.launch {
@@ -68,14 +70,9 @@ import java.time.ZoneId
                 }
             },enabled=!busy && season.any { it.item.id !in omitted }) { Text("Create PDF preview") } }
         } else {
-            item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                Button({file?.let { ShareSheet.file(context,SeasonBook.shareUri(context,it),"application/pdf","Share Season Book") }}) { Text("Share PDF") }
-                OutlinedButton({file=null;bitmap=null}) { Text("Edit selection") }
-            } }
-            item { Row { TextButton({page--},enabled=page>0) { Text("Previous") };Text("Page ${page+1} of $pages");TextButton({page++},enabled=page+1<pages) { Text("Next") } } }
+            item { Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) { TextButton({page--},enabled=page>0) { Text("Previous") };Text("Page ${page+1} of $pages",color=Muted);TextButton({page++},enabled=page+1<pages) { Text("Next") };Spacer(Modifier.weight(1f));TextButton({file=null;bitmap=null}) { Text("Close",color=BrassSoft) } } }
             item { bitmap?.let { Image(it.asImageBitmap(),"Season Book page ${page+1}",Modifier.fillMaxWidth()) } ?: CircularProgressIndicator() }
         }
-        if(busy)item { CircularProgressIndicator() }
         message?.let { item { Text(it,color=Muted) } }
     }
 }

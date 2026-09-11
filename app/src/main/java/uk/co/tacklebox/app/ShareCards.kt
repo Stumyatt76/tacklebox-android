@@ -69,27 +69,48 @@ object ShareCards {
         "My ${s.year} on the water", "${s.fish} fish landed", "${s.species} species",
         s.biggestSpecies?.let { "Best · $it ${s.biggestWeight.orEmpty()}".trim() }, "$hours hours on the bank", "— logged with Tacklebox").joinToString("\n")
 
-    /** Renders the season card: "TACKLEBOX" + "{year} Season", the biggest fish, then FISH / WEIGHT / SESSIONS / SPECIES. */
+    /** Renders the season card: gradient ground, "TACKLEBOX" + "{year} Season", the biggest fish, then FISH / WEIGHT / SESSIONS / SPECIES. */
     fun seasonCard(context:Context, s:Season, photo:Bitmap?):Bitmap {
-        val fonts = Fonts(context)
-        return card(fonts, photo, glyphColour = BRASS, artworkHeight = 230) { canvas, sc ->
-            val left = 22 * sc; var y = 230 * sc + 20 * sc
-            y += text(canvas, "TACKLEBOX", left, y, fonts.bodyBold, 12 * sc, BRASS_SOFT, letterSpacing = 0.17f)
-            y += 4 * sc
-            y += text(canvas, "${s.year} Season", left, y, fonts.serifBold, 30 * sc, INK)
-            y += 8 * sc
-            y += text(canvas, "BIGGEST FISH", left, y, fonts.bodyBold, 10 * sc, BRASS, letterSpacing = 0.14f)
-            y += 3 * sc
-            y += text(canvas, if (s.biggestSpecies != null) "${s.biggestSpecies} · ${s.biggestWeight.orEmpty()}" else "A season to remember", left, y, fonts.serifSemibold, 20 * sc, BRASS_SOFT, maxWidth = (WIDTH - 44) * sc)
-            y += 14 * sc
-            val stats = listOf("FISH" to "${s.fish}", "WEIGHT" to s.weight, "SESSIONS" to "${s.sessions}", "SPECIES" to "${s.species}")
-            val column = (WIDTH - 44) * sc / stats.size
-            stats.forEachIndexed { i, (label, value) ->
-                val x = left + column * i
-                val used = text(canvas, value, x, y, fonts.serifSemibold, 20 * sc, INK, maxWidth = column - 6 * sc)
-                text(canvas, label, x, y + used + 2 * sc, fonts.bodyBold, 9 * sc, MUTED, letterSpacing = 0.12f)
-            }
+        val fonts = Fonts(context); val sc = SCALE
+        val bitmap = Bitmap.createBitmap((WIDTH * sc).toInt(), (HEIGHT * sc).toInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val bounds = RectF(0f, 0f, WIDTH * sc, HEIGHT * sc)
+        canvas.clipPath(Path().apply { addRoundRect(bounds, 24 * sc, 24 * sc, Path.Direction.CW) })
+        canvas.drawRect(bounds, Paint().apply { shader = LinearGradient(0f, 0f, bounds.right, bounds.bottom, BG, 0xFF174148.toInt(), Shader.TileMode.CLAMP) })
+        canvas.drawCircle((WIDTH / 2f + 145) * sc, (HEIGHT / 2f - 190) * sc, 145 * sc, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(41, 0x57, 0xB3, 0xA6) })
+        val left = 26 * sc; var y = 26 * sc
+        y += text(canvas, "TACKLEBOX", left, y, fonts.bodyBold, 14 * sc, BRASS_SOFT, letterSpacing = 0.16f)
+        val spark = fishGlyphPath(Size(24 * sc, 13 * sc)).asAndroidPath(); spark.offset((WIDTH - 26 - 24) * sc, 27 * sc)
+        canvas.drawPath(spark, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = BRASS_SOFT })
+        y += 12 * sc
+        y += text(canvas, "${s.year} Season", left, y, fonts.serifBold, 39 * sc, INK)
+        y += 14 * sc
+        val art = RectF(left, y, (WIDTH - 26) * sc, y + 118 * sc)
+        canvas.save(); canvas.clipPath(Path().apply { addRoundRect(art, 14 * sc, 14 * sc, Path.Direction.CW) })
+        if (photo != null) {
+            val scale = maxOf(art.width() / photo.width, art.height() / photo.height); val w = photo.width * scale; val h = photo.height * scale
+            canvas.drawBitmap(photo, null, RectF(art.centerX() - w / 2, art.centerY() - h / 2, art.centerX() + w / 2, art.centerY() + h / 2), Paint(Paint.FILTER_BITMAP_FLAG))
+            canvas.drawRect(art, Paint().apply { shader = LinearGradient(0f, art.centerY(), 0f, art.bottom, Color.TRANSPARENT, Color.argb(184, 0x0E, 0x1A, 0x1E), Shader.TileMode.CLAMP) })
+        } else {
+            canvas.drawRect(art, Paint().apply { color = INSET })
+            val glyph = fishGlyphPath(Size(art.width() - 44 * sc, art.height() - 44 * sc)).asAndroidPath(); glyph.offset(art.left + 22 * sc, art.top + 22 * sc)
+            canvas.drawPath(glyph, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TEAL })
         }
+        canvas.restore()
+        y = art.bottom + 14 * sc
+        y += text(canvas, "BIGGEST FISH", left, y, fonts.bodyBold, 9 * sc, MUTED, letterSpacing = 0.17f)
+        y += text(canvas, s.biggestSpecies ?: "A season to remember", left, y, fonts.serifSemibold, 28 * sc, INK, maxWidth = (WIDTH - 52) * sc)
+        text(canvas, s.biggestWeight ?: "—", left, y, fonts.serifSemibold, 24 * sc, BRASS_SOFT)
+        val stats = listOf("${s.fish}" to "FISH", s.weight to "WEIGHT", "${s.sessions}" to "SESSIONS", "${s.species}" to "SPECIES")
+        val column = ((WIDTH - 52) * sc - 3 * 8 * sc) / 4
+        val statTop = (HEIGHT - 26) * sc - 30 * sc
+        stats.forEachIndexed { i, (value, label) ->
+            val x = left + (column + 8 * sc) * i
+            val used = text(canvas, value, x, statTop, fonts.serifSemibold, (if (value.length > 8) 13 else 18) * sc, INK, maxWidth = column)
+            text(canvas, label, x, statTop + used + 3 * sc, fonts.bodyBold, 7 * sc, MUTED, letterSpacing = 0.1f)
+        }
+        canvas.drawRoundRect(RectF(bounds).apply { inset(1.5f, 1.5f) }, 24 * sc, 24 * sc, Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 3f; color = Color.argb(128, 0xC9, 0xA2, 0x4B) })
+        return bitmap
     }
 
     private fun card(fonts:Fonts, photo:Bitmap?, glyphColour:Int, artworkHeight:Int = 270, body:(Canvas, Float)->Unit):Bitmap {

@@ -266,7 +266,7 @@ fun java.time.LocalTime.hm():String=format(java.time.format.DateTimeFormatter.of
  * The one-line conditions summary, in the same order and units as iOS's `ConditionsMetrics.summary`.
  * Android captured these silently; the angler could not see what was being stamped on the fish (TB-P-04).
  */
-fun ConditionsSnapshot.summary(unit:UnitSystem):String{
+fun ConditionsSnapshot.summary(unit:UnitSystem,includeMoonWord:Boolean=true):String{
     fun whole(v:Double)=v.roundToInt().toString()
     val temperature=airTempC?.let{if(unit==UnitSystem.METRIC)"${whole(it)}°C" else "${whole(it*9/5+32)}°F"}
     val wind=windSpeedKph?.let{"${windDirection.orEmpty()} ${if(unit==UnitSystem.METRIC) whole(it)+" km/h" else whole(it/1.609344)+" mph"}".trim()}
@@ -275,7 +275,7 @@ fun ConditionsSnapshot.summary(unit:UnitSystem):String{
     val pressure=pressureHpa?.let{
         val reading=if(unit==UnitSystem.METRIC)"${whole(it)} hPa" else String.format("%.2f inHg",it*0.0295299830714)
         pressureTrend?.takeIf{t->t.isNotBlank()}?.let{t->"$reading ${t.lowercase()}"} ?: reading}
-    val moon=moonPhase?.let{"$it moon"}
+    val moon=moonPhase?.let{if(includeMoonWord)"$it moon" else it}
     return listOfNotNull(temperature,wind,pressure,moon).joinToString("  ·  ")
 }
 
@@ -456,9 +456,6 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
         dismissButton={TextButton({confirmDelete=false}){Text("Cancel")}})
 }
 
-
-@Composable fun Insights(s:AppState,nav:NavHostController){val total=s.catches.mapNotNull{it.item.weightGrams}.sum();Screen("Patterns from the bank","Insights"){item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","landed",Modifier.weight(1f));Stat(total.weight(s.settings.unitSystem),"total weight",Modifier.weight(1f))}};item{HeritageCard(onClick={nav.navigate("year")}){Text("YEAR ON THE WATER",color=Brass);Text("Your season, distilled",style=MaterialTheme.typography.headlineMedium);Text("Open shareable summary →",color=Muted)}};item{Breakdown("Catches over time",s.catches.groupingBy{java.time.YearMonth.from(it.item.caughtAt.atZone(ZoneId.systemDefault())).toString()}.eachCount())};item{Breakdown("Species",s.catches.groupingBy{it.species?.name?:"Unknown"}.eachCount())};item{Breakdown("Waters",s.catches.groupingBy{it.water?.name?:"Unspecified"}.eachCount())};item{HeritageCard{Text("Conditions insight",style=MaterialTheme.typography.titleLarge);Text(Insight.conditions(s.catches),color=Muted)}}}}
-@Composable fun YearOnWater(s:AppState,nav:NavHostController){var year by rememberSaveable{mutableIntStateOf(Year.now().value)};val years=(s.catches.map{it.item.caughtAt.atZone(ZoneId.systemDefault()).year}+s.sessions.map{it.item.startAt.atZone(ZoneId.systemDefault()).year}+Year.now().value).distinct().sortedDescending();val catches=s.catches.filter{it.item.caughtAt.atZone(ZoneId.systemDefault()).year==year};val biggest=SeasonSummary.biggest(catches);val hours=SeasonMetrics.hours(s.sessions,year);PushedScreen("Year on the Water",onBack={nav.popBackStack()}){item{TextButton({nav.navigate("season-book")}){Text("Create a Season Book")}};item{LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(years){y->FilterChip(year==y,{year=y},{Text(y.toString())},colors=brassChipColours())}}};item{Card(colors=CardDefaults.cardColors(containerColor=Inset),shape=RoundedCornerShape(28.dp)){Column(Modifier.padding(26.dp)){Text("TACKLEBOX · $year",color=Brass);Text("${catches.size}",style=MaterialTheme.typography.displaySmall);Text("fish landed",color=Muted);HorizontalDivider(Modifier.padding(vertical=16.dp));Text("${catches.mapNotNull{it.item.weightGrams}.sum().weight(s.settings.unitSystem)} carried gently");Text(if(biggest==null)"No biggest fish yet" else "${biggest.species?.name?:"Unknown species"} · ${biggest.item.weightGrams?.weight(s.settings.unitSystem).orEmpty()}");Text("$hours hours on the bank");Text("Top bait · ${SeasonSummary.topBait(catches)?:"—"}",color=BrassSoft)}}};item{val context=LocalContext.current;Button({ShareSheet.season(context,s,year)},Modifier.fillMaxWidth().testTag("shareSeason")){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Share summary")}}}}
 
 // Gear was always filed as OTHER and presets always as RIG, with no way to pick either and no way to delete
 // anything — deleteGear existed in the DAO but nothing reached it, and presets had no delete at all.

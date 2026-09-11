@@ -177,6 +177,9 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     fun saveGear(value:GearItem,onDone:()->Unit={})=viewModelScope.launch {
         runCatching { repo.saveGear(value) }.onSuccess { onDone() }.onFailure { fail("Couldn't save this gear",it.message ?: "Please try again.") }
     }
+    fun deleteSession(id:Long)=viewModelScope.launch {
+        runCatching { repo.deleteSession(id) }.onFailure { fail("Could not save session","Please try again. Your last saved session is kept.") }
+    }
     fun stopSession(id:Long)=viewModelScope.launch {
         runCatching { repo.stopSession(id) }.onFailure { fail("Could not save session","Your session is still open. Please try again.") }
     }

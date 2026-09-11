@@ -111,6 +111,8 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM Water WHERE id=:id") suspend fun deleteWater(id:Long)
     @Query("UPDATE Catch SET waterId=NULL WHERE waterId=:id") suspend fun detachCatchesFromWater(id:Long)
     @Query("UPDATE FishingSession SET waterId=NULL WHERE waterId=:id") suspend fun detachSessionsFromWater(id:Long)
+    @Query("UPDATE Catch SET sessionId=NULL WHERE sessionId=:id") suspend fun detachCatchesFromSession(id:Long)
+    @Query("DELETE FROM FishingSession WHERE id=:id") suspend fun deleteSession(id:Long)
     @Query("DELETE FROM Catch") suspend fun clearCatches()
     @Query("DELETE FROM FishingSession") suspend fun clearSessions()
     @Query("DELETE FROM Water") suspend fun clearWaters()

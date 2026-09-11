@@ -112,6 +112,8 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         if(value.id==0L)dao.addGear(value) else dao.updateGear(value)
     }
     suspend fun stopSession(id:Long)=dao.stopSession(id)
+    /** Deleting a session keeps its catches, which simply lose the session. The free allowance is not returned. */
+    suspend fun deleteSession(id:Long) = db.withTransaction { dao.detachCatchesFromSession(id); dao.deleteSession(id) }
     suspend fun addGear(v:GearItem)=dao.addGear(v)
     suspend fun deleteGear(v:GearItem)=dao.deleteGear(v)
     suspend fun addPreset(v:TacklePreset)=dao.addPreset(v)
