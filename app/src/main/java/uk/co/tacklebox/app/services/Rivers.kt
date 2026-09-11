@@ -88,7 +88,7 @@ data class UsgsPointValue(val value: String?, val dateTime: String?)
  * an honest "not available for your area yet".
  */
 object Rivers {
-    private const val CACHE_RADIUS_KM = 40.0
+    private const val CACHE_RADIUS_KM = 50.0
     private var cache: Triple<Double, Double, List<RiverGauge>>? = null
 
     private val api: RiverStationsApi get() = Services.riverStations

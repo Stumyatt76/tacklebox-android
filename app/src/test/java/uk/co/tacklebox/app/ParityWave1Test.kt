@@ -126,7 +126,7 @@ class ParityWave1Test {
 
     @Test fun `sea heights and temperatures follow the unit setting`() {
         assertEquals("1.2 m", 1.2.metres(UnitSystem.METRIC)); assertEquals("3.9 ft", 1.2.metres(UnitSystem.IMPERIAL))
-        assertEquals("14.2 °C", 14.2.celsius(UnitSystem.METRIC)); assertEquals("57.6 °F", 14.2.celsius(UnitSystem.IMPERIAL))
+        assertEquals("14.2°C", 14.2.celsius(UnitSystem.METRIC)); assertEquals("57.6°F", 14.2.celsius(UnitSystem.IMPERIAL))
     }
 
     @Test fun `a session that is already running is refused in the iOS words`() = runBlocking {

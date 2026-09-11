@@ -55,17 +55,6 @@ object SessionRules {
     }
 }
 
-@Composable fun WaterChoice(waters: List<Water>, selected: Long?, onChange: (Long?) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton({expanded=true}) { Text(waters.firstOrNull { it.id==selected }?.name ?: "No water assigned") }
-        DropdownMenu(expanded,{expanded=false}) {
-            DropdownMenuItem(text={Text("No water assigned")},onClick={onChange(null);expanded=false})
-            waters.forEach { water -> DropdownMenuItem(text={Text(water.name)},onClick={onChange(water.id);expanded=false}) }
-        }
-    }
-}
-
 @Composable fun GearEditor(item: GearItem?, dismiss: () -> Unit, save: (GearItem) -> Unit) {
     var name by rememberSaveable { mutableStateOf(item?.name.orEmpty()) }
     var notes by rememberSaveable { mutableStateOf(item?.notes.orEmpty()) }

@@ -37,8 +37,15 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     val state=combine(repo.settings,repo.species,repo.waters,repo.catches,repo.sessions,repo.gear,repo.presets){ a:Array<Any?> ->
         @Suppress("UNCHECKED_CAST") AppState(true,a[0] as AppSettings,a[1] as List<Species>,a[2] as List<Water>,a[3] as List<CatchRow>,a[4] as List<SessionRow>,a[5] as List<GearItem>,a[6] as List<TacklePreset>)
     }.onEach { SessionNotification.update(app,it.sessions.firstOrNull { row->row.item.endAt==null }) }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),AppState())
-    val marine=MutableStateFlow<LiveState<MarineResponse>>(LiveState.Idle); val river=MutableStateFlow<LiveState<RiverResult>>(LiveState.Idle)
-    val marinePlace=MutableStateFlow(""); val riverPlace=MutableStateFlow("")
+    /** The sea forecast, and whether it is the last successful one rather than a fresh reading. */
+    data class MarineOutlook(val response:MarineResponse,val cached:Boolean)
+    val marine=MutableStateFlow<LiveState<MarineOutlook>>(LiveState.Idle); val river=MutableStateFlow<LiveState<RiverResult>>(LiveState.Idle)
+    /** Whether the live screens are showing the angler's own position or the central-UK fallback. */
+    val marineLocated=MutableStateFlow(false); val riverLocated=MutableStateFlow(false)
+    private var marineCache:Triple<Double,Double,MarineResponse>?=null
+    private var livePlace:Pair<Double,Double>?=null
+    /** The rounded position, refreshed only when asked — a refresh keeps the place the screen opened with, as iOS does. */
+    private suspend fun livePlace(useCurrentLocation:Boolean):Pair<Double,Double>? { if(useCurrentLocation||livePlace==null)livePlace=DeviceLocation.current(getApplication()); return livePlace }
     val tides=MutableStateFlow<LiveState<TideResult>>(LiveState.Idle)
     val suggestions=MutableStateFlow<LiveState<List<SpeciesSuggestion>>>(LiveState.Idle)
     val exported=MutableStateFlow<Uri?>(null)
@@ -208,12 +215,13 @@ class MainViewModel(app:Application):AndroidViewModel(app){
             photoAttribution=info.photoAttribution))
     }
 
-    fun marine()=viewModelScope.launch{
+    fun marine(refresh:Boolean=false)=viewModelScope.launch{
         marine.value=LiveState.Loading
-        val place=DeviceLocation.current(getApplication())
-        marinePlace.value=if(place==null) "Reference location: the Solent — your location is unavailable" else "Near your approximate location"
-        val (lat,lon)=place ?: DeviceLocation.FALLBACK_COASTAL
-        marine.value=runCatching{LiveState.Data(Services.marine.forecast(lat,lon))}.getOrElse{LiveState.Error("Couldn’t update the sea forecast. Try again.")}
+        val place=livePlace(!refresh)
+        marineLocated.value=place!=null
+        val (lat,lon)=place ?: DeviceLocation.FALLBACK_INLAND
+        marine.value=runCatching{Services.marine.forecast(lat,lon)}.map{marineCache=Triple(lat,lon,it);LiveState.Data(MarineOutlook(it,cached=false))}
+            .getOrElse{marineCache?.takeIf{c->Tides.distanceKm(lat,lon,c.first,c.second)<50.0}?.let{c->LiveState.Data(MarineOutlook(c.third,cached=true))} ?: LiveState.Error("Sea conditions are unavailable")}
     }
     /**
      * Tide predictions (feature parity with iOS, 2026-09-08).
@@ -222,19 +230,19 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      * different things from the angler: "not available for your area" is answered by adding a WorldTides key,
      * "couldn't be updated" by finding a signal.
      */
-    fun tides()=viewModelScope.launch{
+    fun tides(refresh:Boolean=false)=viewModelScope.launch{
         tides.value=LiveState.Loading
-        val place=DeviceLocation.current(getApplication())
-        marinePlace.value=if(place==null) "Reference location: the Solent — your location is unavailable" else "Near your approximate location"
-        val (lat,lon)=place ?: DeviceLocation.FALLBACK_COASTAL
+        val place=livePlace(!refresh)
+        marineLocated.value=place!=null
+        val (lat,lon)=place ?: DeviceLocation.FALLBACK_INLAND
         val key=repo.settings.first().worldTidesKey
         tides.value=runCatching{LiveState.Data(Tides.tides(lat,lon,key))}
             .getOrElse{LiveState.Error(it.message ?: "Couldn’t update tide predictions. Try again.")}
     }
-    fun river()=viewModelScope.launch{
+    fun river(refresh:Boolean=false)=viewModelScope.launch{
         river.value=LiveState.Loading
-        val place=DeviceLocation.current(getApplication())
-        riverPlace.value=if(place==null) "Reference location: central England — your location is unavailable" else "Near your approximate location"
+        val place=livePlace(!refresh)
+        riverLocated.value=place!=null
         val (lat,lon)=place ?: DeviceLocation.FALLBACK_INLAND
         river.value=runCatching{LiveState.Data(Rivers.gauges(lat,lon))}
             .getOrElse{LiveState.Error(it.message ?: "Couldn’t update river gauges. Try again.")}

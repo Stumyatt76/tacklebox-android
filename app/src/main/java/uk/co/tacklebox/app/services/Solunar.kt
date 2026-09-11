@@ -49,6 +49,8 @@ data class SolunarDay(
     val rating: SolunarRating,
     val moonPhase: String,
     val windows: List<BiteWindow>,
+    /** The sun's highest point — the SUN & MOON row iOS shows between sunrise and sunset. */
+    val solarNoon: LocalTime? = null,
 )
 
 /**
@@ -105,6 +107,7 @@ object Astronomy {
             rating = phase.second,
             moonPhase = phase.first,
             windows = (majors + minors).sortedBy { it.start },
+            solarNoon = solar.noon.local(zone),
         )
     }
 
