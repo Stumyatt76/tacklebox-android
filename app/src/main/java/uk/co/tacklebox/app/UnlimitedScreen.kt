@@ -9,11 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import uk.co.tacklebox.app.ui.*
 
-@Composable fun UnlimitedScreen(s:AppState,vm:MainViewModel) {
+@Composable fun UnlimitedScreen(s:AppState,vm:MainViewModel,nav:androidx.navigation.NavHostController) {
     val state by vm.store.state.collectAsState()
     val activity=LocalActivity.current
     LaunchedEffect(Unit){vm.store.refresh()}
-    Screen("Your fishing journal",if(state.unlimited)"Unlimited unlocked" else "Keep every session") {
+    PushedScreen(if(state.unlimited)"Unlimited unlocked" else "Keep every session",onBack={nav.popBackStack()}) {
+        item { SectionLabel("Your fishing journal") }
         item { HeritageCard {
             Text("Two free sessions. All catches and features included. Unlock unlimited sessions with one purchase; no subscription.")
             Text("Your existing catches, photos and exports stay available. Deleting a session does not reset the free allowance.",color=Muted)

@@ -52,4 +52,10 @@ object CapturePhoto {
         val file = File(dir,"catch-${System.currentTimeMillis()}.jpg")
         return FileProvider.getUriForFile(context,"${context.packageName}.fileprovider",file)
     }
+
+    /** Removes the camera's cache copy once the capture has been imported into the photo store. */
+    fun discard(context:Context, capture:Uri) {
+        val name = capture.lastPathSegment ?: return
+        File(File(context.cacheDir,"photos"), name).delete()
+    }
 }

@@ -35,7 +35,7 @@ import uk.co.tacklebox.app.ui.*
         item { HeritageCard {
             Text("Every catch. Every photo.",style=MaterialTheme.typography.headlineMedium)
             Text("A portable copy for either Tacklebox app, including photos, notes, waters, sessions, gear and presets.")
-            Text("The file is not encrypted. Store it privately. Service credentials and purchases are not included. Maximum file size: 256 MB.",color=Muted,style=MaterialTheme.typography.bodyMedium)
+            Text("The file is not encrypted. Store it privately. Service credentials and purchases are not included. Maximum file size: 256 MB. Photos that can no longer be read on this device are left out and counted.",color=Muted,style=MaterialTheme.typography.bodyMedium)
             Button({vm.createPhotoBackup()},enabled=!busy) { Text("Create photo backup") }
             OutlinedButton({picker.launch(arrayOf("*/*"))},enabled=!busy) { Text("Restore a photo backup") }
         } }

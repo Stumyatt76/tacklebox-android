@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="exports" path="exports/" />
+    <!-- The camera writes its capture here (write grant), then the app imports it into files/photos and deletes it. -->
     <cache-path name="photos" path="photos/" />
+    <!-- The app's own copy of every catch photo: picked or captured, oriented, capped at 2048 px, JPEG. -->
+    <files-path name="photo-store" path="photos/" />
     <cache-path name="photo-backups" path="photo-backups/" />
     <cache-path name="season-books" path="season-books/" />
 </paths>

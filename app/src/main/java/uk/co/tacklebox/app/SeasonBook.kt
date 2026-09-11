@@ -78,26 +78,7 @@ object SeasonBook {
             check(temporary.renameTo(file)) { "The book could not be saved." };return file
         } finally { temporary.delete() }
     }
-    internal fun readPhoto(context:Context,uri:String):Bitmap? = runCatching {
-        val location=Uri.parse(uri)
-        val bounds=BitmapFactory.Options().apply { inJustDecodeBounds=true }
-        context.contentResolver.openInputStream(location)?.use { BitmapFactory.decodeStream(it,null,bounds) }
-        var sample=1
-        while(maxOf(bounds.outWidth,bounds.outHeight)/sample>1600)sample*=2
-        val bitmap=context.contentResolver.openInputStream(location)?.use { BitmapFactory.decodeStream(it,null,BitmapFactory.Options().apply { inSampleSize=sample }) } ?: return@runCatching null
-        val orientation=runCatching { context.contentResolver.openInputStream(location)?.use { android.media.ExifInterface(it).getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION,1) } }.getOrNull() ?: 1
-        val transform=Matrix().apply {
-            when(orientation) {
-                2->setScale(-1f,1f)
-                3->setRotate(180f)
-                4->setScale(1f,-1f)
-                5->{setRotate(90f);postScale(-1f,1f)}
-                6->setRotate(90f)
-                7->{setRotate(-90f);postScale(-1f,1f)}
-                8->setRotate(-90f)
-            }
-        }
-        if(transform.isIdentity)bitmap else Bitmap.createBitmap(bitmap,0,0,bitmap.width,bitmap.height,transform,true).also { if(it!==bitmap)bitmap.recycle() }
-    }.getOrNull()
+    /** Decoded through the photo store, so EXIF orientation and the size cap are applied in one place. */
+    internal fun readPhoto(context:Context,uri:String):Bitmap? = PhotoStore.decodeOriented(context,uri,1600)
     fun shareUri(context:Context,file:File):Uri=FileProvider.getUriForFile(context,context.packageName+".fileprovider",file)
 }

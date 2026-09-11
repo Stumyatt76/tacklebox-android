@@ -27,7 +27,7 @@ import java.io.File
 import java.time.Year
 import java.time.ZoneId
 
-@Composable fun SeasonBookScreen(s:AppState) {
+@Composable fun SeasonBookScreen(s:AppState,nav:androidx.navigation.NavHostController) {
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var year by rememberSaveable { mutableIntStateOf(Year.now().value) }
     var notes by rememberSaveable { mutableStateOf(false) };var photos by rememberSaveable { mutableStateOf(true) }
@@ -51,7 +51,8 @@ import java.time.ZoneId
             bitmap=result.first;pages=result.second
         } catch(_:Exception){message="The PDF preview could not be opened."}
     }
-    Screen("Made to keep","Season Book") {
+    PushedScreen("Season Book",onBack={nav.popBackStack()}) {
+        item { SectionLabel("Made to keep") }
         if(file==null) {
             item { Row { years.forEach { value->TextButton({year=value}) { Text(if(year==value)"[$value]" else value.toString()) } } } }
             item { Row { Checkbox(photos,{photos=it},modifier=Modifier.semantics { contentDescription="Include catch photos" });Text("Include catch photos") };Row { Checkbox(notes,{notes=it},modifier=Modifier.semantics { contentDescription="Include personal notes" });Text("Include personal notes") } }

@@ -17,11 +17,19 @@ import java.util.UUID
 object PhotoBackup {
     private fun fields(vararg values: Pair<String,Any?>): Map<String,String> =
         values.mapNotNull { (key,value)->value?.let { key to it.toString() } }.toMap()
-    fun payload(context: Context, s: AppState): BackupPayload {
+    /** What a backup was written from: the shareable file and how many photos had to be left out. */
+    data class Written(val uri: Uri, val skippedPhotos: Int)
+
+    /**
+     * Builds the payload. A photo that can no longer be read — a library pick whose grant expired before the app
+     * kept its own copies — is left out and counted in [skipped] rather than failing the whole backup, which used to
+     * make one lost photo block the only feature that could have preserved the rest.
+     */
+    fun payload(context: Context, s: AppState, skipped: MutableList<String> = mutableListOf()): BackupPayload {
         val media=linkedMapOf<String,String>()
-        fun photos(row: CatchRow): List<String> = row.allPhotoUris.map { uri ->
-            val bytes=context.contentResolver.openInputStream(Uri.parse(uri))?.use(PhotoBackupFormat::readBounded)
-                ?: error("A catch photo is unavailable. Restore access to it before backing up.")
+        fun photos(row: CatchRow): List<String> = row.allPhotoUris.mapNotNull { uri ->
+            val bytes=runCatching { context.contentResolver.openInputStream(Uri.parse(uri))?.use(PhotoBackupFormat::readBounded) }.getOrNull()
+            if (bytes==null || bytes.isEmpty()) { skipped+=uri; return@mapNotNull null }
             val sha=PhotoBackupFormat.digest(bytes)
             media[sha]=Base64.getEncoder().encodeToString(bytes);sha
         }
@@ -49,14 +57,15 @@ object PhotoBackup {
             catches=fish,gear=s.gear.map { BackupRecord(it.portableID,fields("name" to it.name,"category" to it.category.name.lowercase(),"notes" to it.notes)) },
             presets=s.presets.map { BackupRecord(it.portableID,fields("name" to it.name,"kind" to it.kind.name.lowercase())) },media=media)
     }
-    fun write(context: Context, s: AppState): Uri {
+    fun write(context: Context, s: AppState): Written {
         val directory=File(context.cacheDir,"photo-backups").apply { mkdirs() }
         val file=File(directory,PhotoBackupFormat.FILE_NAME)
-        val bytes=PhotoBackupFormat.encode(payload(context,s))
+        val skipped=mutableListOf<String>()
+        val bytes=PhotoBackupFormat.encode(payload(context,s,skipped))
         val temporary=File(directory,"pending-"+UUID.randomUUID())
         temporary.writeBytes(bytes)
         check(temporary.renameTo(file)) { "The photo backup could not be written." }
-        return FileProvider.getUriForFile(context,context.packageName+".fileprovider",file)
+        return Written(FileProvider.getUriForFile(context,context.packageName+".fileprovider",file), skipped.size)
     }
     fun existing(s: AppState, p: BackupPayload): Map<String,Set<String>> {
         val speciesAliases=p.species.filter { record->s.species.any { it.name.equals(record.fields["name"],true) } }.map { it.id }

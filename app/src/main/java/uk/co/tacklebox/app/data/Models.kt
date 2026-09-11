@@ -93,6 +93,10 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("SELECT * FROM FishingSession WHERE endAt IS NULL ORDER BY startAt DESC LIMIT 1") suspend fun openSession(): FishingSession?
     // Per-item deletes. Only "delete everything" existed, and Room declares no foreign keys, so the child rows and
     // the orphaned references have to be cleared by hand.
+    @Query("SELECT photoUri FROM Catch WHERE id=:id") suspend fun coverPhotoFor(id:Long): String?
+    @Query("SELECT uri FROM CatchPhoto WHERE catchId=:id") suspend fun extraPhotosFor(id:Long): List<String>
+    @Query("SELECT photoUri FROM Catch WHERE photoUri IS NOT NULL") suspend fun allCoverPhotos(): List<String>
+    @Query("SELECT uri FROM CatchPhoto") suspend fun allExtraPhotos(): List<String>
     @Query("DELETE FROM ConditionsSnapshot WHERE catchId=:id") suspend fun deleteConditionsFor(id:Long)
     @Query("DELETE FROM Catch WHERE id=:id") suspend fun deleteCatch(id:Long)
     @Query("DELETE FROM ConditionsSnapshot") suspend fun clearConditions()

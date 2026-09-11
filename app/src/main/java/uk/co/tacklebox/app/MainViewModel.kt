@@ -42,15 +42,29 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     val tides=MutableStateFlow<LiveState<TideResult>>(LiveState.Idle)
     val suggestions=MutableStateFlow<LiveState<List<SpeciesSuggestion>>>(LiveState.Idle)
     val exported=MutableStateFlow<Uri?>(null)
-    val notice=MutableStateFlow<String?>(null)
+    /** One message for the angler. `success` picks the dialog title: "Journal update" for news, "Couldn’t do that" for failures. */
+    data class Notice(val message:String,val success:Boolean=false)
+    val notice=MutableStateFlow<Notice?>(null)
+    private fun fail(message:String){notice.value=Notice(message,success=false)}
+    private fun tell(message:String){notice.value=Notice(message,success=true)}
     val photoBackupPlan=MutableStateFlow<BackupPayload?>(null)
     val photoBackupBusy=MutableStateFlow(false)
     val photoBackupExport=MutableStateFlow<Uri?>(null)
+    /** Backups hold every photo in memory, so an OutOfMemoryError is a real outcome — an Error, which `catch (e: Exception)` let crash the app. */
+    private fun backupFailure(e:Throwable,fallback:String):String = when(e){
+        is OutOfMemoryError -> "There is not enough memory to process this photo backup. Free some memory and try again."
+        else -> e.message?.takeIf { it.isNotBlank() } ?: fallback
+    }
     fun createPhotoBackup()=viewModelScope.launch {
         if(photoBackupBusy.value)return@launch
         photoBackupBusy.value=true
-        try { photoBackupExport.value=withContext(Dispatchers.IO){PhotoBackup.write(getApplication(),state.value)} }
-        catch(e:Exception){notice.value=e.message ?: "Could not create this photo backup."}
+        try {
+            val written=withContext(Dispatchers.IO){PhotoBackup.write(getApplication(),state.value)}
+            photoBackupExport.value=written.uri
+            if(written.skippedPhotos>0)tell("Backup created. ${written.skippedPhotos} ${if(written.skippedPhotos==1)"photo" else "photos"} could no longer be read on this device and were left out.")
+        }
+        catch(e:kotlinx.coroutines.CancellationException){throw e}
+        catch(e:Throwable){fail(backupFailure(e,"Could not create this photo backup."))}
         finally { photoBackupBusy.value=false }
     }
     fun previewPhotoBackup(uri:Uri)=viewModelScope.launch {
@@ -63,7 +77,9 @@ class MainViewModel(app:Application):AndroidViewModel(app){
                     ?: error("The selected backup cannot be opened.")
                 PhotoBackupFormat.decode(data)
             }
-        } catch(e:Exception){notice.value=e.message ?: "The selected backup is invalid."}
+        }
+        catch(e:kotlinx.coroutines.CancellationException){throw e}
+        catch(e:Throwable){fail(backupFailure(e,"The selected backup is invalid."))}
         finally { photoBackupBusy.value=false }
     }
     fun restorePhotoBackup(replace:Boolean)=viewModelScope.launch {
@@ -72,8 +88,10 @@ class MainViewModel(app:Application):AndroidViewModel(app){
         photoBackupBusy.value=true
         try {
             val restored=withContext(Dispatchers.IO){PhotoBackup.restore(getApplication(),repo,payload,replace)}
-            photoBackupPlan.value=null;notice.value="Restored "+restored+" records. Catch photos are included."
-        } catch(e:Exception){notice.value="The backup could not be restored. No imported records were kept. "+(e.message ?: "")}
+            photoBackupPlan.value=null;tell("Restored "+restored+" records. Catch photos are included.")
+        }
+        catch(e:kotlinx.coroutines.CancellationException){throw e}
+        catch(e:Throwable){fail("The backup could not be restored. No imported records were kept. "+backupFailure(e,""))}
         finally { photoBackupBusy.value=false }
     }
     val importPlan=MutableStateFlow<JournalImport.Plan?>(null)
@@ -89,8 +107,11 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      * recorded, while the detail screen blamed the network for the rest (TB-A-09).
      */
     fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),stamped:ConditionsSnapshot?=null,onDone:(Long)->Unit)=viewModelScope.launch{
-        val openSession=repo.openSession()?.takeIf { !caughtAt.isBefore(it.startAt) }
-        if(!store.state.value.unlimited && openSession?.isTrialSession!=true) { showAccess.value=true;return@launch }
+        // Free logging needs a session to be under way — any open session, whether it began as a trial, was
+        // imported or was restored. The catch joins it only if it was caught after the session started.
+        val running=repo.openSession()
+        if(!store.state.value.unlimited && running==null) { showAccess.value=true;return@launch }
+        val openSession=running?.takeIf { !caughtAt.isBefore(it.startAt) }
         // The capture screen reads the conditions when it opens and shows them, so the angler can see what is being
         // stamped and retry a failed reading before saving. Falling back to a fresh capture keeps any other caller
         // working, and keeps a save honest if the screen never managed one.
@@ -101,7 +122,8 @@ class MainViewModel(app:Application):AndroidViewModel(app){
                   waterId=waterId ?: openSession?.waterId, sessionId=openSession?.id, photoUri=photos.firstOrNull(), caughtAt=caughtAt, notes=notes.trim()),
             conditions, photos)
         onDone(id)
-        } catch (_: Exception) { notice.value="Couldn’t save this catch. Your entries are still here; please try again." }
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (_: Exception) { fail("Couldn’t save this catch. Your entries are still here; please try again.") }
     }
 
     /** Best-effort: a failed or slow weather call must never stop a catch being saved, so the moon phase is the floor. */
@@ -128,21 +150,24 @@ class MainViewModel(app:Application):AndroidViewModel(app){
 
     fun addWater(name:String,type:WaterType,region:String)=viewModelScope.launch{repo.addWater(Water(name=name,type=type,region=region))}
     fun updateWater(v:Water,onDone:()->Unit={})=viewModelScope.launch {
-        runCatching { repo.saveWater(v) }.onSuccess { onDone() }.onFailure { notice.value="Could not save this water. Please try again." }
+        runCatching { repo.saveWater(v) }.onSuccess { onDone() }.onFailure { fail("Could not save this water. Please try again.") }
     }
     fun updateCatch(v:Catch,photos:List<String>?=null)=viewModelScope.launch{repo.saveCatch(v);photos?.let{repo.savePhotos(v.id,it)}}
-    fun addSpecies(name:String)=viewModelScope.launch{repo.addSpecies(name)}
+    /** Adds or reuses a species by name and hands back its id, so the capture screen can select it straight away. */
+    fun addSpecies(name:String,onDone:(Long)->Unit={})=viewModelScope.launch{
+        runCatching { repo.addSpecies(name,state.value.settings.activeDisciplines) }.onSuccess(onDone).onFailure { fail(it.message ?: "Could not add this species.") }
+    }
     fun startSession(water:Long?)=viewModelScope.launch {
-        runCatching { repo.startSession(water,store.state.value.unlimited) }.onFailure { notice.value=it.message ?: "Could not start this session." }
+        runCatching { repo.startSession(water,store.state.value.unlimited) }.onFailure { fail(it.message ?: "Could not start this session.") }
     }
     fun saveSession(value:FishingSession,onDone:()->Unit={})=viewModelScope.launch {
-        runCatching { repo.saveSession(value) }.onSuccess { onDone() }.onFailure { notice.value=it.message ?: "Could not save this session." }
+        runCatching { repo.saveSession(value) }.onSuccess { onDone() }.onFailure { fail(it.message ?: "Could not save this session.") }
     }
     fun saveGear(value:GearItem,onDone:()->Unit={})=viewModelScope.launch {
-        runCatching { repo.saveGear(value) }.onSuccess { onDone() }.onFailure { notice.value=it.message ?: "Could not save this gear." }
+        runCatching { repo.saveGear(value) }.onSuccess { onDone() }.onFailure { fail(it.message ?: "Could not save this gear.") }
     }
     fun stopSession(id:Long)=viewModelScope.launch {
-        runCatching { repo.stopSession(id) }.onFailure { notice.value="Could not end this session. Please try again." }
+        runCatching { repo.stopSession(id) }.onFailure { fail("Could not end this session. Please try again.") }
     }
     fun addGear(name:String,category:GearCategory)=viewModelScope.launch{repo.addGear(GearItem(name=name,category=category))}
     fun deleteGear(v:GearItem)=viewModelScope.launch{repo.deleteGear(v)}
@@ -204,17 +229,18 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     fun identify(photoUri:String?,token:String)=viewModelScope.launch{
         if(photoUri==null){suggestions.value=LiveState.Error("Add a photo first.");return@launch}
         suggestions.value=LiveState.Loading
-        suggestions.value=runCatching{
-            val bytes=getApplication<Application>().contentResolver.openInputStream(Uri.parse(photoUri))?.use{it.readBytes()}
+        suggestions.value=try{
+            val bytes=withContext(Dispatchers.IO){getApplication<Application>().contentResolver.openInputStream(Uri.parse(photoUri))?.use{it.readBytes()}}
                 ?: throw SpeciesIdException("That photo could not be read.")
             LiveState.Data(SpeciesId.identify(bytes,connection.apiToken(token)))
-        }.getOrElse{LiveState.Error(it.message ?: "Identification failed.")}
+        }catch(e:kotlinx.coroutines.CancellationException){throw e}
+        catch(e:Exception){LiveState.Error(e.message ?: "Identification failed.")}
     }
     fun clearSuggestions(){suggestions.value=LiveState.Idle}
 
     /** Writes the whole journal to a shareable JSON file. The button existed but did nothing at all (TB-A-05). */
     fun exportJson()=viewModelScope.launch{
-        exported.value=runCatching{JournalExport.write(getApplication(),state.value)}.getOrElse{notice.value="Couldn’t create the export file.";null}
+        exported.value=runCatching{withContext(Dispatchers.IO){JournalExport.write(getApplication(),state.value)}}.getOrElse{fail("Couldn’t create the export file.");null}
     }
     fun clearExport(){exported.value=null}
     fun clearNotice(){notice.value=null}
@@ -222,12 +248,12 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     /** Parses a picked file and works out what importing it would do, writing nothing until the user confirms. */
     fun planImport(uri:Uri)=viewModelScope.launch{
         runCatching{
-            val json=getApplication<Application>().contentResolver.openInputStream(uri)?.use{it.readBytes().decodeToString()}
+            val json=withContext(Dispatchers.IO){getApplication<Application>().contentResolver.openInputStream(uri)?.use{it.readBytes().decodeToString()}}
                 ?: throw JournalImport.Failure("That file could not be opened.")
             JournalImport.plan(json, JournalImport.ExistingVault.from(state.value))
         }.onSuccess{plan->
-            if(plan.isEmpty)notice.value="That journal has nothing in it to import." else importPlan.value=plan
-        }.onFailure{notice.value=it.message ?: "That file could not be read."}
+            if(plan.isEmpty)fail("That journal has nothing in it to import.") else importPlan.value=plan
+        }.onFailure{fail(it.message ?: "That file could not be read.")}
     }
     fun cancelImport(){importPlan.value=null}
     fun clearImportResult(){importResult.value=null}
@@ -238,8 +264,8 @@ class MainViewModel(app:Application):AndroidViewModel(app){
         importPlan.value=null
         runCatching { repo.applyImport(plan) }
             .onSuccess { importResult.value=it }
-            .onFailure { notice.value="The import could not be saved. No imported records were kept. Try again." }
+            .onFailure { fail("The import could not be saved. No imported records were kept. Try again.") }
     }
 
-    fun deleteData()=viewModelScope.launch{runCatching { repo.deleteAllUserData() }.onFailure { notice.value="Couldn’t delete your journal. Please try again." }}
+    fun deleteData()=viewModelScope.launch{runCatching { repo.deleteAllUserData() }.onFailure { fail("Couldn’t delete your journal. Please try again.") }}
 }
