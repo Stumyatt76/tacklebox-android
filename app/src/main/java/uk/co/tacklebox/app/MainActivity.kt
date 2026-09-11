@@ -83,12 +83,10 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
 @Composable fun TackleboxRoot(vm:MainViewModel=viewModel(),requestedRoute:String?=null,onRouteConsumed:()->Unit={}){
     val state by vm.state.collectAsStateWithLifecycle(); val nav=rememberNavController()
     val back by nav.currentBackStackEntryAsState(); val route=back?.destination?.route
-    val access by vm.showAccess.collectAsStateWithLifecycle()
-    // Free logging needs a session under way — any open session. Ended sessions cannot be resumed, so the dialog
-    // no longer suggests it; it offers the Sessions tab, where one can be started.
-    if(access) AlertDialog(onDismissRequest={vm.showAccess.value=false},title={Text("Start a session")},text={Text("Start a session before logging this catch. Your entries are still here.")},confirmButton={TextButton({vm.showAccess.value=false;nav.navigate("sessions"){popUpTo("vault"){saveState=true};launchSingleTop=true;restoreState=true}}){Text("Open Sessions")}},dismissButton={TextButton({vm.showAccess.value=false;nav.navigate("unlimited")}){Text("Unlimited")}})
+    // Every notice carries its own title — "Couldn't save this catch", "Session unavailable", "Photo backup" — as
+    // iOS's alerts do. The free-session gate is a sheet on the capture screen (FreeSessionSheet), not a dialog here.
     val notice by vm.notice.collectAsStateWithLifecycle()
-    notice?.let{n->if(route!="settings") AlertDialog(onDismissRequest=vm::clearNotice,title={Text(if(n.success)"Journal update" else "Couldn’t do that")},
+    notice?.let{n->AlertDialog(onDismissRequest=vm::clearNotice,title={Text(n.title)},
         text={Text(n.message)},confirmButton={TextButton(vm::clearNotice){Text("OK")}})}
     val showFab=route in setOf("vault","waters","sessions","insights")
     // Capture is presented as its own thing, not as a tab: iOS opens it as a modal sheet, and leaving the tab bar
@@ -395,24 +393,21 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
 
 @Composable fun Waters(s:AppState,vm:MainViewModel,nav:NavHostController){
     var adding by rememberSaveable{mutableStateOf(false)}
-    Screen("Private places","Waters",actions={IconButton({adding=true}){Icon(Icons.Default.Add,"Add a water")}}){
+    Screen("Private places","Waters",actions={IconButton({adding=true},modifier=Modifier.testTag("addWater")){Icon(Icons.Default.Add,"Add water",tint=BrassSoft)}}){
         item{HeritageCard(onClick={nav.navigate("rivers")}){Text("River conditions",style=MaterialTheme.typography.titleLarge);Text("Levels and nearby gauges",color=Muted)}}
         item{HeritageCard(onClick={nav.navigate("tides")}){Text("Tides & sea",style=MaterialTheme.typography.titleLarge);Text("Tide times, waves and sea state",color=Muted)}}
         item{SectionLabel("Water passports")}
         if(s.waters.isEmpty())item{Empty("No waters saved","Add a water to build your private map.")}
-        items(s.waters){w->HeritageCard(onClick={nav.navigate("water/${w.id}")}){Row{Icon(Icons.Default.Water,null,tint=Teal);Spacer(Modifier.width(12.dp));Column{Text(w.name,style=MaterialTheme.typography.titleLarge);Text("${w.type.name.lowercase().replaceFirstChar(Char::uppercase)} · ${w.region}",color=Muted)}}}}
+        items(s.waters){w->HeritageCard(onClick={nav.navigate("water/${w.id}")}){Row{Icon(Icons.Default.Water,null,tint=Teal);Spacer(Modifier.width(12.dp));Column{Text(w.name,style=MaterialTheme.typography.titleLarge);Text(w.subtitle,color=Muted)}}}}
     }
-    if(adding)WaterFormDialog(onDismiss={adding=false},onSave={name,type,region->vm.addWater(name,type,region);adding=false})
+    if(adding)WaterSelectionSheet(vm,s.waters,"Add Water","Add water",creationOnly=true,onDismiss={adding=false}){}
 }
 
 @Composable fun WaterFormDialog(onDismiss:()->Unit,onSave:(String,WaterType,String)->Unit,initial:Water?=null){
     var name by rememberSaveable{mutableStateOf(initial?.name.orEmpty())}; var region by rememberSaveable{mutableStateOf(initial?.region.orEmpty())}
-    var type by rememberSaveable{mutableStateOf(initial?.type ?: WaterType.LAKE)}
-    AlertDialog(onDismissRequest=onDismiss,title={Text(if(initial==null)"Add a water" else "Edit water")},
-        text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
-            OutlinedTextField(name,{name=it},label={Text("Name")},singleLine=true,modifier=Modifier.testTag("waterName"))
-            OutlinedTextField(region,{region=it},label={Text("Region")},singleLine=true)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(WaterType.entries.toList()){t->FilterChip(type==t,{type=t},{Text(t.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours(),shape=CircleShape)}}}},
+    var type by rememberSaveable{mutableStateOf(initial?.type ?: WaterType.DAY_TICKET)}
+    AlertDialog(onDismissRequest=onDismiss,title={Text(if(initial==null)"Add Water" else "Edit Water")},
+        text={Column(Modifier.verticalScroll(rememberScrollState())){WaterFields(name,type,region,{name=it},{type=it},{region=it},label=null)}},
         confirmButton={TextButton({if(name.isNotBlank())onSave(name.trim(),type,region.trim())},enabled=name.isNotBlank()){Text("Save")}},
         dismissButton={TextButton(onDismiss){Text("Cancel")}})
 }
@@ -441,171 +436,6 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
 
 @Composable fun Insights(s:AppState,nav:NavHostController){val total=s.catches.mapNotNull{it.item.weightGrams}.sum();Screen("Patterns from the bank","Insights"){item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","landed",Modifier.weight(1f));Stat(total.weight(s.settings.unitSystem),"total weight",Modifier.weight(1f))}};item{HeritageCard(onClick={nav.navigate("year")}){Text("YEAR ON THE WATER",color=Brass);Text("Your season, distilled",style=MaterialTheme.typography.headlineMedium);Text("Open shareable summary →",color=Muted)}};item{Breakdown("Catches over time",s.catches.groupingBy{java.time.YearMonth.from(it.item.caughtAt.atZone(ZoneId.systemDefault())).toString()}.eachCount())};item{Breakdown("Species",s.catches.groupingBy{it.species?.name?:"Unknown"}.eachCount())};item{Breakdown("Waters",s.catches.groupingBy{it.water?.name?:"Unspecified"}.eachCount())};item{HeritageCard{Text("Conditions insight",style=MaterialTheme.typography.titleLarge);Text(Insight.conditions(s.catches),color=Muted)}}}}
 @Composable fun YearOnWater(s:AppState,nav:NavHostController){var year by rememberSaveable{mutableIntStateOf(Year.now().value)};val years=(s.catches.map{it.item.caughtAt.atZone(ZoneId.systemDefault()).year}+s.sessions.map{it.item.startAt.atZone(ZoneId.systemDefault()).year}+Year.now().value).distinct().sortedDescending();val catches=s.catches.filter{it.item.caughtAt.atZone(ZoneId.systemDefault()).year==year};val biggest=SeasonSummary.biggest(catches);val hours=SeasonMetrics.hours(s.sessions,year);PushedScreen("Year on the Water",onBack={nav.popBackStack()}){item{TextButton({nav.navigate("season-book")}){Text("Create a Season Book")}};item{LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(years){y->FilterChip(year==y,{year=y},{Text(y.toString())},colors=brassChipColours())}}};item{Card(colors=CardDefaults.cardColors(containerColor=Inset),shape=RoundedCornerShape(28.dp)){Column(Modifier.padding(26.dp)){Text("TACKLEBOX · $year",color=Brass);Text("${catches.size}",style=MaterialTheme.typography.displaySmall);Text("fish landed",color=Muted);HorizontalDivider(Modifier.padding(vertical=16.dp));Text("${catches.mapNotNull{it.item.weightGrams}.sum().weight(s.settings.unitSystem)} carried gently");Text(if(biggest==null)"No biggest fish yet" else "${biggest.species?.name?:"Unknown species"} · ${biggest.item.weightGrams?.weight(s.settings.unitSystem).orEmpty()}");Text("$hours hours on the bank");Text("Top bait · ${SeasonSummary.topBait(catches)?:"—"}",color=BrassSoft)}}};item{val context=LocalContext.current;Button({ShareSheet.season(context,s,year)},Modifier.fillMaxWidth().testTag("shareSeason")){Icon(Icons.Default.Share,null);Spacer(Modifier.width(8.dp));Text("Share summary")}}}}
-
-/**
- * The capture screen. Previously it could not record a water (the waterId argument was hardcoded null and there was
- * no picker), never linked the catch to the open session, entered weight in ounces but displayed pounds-and-ounces,
- * lost everything on rotation, and offered an "Identify from photo" button that did nothing (TB-A-02, TB-A-03,
- * TB-A-13, TB-A-15, TB-A-07).
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable fun LogCatch(s:AppState,vm:MainViewModel,nav:NavHostController){
-    val metric=s.settings.unitSystem==UnitSystem.METRIC
-    val openSession=s.sessions.firstOrNull{it.item.endAt==null}
-    // rememberSaveable throughout: the activity is recreated on rotation and none of this survived it (TB-A-15).
-    var species by rememberSaveable{mutableStateOf<Long?>(null)}
-    var kilograms by rememberSaveable{mutableIntStateOf(0)}; var grams by rememberSaveable{mutableIntStateOf(0)}
-    var pounds by rememberSaveable{mutableIntStateOf(0)}; var ounces by rememberSaveable{mutableIntStateOf(0)}
-    var centimetres by rememberSaveable{mutableIntStateOf(0)}; var inches by rememberSaveable{mutableIntStateOf(0)}
-    var rig by rememberSaveable{mutableStateOf("")}; var bait by rememberSaveable{mutableStateOf("")}
-    var returned by rememberSaveable{mutableStateOf(true)}
-    var notes by rememberSaveable{mutableStateOf("")}
-    var caughtAt by rememberSaveable{mutableStateOf(System.currentTimeMillis())}
-    var photos by rememberSaveable{mutableStateOf(listOf<String>())}
-    var water by rememberSaveable{mutableStateOf(openSession?.water?.id)}
-    var newSpecies by rememberSaveable{mutableStateOf("")}; var addingSpecies by rememberSaveable{mutableStateOf(false)}
-    var addingPreset by rememberSaveable{mutableStateOf<PresetKind?>(null)}; var newPreset by rememberSaveable{mutableStateOf("")}
-    val suggestions by vm.suggestions.collectAsStateWithLifecycle()
-
-    val enteredGrams:Double=if(metric)(kilograms*1000+grams).toDouble() else (Weights.fromPoundsAndOunces(pounds.toString(),ounces.toString())?:0.0)
-    val lengthCm:Double=if(metric)centimetres.toDouble() else inches*2.54
-    val previousBest=species?.let{id->s.catches.filter{it.species?.id==id}.mapNotNull{it.item.weightGrams}.maxOrNull()}
-    val isNewPB=enteredGrams>0 && previousBest!=null && enteredGrams>previousBest
-    val isFirstOfSpecies=enteredGrams>0 && species!=null && previousBest==null
-
-    // Read once when the screen opens, and shown, so the angler can see what will be stamped on the fish and retry
-    // a failed reading before saving. Android captured this silently at save time (TB-P-04).
-    var stamped by remember{mutableStateOf<ConditionsSnapshot?>(null)}
-    var conditionsAttempt by remember{mutableIntStateOf(0)}
-    var reading by remember{mutableStateOf(true)}
-    LaunchedEffect(conditionsAttempt){reading=true;stamped=runCatching{vm.captureConditions()}.getOrNull();reading=false}
-
-    CaptureScaffold("Log a Catch",onCancel={nav.popBackStack()}){
-        item{PhotoStrip(photos){photos=it}}
-        item{SectionLabel("Species")
-            FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                s.species.filter { it.discipline.name in s.settings.activeDisciplines }.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}
-                FilterChip(false,{addingSpecies=true},{Text("＋ Add species")},colors=brassChipColours(),shape=CircleShape)}}
-        // Added or matched, the species is selected straight away — addSpecies reuses an existing name and hands back the id.
-        item{SpeciesIdRow(s,vm,photos.firstOrNull(),suggestions,onPick={name->vm.addSpecies(name){species=it};vm.clearSuggestions()})}
-        item{SectionLabel("Weight")
-            Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                if(metric){
-                    ValueStepper("KG",kilograms,0..100,modifier=Modifier.weight(1f)){kilograms=it}
-                    // 10 g steps: at 50 g a metric angler could not enter most real weights (TB-I-09 on iOS).
-                    ValueStepper("G",grams,0..990,10,Modifier.weight(1f)){grams=it}
-                }else{
-                    ValueStepper("LB",pounds,0..200,modifier=Modifier.weight(1f)){pounds=it}
-                    ValueStepper("OZ",ounces,0..15,modifier=Modifier.weight(1f)){ounces=it}}}}
-        if(isNewPB)item{Banner("NEW PERSONAL BEST",Icons.Default.AutoAwesome,BrassSoft,"pbBanner")}
-        else if(isFirstOfSpecies)item{Banner("YOUR FIRST ${s.species.firstOrNull{it.id==species}?.name?.uppercase().orEmpty()}",Icons.Default.Star,Teal,"firstOfSpeciesBanner")}
-        item{SectionLabel("Length")
-            Row(Modifier.padding(top=10.dp)){
-                if(metric)ValueStepper("CM",centimetres,0..300,modifier=Modifier.weight(1f)){centimetres=it}
-                else ValueStepper("IN",inches,0..120,modifier=Modifier.weight(1f)){inches=it}}}
-        item{HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){
-            Column(Modifier.weight(1f)){Text("Returned",fontWeight=FontWeight.SemiBold);Text(if(returned)"Put back in the water" else "Kept",color=Muted,style=MaterialTheme.typography.bodyMedium)}
-            Switch(returned,{returned=it})}}}
-        item{SectionLabel("Water")
-            if(s.waters.isEmpty())Text("Add a water on the Waters tab to record where this fish came from.",color=Muted,modifier=Modifier.padding(top=10.dp))
-            else FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                s.waters.forEach{w->FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours(),shape=CircleShape)}}}
-        item{SectionLabel("When");Box(Modifier.padding(top=10.dp)){CaughtAtField(caughtAt){caughtAt=it}}}
-        item{PresetChips("Rig",rig,s.presets.filter{it.kind==PresetKind.RIG}.map{it.name},onPick={rig=it},onAdd={newPreset="";addingPreset=PresetKind.RIG})}
-        item{PresetChips("Bait",bait,s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name},onPick={bait=it},onAdd={newPreset="";addingPreset=PresetKind.BAIT})}
-        // Sessions, waters and gear could all carry a note; the catch could not, so the story behind a fish — the
-        // thing that makes a journal worth keeping — had nowhere to go.
-        item{SectionLabel("Notes")
-            OutlinedTextField(notes,{notes=it},placeholder={Text("Took it on the drop, margin swim, three hours in…")},
-                minLines=3,modifier=Modifier.fillMaxWidth().padding(top=10.dp).testTag("catchNotes"))}
-        item{if(CapturePolicy.canStampCurrentWeather(Instant.ofEpochMilli(caughtAt))) ConditionsCard(reading,stamped,s.settings.unitSystem){conditionsAttempt++}
-            else HeritageCard{Text("Historical weather is unavailable. Current conditions are only saved for catches from the last 15 minutes.",color=Muted)}}
-        if(openSession!=null && !Instant.ofEpochMilli(caughtAt).isBefore(openSession.item.startAt))item{Text("Will be added to your open session at ${openSession.water?.name?:"an unspecified water"}.",color=Muted,style=MaterialTheme.typography.bodyMedium,modifier=Modifier.fillMaxWidth(),textAlign=TextAlign.Center)}
-        item{Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
-            Icon(Icons.Default.Lock,null,tint=Muted,modifier=Modifier.size(14.dp));Spacer(Modifier.width(6.dp))
-            Text("Your spot stays private",color=Muted,style=MaterialTheme.typography.bodyMedium)}}
-        item{Button(onClick={
-                vm.addCatch(species,enteredGrams.takeIf{it>0},lengthCm.takeIf{it>0},rig,bait,returned,water,photos,notes,Instant.ofEpochMilli(caughtAt),stamped){nav.navigate("catch/$it"){popUpTo("vault")}}
-            },modifier=Modifier.fillMaxWidth().height(52.dp).testTag("saveCatch"),shape=RoundedCornerShape(14.dp),
-            enabled=species!=null&&enteredGrams>0){Text("Save to the Vault",fontWeight=FontWeight.Bold)}}
-    }
-    if(addingSpecies)AlertDialog(onDismissRequest={addingSpecies=false},title={Text("Add a species")},
-        text={OutlinedTextField(newSpecies,{newSpecies=it},label={Text("Name")},singleLine=true)},
-        confirmButton={TextButton({if(newSpecies.isNotBlank()){vm.addSpecies(newSpecies.trim()){species=it};newSpecies="";addingSpecies=false}}){Text("Add")}},
-        dismissButton={TextButton({addingSpecies=false}){Text("Cancel")}})
-    addingPreset?.let{kind->AlertDialog(onDismissRequest={addingPreset=null},title={Text("Add ${kind.name.lowercase()}")},
-        text={Column{OutlinedTextField(newPreset,{newPreset=it},label={Text("Name")},singleLine=true);Spacer(Modifier.height(8.dp));Text("Save it to My Tacklebox and select it for this catch.",color=Muted,style=MaterialTheme.typography.bodyMedium)}},
-        confirmButton={TextButton({if(newPreset.isNotBlank()){vm.addPreset(newPreset.trim(),kind);if(kind==PresetKind.RIG)rig=newPreset.trim() else bait=newPreset.trim();newPreset="";addingPreset=null}}){Text("Add")}},
-        dismissButton={TextButton({addingPreset=null}){Text("Cancel")}})}
-}
-
-/**
- * The capture screen's frame: a Cancel action and a centred inline title, with no tab bar behind it.
- *
- * iOS presents Log a Catch as a modal sheet. Android had it as an ordinary tab destination with the bottom bar
- * still showing, so the same task looked like a different kind of thing on each platform (TB-P-04).
- */
-@Composable fun CaptureScaffold(title:String,onCancel:()->Unit,content:LazyListScope.()->Unit){
-    Column(Modifier.fillMaxSize()){
-        Row(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
-            TextButton(onCancel){Text("Cancel",color=BrassSoft,fontWeight=FontWeight.SemiBold)}
-            Spacer(Modifier.weight(1f));Text(title,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f))
-            Spacer(Modifier.width(64.dp))}
-        LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(20.dp),content=content)}
-}
-
-/** A record or a first, marked on the form rather than celebrated after the fact. */
-@Composable fun Banner(text:String,icon:androidx.compose.ui.graphics.vector.ImageVector,colour:Color,tag:String){
-    Row(Modifier.fillMaxWidth().background(colour,RoundedCornerShape(12.dp)).padding(12.dp).testTag(tag),
-        horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){
-        Icon(icon,null,tint=Background,modifier=Modifier.size(16.dp));Spacer(Modifier.width(8.dp))
-        Text(text,color=Background,style=MaterialTheme.typography.labelLarge,letterSpacing=1.sp)}
-}
-
-/** What is about to be stamped on the fish, and a way to try again when the reading failed. */
-@Composable fun ConditionsCard(reading:Boolean,stamped:ConditionsSnapshot?,unit:UnitSystem,onRetry:()->Unit){
-    HeritageCard{
-        Row(verticalAlignment=Alignment.CenterVertically){
-            Icon(Icons.Default.Air,null,tint=Brass,modifier=Modifier.size(15.dp));Spacer(Modifier.width(6.dp))
-            Text("AUTO-STAMPED CONDITIONS",color=Brass,style=MaterialTheme.typography.labelLarge,letterSpacing=1.3.sp)}
-        Spacer(Modifier.height(8.dp))
-        when{
-            reading->Row(verticalAlignment=Alignment.CenterVertically){CircularProgressIndicator(Modifier.size(16.dp),color=BrassSoft,strokeWidth=2.dp);Spacer(Modifier.width(9.dp));Text("Reading conditions…",color=Muted)}
-            stamped?.airTempC==null&&stamped?.pressureHpa==null->{
-                Text("Conditions unavailable — offline or location off",color=Muted)
-                TextButton(onRetry,Modifier.testTag("retryConditions")){Icon(Icons.Default.Refresh,null,tint=BrassSoft,modifier=Modifier.size(15.dp));Spacer(Modifier.width(6.dp));Text("Retry",color=BrassSoft,fontWeight=FontWeight.SemiBold)}}
-            else->Text(stamped!!.summary(unit),color=Ink)}}
-}
-
-/**
- * Rig and bait, as a grid of saved presets plus an Add.
- *
- * The free-text field is gone: iOS has never had one here, and a text box beside chips invites two spellings of
- * the same rig, which then split the Insights breakdown (TB-P-04). Anything new is added as a preset, so it is
- * there next time.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable fun PresetChips(label:String,value:String,presets:List<String>,onPick:(String)->Unit,onAdd:()->Unit){
-    SectionLabel(label)
-    FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-        presets.forEach{p->FilterChip(value==p,{onPick(if(value==p)"" else p)},{Text(p)},colors=brassChipColours(),shape=CircleShape)}
-        FilterChip(false,onAdd,{Text("＋ Add")},colors=brassChipColours(),shape=CircleShape)}
-}
-
-
-/** Photo species identification. The button used to be inert with no client behind it (TB-A-07). */
-@Composable fun SpeciesIdRow(s:AppState,vm:MainViewModel,photo:String?,suggestions:LiveState<List<SpeciesSuggestion>>,onPick:(String)->Unit){
-    val connection by vm.connection.state.collectAsStateWithLifecycle()
-    if(s.settings.speciesIdToken.isBlank() && !connection.connected){Text("Connect iNaturalist in Settings to identify a photo. Manual species selection is always available.",color=Muted);return}
-    OutlinedButton({vm.identify(photo,s.settings.speciesIdToken)},enabled=photo!=null&&suggestions !is LiveState.Loading){
-        Icon(Icons.Default.AutoAwesome,null);Text(if(suggestions is LiveState.Loading)" Identifying…" else " Identify from photo")}
-    when(val x=suggestions){
-        is LiveState.Error->Text(x.message,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium)
-        is LiveState.Data->if(x.value.isEmpty())Text("No confident match. Pick the species by hand.",color=Muted)
-            else Column{x.value.forEach{sug->TextButton({onPick(sug.commonName?:sug.scientificName)}){Text("${sug.commonName?:sug.scientificName} · ${(sug.score).roundToInt()}%")}}}
-        else->{}
-    }
-}
 
 // Gear was always filed as OTHER and presets always as RIG, with no way to pick either and no way to delete
 // anything — deleteGear existed in the DAO but nothing reached it, and presets had no delete at all.
@@ -660,6 +490,7 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
  * from Open-Meteo and nothing else, while iOS had NOAA and WorldTides predictions. Both are here now.
  */
 @Composable fun Tides(vm:MainViewModel,nav:NavHostController){
+    val unit=vm.state.collectAsStateWithLifecycle().value.settings.unitSystem
     val sea by vm.marine.collectAsStateWithLifecycle()
     val tide by vm.tides.collectAsStateWithLifecycle()
     val place by vm.marinePlace.collectAsStateWithLifecycle()
@@ -678,10 +509,10 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
                 HeritageCard{
                     val next=r.next()
                     if(next!=null){Text("Next ${if(next.kind==TideKind.HIGH)"high" else "low"} · ${next.time.hm()}",style=MaterialTheme.typography.titleLarge)
-                        Text("%.1f m · %s%s".format(next.heightMetres,r.source.label,if(r.cached)" · last known" else ""),color=Muted)}
+                        Text("%s · %s%s".format(next.heightMetres.metres(unit),r.source.label,if(r.cached)" · last known" else ""),color=Muted)}
                     else Text("Today's tides have passed",style=MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(10.dp))
-                    r.events.forEach{e->Row{Text(if(e.kind==TideKind.HIGH)"High" else "Low",Modifier.weight(1f),color=if(e.kind==TideKind.HIGH)Brass else Muted);Text("${e.time.hm()}  ·  %.1f m".format(e.heightMetres),color=Ink)}}}}}}
+                    r.events.forEach{e->Row{Text(if(e.kind==TideKind.HIGH)"High" else "Low",Modifier.weight(1f),color=if(e.kind==TideKind.HIGH)Brass else Muted);Text("${e.time.hm()}  ·  ${e.heightMetres.metres(unit)}",color=Ink)}}}}}}
         item{SectionLabel("Sea state")}
         item{when(val x=sea){
             LiveState.Idle,LiveState.Loading->Loading()
@@ -690,17 +521,21 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
                 if(h==null||h.waveHeight.isEmpty())Empty("No coastal data","You may be inland or outside forecast coverage.")
                 else HeritageCard{
                     // Wave direction and sea temperature come back now too; iOS has always asked for them.
-                    h.seaTemperature.firstOrNull{it!=null}?.let{t->Text("Sea temperature · %.1f °C".format(t),color=Muted);Spacer(Modifier.height(8.dp))}
+                    h.seaTemperature.firstOrNull{it!=null}?.let{t->Text("Sea temperature · ${t.celsius(unit)}",color=Muted);Spacer(Modifier.height(8.dp))}
                     // The hourly series starts at midnight, so the first eight entries were this morning's by the
                     // afternoon. Show the next eight hours from now; a reading the service left out prints "—".
                     val from=MarineHours.firstFromNow(h.time)
                     (from until minOf(from+8,h.time.size)).forEach{i->Row{
                         Text(h.time[i].takeLast(5),Modifier.weight(1f))
                         val dir=h.waveDirection.getOrNull(i)?.let{d->" "+compassPoint(d)}.orEmpty()
-                        Text("${h.waveHeight.getOrNull(i)?.let{"%.1f".format(it)}?:"—"} m$dir · ${h.wavePeriod.getOrNull(i)?.let{"%.0f".format(it)}?:"—"} s",color=Teal)}}}}}}
+                        Text("${h.waveHeight.getOrNull(i)?.metres(unit)?:"—"}$dir · ${h.wavePeriod.getOrNull(i)?.let{"%.0f".format(it)}?:"—"} s",color=Teal)}}}}}}
     }
 }
 
+/** A height in the angler's units: "1.2 m" or "3.9 ft". */
+fun Double.metres(unit:UnitSystem):String=if(unit==UnitSystem.METRIC)"%.1f m".format(this) else "%.1f ft".format(this/0.3048)
+/** A temperature in the angler's units: "14.2 °C" or "57.6 °F". */
+fun Double.celsius(unit:UnitSystem):String=if(unit==UnitSystem.METRIC)"%.1f °C".format(this) else "%.1f °F".format(this*9/5+32)
 private fun java.time.Instant.hm():String=
     java.time.LocalDateTime.ofInstant(this,java.time.ZoneId.systemDefault()).toLocalTime().hm()
 /**
@@ -801,56 +636,6 @@ private fun java.time.Instant.hm():String=
         dismissButton={TextButton({confirmDelete=false}){Text("Cancel")}})
 }
 
-@Composable fun Settings(s:AppState,vm:MainViewModel,nav:NavHostController){
-    var token by rememberSaveable(s.settings.speciesIdToken){mutableStateOf(s.settings.speciesIdToken)}
-    var tideKey by rememberSaveable(s.settings.worldTidesKey){mutableStateOf(s.settings.worldTidesKey)}
-    var confirm by rememberSaveable{mutableStateOf(false)}
-    val context=LocalContext.current
-    val exported by vm.exported.collectAsStateWithLifecycle()
-    val notice by vm.notice.collectAsStateWithLifecycle()
-    val importPlan by vm.importPlan.collectAsStateWithLifecycle()
-    val importResult by vm.importResult.collectAsStateWithLifecycle()
-    val importPicker=rememberLauncherForActivityResult(ActivityResultContracts.GetContent()){uri->uri?.let(vm::planImport)}
-    // Hand the finished file straight to the share sheet, then clear it so rotating does not re-open the chooser.
-    LaunchedEffect(exported){exported?.let{ShareSheet.file(context,it,"application/json","Export your Tacklebox journal");vm.clearExport()}}
-    PushedScreen("Settings",onBack={nav.popBackStack()}){
-        item{DisciplinePreferences(s.settings,vm::settings)}
-        // icon={} for the same reason as onboarding: Material draws a checkmark in the selected segment that iOS's
-        // control has no counterpart for, and the same control appeared two different ways in the same app.
-        item{HeritageCard{SectionLabel("Units");SingleChoiceSegmentedButtonRow{UnitSystem.entries.forEachIndexed{i,u->SegmentedButton(s.settings.unitSystem==u,{vm.settings(s.settings.copy(unitSystem=u))},SegmentedButtonDefaults.itemShape(i,2),colors=SegmentedButtonDefaults.colors(activeContainerColor=Brass,activeContentColor=Background,inactiveContainerColor=Inset,inactiveContentColor=Ink),icon={}){Text(u.name.lowercase().replaceFirstChar(Char::uppercase))}}}}}
-        // The Drive switch only ever persisted a boolean — there is no Drive code, no OAuth client and no
-        // GoogleSignIn dependency in the app. Rather than keep a control that implies a backup is happening, say
-        // plainly that it is not built yet and point at the export that does work.
-        item{HeritageCard(onClick={nav.navigate("unlimited")}){SectionLabel("Unlimited");Text("Two free sessions, then one purchase for unlimited sessions.",color=Muted)}}
-        item{HeritageCard(onClick={nav.navigate("backup")}){SectionLabel("Photo backup");Text("Create or restore a complete copy, including catch photos.",color=Muted)}}
-        // Browser sign-in needs a registered public client. Without one the card only ever said "not available in
-        // this version yet", so — as on iOS — it is not offered at all; the manual token below always works.
-        if(BuildConfig.INATURALIST_CLIENT_ID.isNotBlank())item{SpeciesConnectionCard(vm)}
-        item{OutlinedTextField(token,{token=it},label={Text("Species-ID API token")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth());Text("An iNaturalist token, used only to identify a photo. It expires after about a day.",color=Muted,style=MaterialTheme.typography.bodyMedium);Button({vm.settings(s.settings.copy(speciesIdToken=token))}){Text("Save token")}}
-        // Optional, and only needed outside the contiguous US — NOAA covers that for free. Kept alongside the
-        // species token because they are the same kind of thing: a key the angler brings, for a feature that
-        // works without it or says plainly that it cannot.
-        item{OutlinedTextField(tideKey,{tideKey=it},label={Text("WorldTides API key")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth().testTag("worldTidesKey"));Text("Optional. Tide predictions come from NOAA free of charge inside the contiguous US; a WorldTides key covers everywhere else.",color=Muted,style=MaterialTheme.typography.bodyMedium);Button({vm.settings(s.settings.copy(worldTidesKey=tideKey))}){Text("Save key")}}
-        item{HeritageCard{SectionLabel("Data")
-            OutlinedButton({vm.exportJson()},Modifier.fillMaxWidth().testTag("exportJson")){Icon(Icons.Default.FileDownload,null);Text(" Export JSON")}
-            // Export alone is an escape hatch; import is what makes the journal portable — between devices, after
-            // a wiped phone, or in from another app.
-            OutlinedButton({importPicker.launch("application/json")},Modifier.fillMaxWidth().testTag("importJournal")){Icon(Icons.Default.FileUpload,null);Text(" Import a journal")}
-            Text("Adds catches from a Tacklebox export. Nothing you already have is changed or removed.",color=Muted,style=MaterialTheme.typography.bodyMedium)
-            TextButton({confirm=true},Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete catches, waters & gear")}}}
-        item{Text("No ads · No analytics · No subscriptions",Modifier.fillMaxWidth(),textAlign=TextAlign.Center,color=Muted)}
-    }
-    if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Delete your data?")},text={Text("This removes catches, photos, sessions, waters, gear and your own presets from this device. Species, settings and the starter rig and bait presets remain.")},confirmButton={TextButton({vm.deleteData();confirm=false}){Text("Delete")}},dismissButton={TextButton({confirm=false}){Text("Cancel")}})
-    notice?.let{n->AlertDialog(onDismissRequest={vm.clearNotice()},title={Text(if(n.success)"Journal update" else "Couldn’t do that")},text={Text(n.message)},confirmButton={TextButton({vm.clearNotice()}){Text("OK")}})}
-    // The plan is shown before anything is written, so the confirmation says exactly what will happen.
-    importPlan?.let{plan->AlertDialog(onDismissRequest={vm.cancelImport()},title={Text("Import this journal?")},
-        text={Text(importSummary(plan))},
-        confirmButton={TextButton({vm.confirmImport()},modifier=Modifier.testTag("confirmImport")){Text("Import")}},
-        dismissButton={TextButton({vm.cancelImport()}){Text("Cancel")}})}
-    importResult?.let{r->AlertDialog(onDismissRequest={vm.clearImportResult()},title={Text("Import finished")},
-        text={Text(importResultSummary(r))},
-        confirmButton={TextButton({vm.clearImportResult()}){Text("OK")}})}
-}
 @Composable fun Empty(title:String,body:String){Column(Modifier.fillMaxWidth().padding(30.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.SetMeal,null,tint=Brass);Text(title,style=MaterialTheme.typography.titleLarge);Text(body,color=Muted,textAlign=TextAlign.Center)}}
 @Composable fun Loading(){Box(Modifier.fillMaxWidth().padding(40.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(color=Brass)}}
 @Composable fun ErrorCard(message:String,retry:()->Unit){HeritageCard{Text(message,color=MaterialTheme.colorScheme.error);TextButton(retry){Text("Try again")}}}
@@ -942,212 +727,4 @@ val CatchFilterSaver=androidx.compose.runtime.saveable.listSaver<CatchFilter,Any
     restore={CatchFilter(it[0] as String,it[1] as String?,it[2] as String?,CatchFilter.Period.valueOf(it[3] as String),it[4] as Boolean,it[5] as Double?)}
 )
 
-// --- Catch date, notes and editing ------------------------------------------------------------------------------
-/**
- * A tappable "caught at" row. The catch time used to be fixed at the moment of saving, so a session logged from the
- * car park recorded the wrong day and nothing could ever be back-dated.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable fun CaughtAtField(millis:Long,onChange:(Long)->Unit){
-    var picking by rememberSaveable{mutableStateOf(false)}
-    HeritageCard(onClick={picking=true}){
-        Text("CAUGHT",color=Brass,style=MaterialTheme.typography.labelLarge)
-        Text(Instant.ofEpochMilli(millis).pretty(),style=MaterialTheme.typography.titleLarge)
-    }
-    if(picking){
-        val state=rememberDatePickerState(initialSelectedDateMillis=millis)
-        // The picker reports UTC midnight of the chosen day; the time of day the angler already had is kept.
-        DatePickerDialog(onDismissRequest={picking=false},
-            confirmButton={TextButton({state.selectedDateMillis?.let{onChange(CatchTiming.combine(it,millis))};picking=false}){Text("Set")}},
-            dismissButton={TextButton({picking=false}){Text("Cancel")}}){DatePicker(state)}
-    }
-}
 
-/**
- * Editing a saved catch. Both apps were append-only: mistype a weight and the only remedy was to delete the catch
- * and enter it again.
- */
-/**
- * Editing mirrors capture (TB-P-04), as it does on iOS. A screen where a weight is entered with steppers and
- * corrected with a text field is two designs for one number.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable fun EditCatch(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
-    val row=s.catches.firstOrNull{it.item.id==id}
-    if(row==null){PushedScreen("Edit catch",onBack={nav.popBackStack()}){item{Empty("Catch not found","It may have been deleted.")}};return}
-    val metric=s.settings.unitSystem==UnitSystem.METRIC
-    val original=row.item
-    val startPounds=original.weightGrams?.let{Weights.toPoundsAndOunces(it)}
-    // The steppers show the stored values rounded to their own resolution. They are remembered so that a stepper
-    // nobody touched leaves the stored value alone — saving used to rewrite 2126.25 g as 2120 g and 45.5 cm as 45 cm.
-    val startKilograms=((original.weightGrams?:0.0)/1000).toInt()
-    val startGrams=(((original.weightGrams?:0.0)%1000)/10).roundToInt().coerceIn(0,99)*10
-    val startPoundsWhole=startPounds?.first?:0; val startOunces=startPounds?.second?:0
-    val startCentimetres=(original.lengthCm?:0.0).roundToInt()
-    val startInches=((original.lengthCm?:0.0)/2.54).roundToInt()
-    var species by rememberSaveable{mutableStateOf(original.speciesId)}
-    var kilograms by rememberSaveable{mutableIntStateOf(startKilograms)}
-    var grams by rememberSaveable{mutableIntStateOf(startGrams)}
-    var pounds by rememberSaveable{mutableIntStateOf(startPoundsWhole)}
-    var ounces by rememberSaveable{mutableIntStateOf(startOunces)}
-    var centimetres by rememberSaveable{mutableIntStateOf(startCentimetres)}
-    var inches by rememberSaveable{mutableIntStateOf(startInches)}
-    val weightChanged=if(metric)kilograms!=startKilograms||grams!=startGrams else pounds!=startPoundsWhole||ounces!=startOunces
-    val lengthChanged=if(metric)centimetres!=startCentimetres else inches!=startInches
-    var rig by rememberSaveable{mutableStateOf(original.rig.orEmpty())}
-    var bait by rememberSaveable{mutableStateOf(original.bait.orEmpty())}
-    var returned by rememberSaveable{mutableStateOf(original.returned)}
-    var notes by rememberSaveable{mutableStateOf(original.notes)}
-    var water by rememberSaveable{mutableStateOf(original.waterId)}
-    var caughtAt by rememberSaveable{mutableStateOf(original.caughtAt.toEpochMilli())}
-    var photos by rememberSaveable{mutableStateOf(row.allPhotoUris)}
-    var addingPreset by rememberSaveable{mutableStateOf<PresetKind?>(null)}; var newPreset by rememberSaveable{mutableStateOf("")}
-
-    val enteredGrams:Double=if(metric)(kilograms*1000+grams).toDouble() else (Weights.fromPoundsAndOunces(pounds.toString(),ounces.toString())?:0.0)
-    val lengthCm:Double=if(metric)centimetres.toDouble() else inches*2.54
-
-    CaptureScaffold("Edit Catch",onCancel={nav.popBackStack()}){
-        item{PhotoStrip(photos){photos=it}}
-        item{SectionLabel("Species")
-            FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                s.species.filter { it.discipline.name in s.settings.activeDisciplines }.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}}}
-        item{SectionLabel("Weight")
-            Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                if(metric){
-                    ValueStepper("KG",kilograms,0..100,modifier=Modifier.weight(1f)){kilograms=it}
-                    ValueStepper("G",grams,0..990,10,Modifier.weight(1f)){grams=it}
-                }else{
-                    ValueStepper("LB",pounds,0..200,modifier=Modifier.weight(1f)){pounds=it}
-                    ValueStepper("OZ",ounces,0..15,modifier=Modifier.weight(1f)){ounces=it}}}}
-        item{SectionLabel("Length")
-            Row(Modifier.padding(top=10.dp)){
-                if(metric)ValueStepper("CM",centimetres,0..300,modifier=Modifier.weight(1f)){centimetres=it}
-                else ValueStepper("IN",inches,0..120,modifier=Modifier.weight(1f)){inches=it}}}
-        item{HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){
-            Column(Modifier.weight(1f)){Text("Returned",fontWeight=FontWeight.SemiBold);Text(if(returned)"Put back in the water" else "Kept",color=Muted,style=MaterialTheme.typography.bodyMedium)}
-            Switch(returned,{returned=it})}}}
-        item{SectionLabel("Water")
-            FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                s.waters.forEach{w->FilterChip(water==w.id,{water=if(water==w.id)null else w.id},{Text(w.name)},colors=brassChipColours(),shape=CircleShape)}}}
-        item{SectionLabel("When");Box(Modifier.padding(top=10.dp)){CaughtAtField(caughtAt){caughtAt=it}}}
-        item{PresetChips("Rig",rig,s.presets.filter{it.kind==PresetKind.RIG}.map{it.name},onPick={rig=it},onAdd={newPreset="";addingPreset=PresetKind.RIG})}
-        item{PresetChips("Bait",bait,s.presets.filter{it.kind==PresetKind.BAIT}.map{it.name},onPick={bait=it},onAdd={newPreset="";addingPreset=PresetKind.BAIT})}
-        item{SectionLabel("Notes")
-            OutlinedTextField(notes,{notes=it},minLines=3,modifier=Modifier.fillMaxWidth().padding(top=10.dp).testTag("editNotes"))}
-        item{Button({
-                vm.updateCatch(original.copy(speciesId=species,
-                    weightGrams=EditedMeasurement.resolve(original.weightGrams,weightChanged,enteredGrams),
-                    lengthCm=EditedMeasurement.resolve(original.lengthCm,lengthChanged,lengthCm),
-                    rig=rig.ifBlank{null},bait=bait.ifBlank{null},returned=returned,notes=notes.trim(),
-                    waterId=water,caughtAt=Instant.ofEpochMilli(caughtAt),photoUri=photos.firstOrNull()),photos)
-                nav.popBackStack()
-            },Modifier.fillMaxWidth().height(52.dp).testTag("saveEdit"),shape=RoundedCornerShape(14.dp),
-            enabled=species!=null&&enteredGrams>0){Text("Save changes",fontWeight=FontWeight.Bold)}}
-    }
-    addingPreset?.let{kind->AlertDialog(onDismissRequest={addingPreset=null},title={Text("Add ${kind.name.lowercase()}")},
-        text={OutlinedTextField(newPreset,{newPreset=it},label={Text("Name")},singleLine=true)},
-        confirmButton={TextButton({if(newPreset.isNotBlank()){vm.addPreset(newPreset.trim(),kind);if(kind==PresetKind.RIG)rig=newPreset.trim() else bait=newPreset.trim();newPreset="";addingPreset=null}}){Text("Add")}},
-        dismissButton={TextButton({addingPreset=null}){Text("Cancel")}})}
-}
-
-
-// --- Multiple photos per catch ----------------------------------------------------------------------------------
-/**
- * The photo editor used by both the capture and edit screens. One photo per catch with no gallery was the biggest
- * thing the app under-used — anglers take three or four shots of a good fish. The first image is the cover, which
- * is what the Vault hero and list thumbnails show, so the first slot is labelled.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable fun PhotoStrip(photos:List<String>,onChange:(List<String>)->Unit){
-    val limit=8
-    val context=LocalContext.current
-    val scope=rememberCoroutineScope()
-    val current by rememberUpdatedState(photos)
-    var importing by remember{mutableStateOf(false)}
-    var failed by remember{mutableIntStateOf(0)}
-    // Every picked or captured image is copied into the app's own photo store (oriented, ≤2048 px, JPEG) and only
-    // that file's URI is kept. The picker's content:// grant dies with the process and the camera's cache file with
-    // the next cache trim — both used to make photos vanish. `cleanup` removes the camera's cache copy afterwards.
-    fun add(sources:List<Uri>,cleanup:()->Unit={}){
-        if(sources.isEmpty())return
-        scope.launch{
-            importing=true
-            val stored=withContext(Dispatchers.IO){sources.mapNotNull{source->runCatching{PhotoStore.import(context,source)}.getOrNull()}}
-            cleanup();failed=sources.size-stored.size;importing=false
-            if(stored.isNotEmpty())onChange((current+stored).take(limit))}}
-    val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()){uris->add(uris)}
-    // rememberSaveable: the camera app is exactly when Android kills the caller, and a `remember` here forgot the
-    // destination on the way back, so the photo just taken was silently dropped.
-    var pending by rememberSaveable{mutableStateOf<String?>(null)}
-    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->
-        val capture=pending;pending=null
-        if(ok&&capture!=null)add(listOf(Uri.parse(capture))){CapturePhoto.discard(context,Uri.parse(capture))}}
-    fun capture(){val destination=CapturePhoto.destination(context);pending=destination.toString();camera.launch(destination)}
-    val cameraPermission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->if(granted)capture()}
-
-    val largeText=LocalDensity.current.fontScale>=1.5f
-    Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
-        if(photos.isEmpty()){
-            Box(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(18.dp)).background(Inset).clickable{picker.launch("image/*")},contentAlignment=Alignment.Center){
-                Column(horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.Phishing,null,tint=Teal,modifier=Modifier.size(44.dp));Text("Add the moment",color=Muted)}}
-        } else {
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                itemsIndexed(photos){index,uri->
-                    Box(Modifier.size(118.dp)){
-                        AsyncImage(uri,if(index==0)"Cover photo" else "Photo ${index+1}",
-                            Modifier.fillMaxSize().clip(RoundedRectangle14)
-                                .border(if(index==0)2.dp else 1.dp,if(index==0)Brass else Muted.copy(alpha=.4f),RoundedRectangle14),
-                            contentScale=ContentScale.Crop)
-                        IconButton({onChange(photos.filterIndexed{i,_->i!=index})},Modifier.align(Alignment.TopEnd)){
-                            Icon(Icons.Default.Cancel,"Remove photo ${index+1}",tint=Ink)}
-                        if(index==0)Text("COVER",color=Background,style=MaterialTheme.typography.bodyMedium,
-                            modifier=Modifier.align(Alignment.BottomStart).padding(4.dp).background(Brass,RoundedCornerShape(6.dp)).padding(horizontal=5.dp))}}}
-        }
-        FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(10.dp),maxItemsInEachRow=if(largeText)1 else 2){
-            FilledTonalButton({picker.launch("image/*")},Modifier.weight(1f),enabled=photos.size<limit&&!importing,shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.filledTonalButtonColors(containerColor=Inset,contentColor=BrassSoft)){
-                Icon(Icons.Default.PhotoLibrary,null);Text(if(photos.isEmpty())" Library" else " Add more")}
-            FilledTonalButton({if(CapturePhoto.permitted(context))capture() else cameraPermission.launch(Manifest.permission.CAMERA)},Modifier.weight(1f),enabled=photos.size<limit&&!importing,shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.filledTonalButtonColors(containerColor=Inset,contentColor=BrassSoft)){
-                Icon(Icons.Default.PhotoCamera,null);Text(" Camera")}}
-        if(importing)Row(verticalAlignment=Alignment.CenterVertically){CircularProgressIndicator(Modifier.size(16.dp),color=BrassSoft,strokeWidth=2.dp);Spacer(Modifier.width(9.dp));Text("Saving photo…",color=Muted,style=MaterialTheme.typography.bodyMedium)}
-        else if(failed>0)Text(if(failed==1)"One photo could not be read and was not added." else "$failed photos could not be read and were not added.",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium)
-        if(photos.size>=limit)Text("That's the limit of $limit photos for one catch.",color=Muted,style=MaterialTheme.typography.bodyMedium)
-        else if(photos.size>1)Text("The first photo is the one that appears on your board.",color=Muted,style=MaterialTheme.typography.bodyMedium)
-    }
-}
-
-/** A swipeable gallery for the catch detail. A single photo looks exactly as it did before. */
-@Composable fun PhotoGallery(photos:List<String>){
-    val pager=rememberPagerState(pageCount={photos.size})
-    Column(horizontalAlignment=Alignment.CenterHorizontally){
-        HorizontalPager(pager,Modifier.fillMaxWidth().height(300.dp)){page->
-            AsyncImage(photos[page],"Photo ${page+1} of ${photos.size}",
-                Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp)),contentScale=ContentScale.Crop)}
-        if(photos.size>1)Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){
-            repeat(photos.size){i->Box(Modifier.size(7.dp).clip(CircleShape).background(if(i==pager.currentPage)Brass else Muted.copy(alpha=.35f)))}}
-    }
-}
-
-val RoundedRectangle14=RoundedCornerShape(14.dp)
-
-/** Says exactly what an import will do, including what it will skip and what it cannot carry. */
-fun importSummary(plan:JournalImport.Plan):String{
-    val parts=mutableListOf("${plan.newCatches} new ${if(plan.newCatches==1)"catch" else "catches"}")
-    parts+="${plan.newSessions} new sessions"
-    parts+="${plan.newGear} new gear items"
-    parts+="${plan.newPresets} new presets"
-    if(plan.newWaters>0)parts+="${plan.newWaters} new ${if(plan.newWaters==1)"water" else "waters"}"
-    if(plan.newSpecies>0)parts+="${plan.newSpecies} new species"
-    var text="This adds ${parts.joinToString(", ")}."
-    if(plan.duplicateCatches>0)text+=" ${plan.duplicateCatches} ${if(plan.duplicateCatches==1)"catch is" else "catches are"} already in your vault and will be skipped."
-    return text+" Nothing you already have is changed or removed. Photos aren’t included in an export, so imported catches arrive without them."
-}
-
-fun importResultSummary(r:JournalImport.Result):String{
-    val parts=mutableListOf("${r.catches} ${if(r.catches==1)"catch" else "catches"}")
-    if(r.waters>0)parts+="${r.waters} waters"
-    if(r.sessions>0)parts+="${r.sessions} sessions"
-    if(r.gear>0)parts+="${r.gear} gear items"
-    if(r.presets>0)parts+="${r.presets} presets"
-    if(r.species>0)parts+="${r.species} species"
-    return "Added ${parts.joinToString(", ")}."
-}

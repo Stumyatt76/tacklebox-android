@@ -62,12 +62,14 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
      * filed under the first discipline the angler has active, so they appear in the chip row they were added from;
      * everything used to land on COARSE and vanished for anyone who had switched that discipline off.
      */
-    suspend fun addSpecies(name:String, activeDisciplines:List<String> = emptyList()):Long = db.withTransaction {
+    suspend fun addSpecies(name:String, activeDisciplines:List<String> = emptyList(), discipline:Discipline? = null):Long = db.withTransaction {
         val trimmed=name.trim()
         require(trimmed.isNotEmpty()) { "Give this species a name." }
         dao.speciesOnce().firstOrNull { it.name.equals(trimmed, ignoreCase=true) }?.let { return@withTransaction it.id }
-        val discipline=activeDisciplines.firstNotNullOfOrNull { d -> Discipline.entries.firstOrNull { it.name.equals(d, ignoreCase=true) } } ?: Discipline.COARSE
-        dao.addSpecies(Species(name=trimmed, discipline=discipline, scientificName=uk.co.tacklebox.app.services.SpeciesLookup.canonicalName(trimmed)))
+        // The Add Species sheet lets the angler pick the discipline, as iOS does; without a choice it lands on the
+        // first active one.
+        val chosen=discipline ?: activeDisciplines.firstNotNullOfOrNull { d -> Discipline.entries.firstOrNull { it.name.equals(d, ignoreCase=true) } } ?: Discipline.COARSE
+        dao.addSpecies(Species(name=trimmed, discipline=chosen, scientificName=uk.co.tacklebox.app.services.SpeciesLookup.canonicalName(trimmed)))
     }
     suspend fun addWater(v:Water)=dao.addWater(v)
     suspend fun addSession(v:FishingSession)=dao.addSession(v)
@@ -82,7 +84,7 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         id
     }
     suspend fun startSession(waterId:Long?,unlimited:Boolean=false) = db.withTransaction {
-        require(dao.openSession()==null) { "A fishing session is already running." }
+        require(dao.openSession()==null) { "A session is already running." }
         val current=dao.settings().first() ?: defaults()
         require(uk.co.tacklebox.app.SessionAllowance.canStart(current.freeSessionsStarted,unlimited)) { "Your two free sessions are complete. Unlock Unlimited to start another." }
         if(!unlimited)dao.saveSettings(current.copy(freeSessionsStarted=current.freeSessionsStarted+1))
@@ -206,6 +208,23 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
             val uris=dao.allCoverPhotos()+dao.allExtraPhotos()
             dao.clearConditions(); dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters()
             seedPresets.forEach { dao.addPreset(it) }
+            uris
+        }
+        deletePhotoFiles(photos)
+    }
+    /**
+     * "Reset to a fresh vault", with the same meaning as `SeedData.reset` on iOS: every record and photo goes, the
+     * species catalogue and the starter presets come back, units and disciplines return to their defaults, and
+     * onboarding replays. The free-session count is the one thing kept, so a reset cannot mint new free sessions.
+     */
+    suspend fun resetVault() {
+        val photos=db.withTransaction {
+            val used=dao.settings().first()?.freeSessionsStarted ?: 0
+            val uris=dao.allCoverPhotos()+dao.allExtraPhotos()
+            dao.clearConditions(); dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters(); dao.clearSpecies()
+            seedSpecies.forEach { dao.addSpecies(it) }
+            seedPresets.forEach { dao.addPreset(it) }
+            dao.saveSettings(defaults().copy(freeSessionsStarted=used, onboardingComplete=false))
             uris
         }
         deletePhotoFiles(photos)

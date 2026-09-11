@@ -23,6 +23,17 @@ object CatchTiming {
         val time = Instant.ofEpochMilli(previousMillis).atZone(zone).toLocalTime()
         return date.atTime(time).atZone(zone).toInstant().toEpochMilli()
     }
+
+    /** The time picker's hour and minute on the day the angler already had, in the device zone. */
+    fun withTime(previousMillis: Long, hour: Int, minute: Int, zone: ZoneId = ZoneId.systemDefault()): Long =
+        Instant.ofEpochMilli(previousMillis).atZone(zone).toLocalDate().atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
+
+    /** iOS bounds the picker to `...Date.now`; Material's pickers cannot, so the result is clamped instead. */
+    fun clampToNow(millis: Long, now: Long = System.currentTimeMillis()): Long = minOf(millis, now)
+
+    /** The UTC-midnight value Material's date picker wants as its initial selection for a local instant. */
+    fun utcMidnightOf(millis: Long, zone: ZoneId = ZoneId.systemDefault()): Long =
+        Instant.ofEpochMilli(millis).atZone(zone).toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 }
 
 object EditedMeasurement {

@@ -17,8 +17,13 @@ enum class Discipline { CARP, COARSE, MATCH, GAME, SEA, PREDATOR }
 // The same ten as iOS. Android had five, and only partly overlapping: no syndicate or day ticket, while iOS had
 // no "sea". Alder Mere read "Syndicate · Oxfordshire" on one platform and "Lake · Oxfordshire" on the other from
 // the same sample data (TB-P-14). SEA becomes SHORE, which is what the importers already mapped it to.
-enum class WaterType { LAKE, POND, RESERVOIR, RIVER, CANAL, SHORE, BOAT, SYNDICATE, DAY_TICKET, COMMERCIAL }
-enum class GearCategory { ROD, REEL, LINE, HOOK, TERMINAL, LURE, NET, CLOTHING, OTHER }
+enum class WaterType { LAKE, POND, RESERVOIR, RIVER, CANAL, SHORE, BOAT, SYNDICATE, DAY_TICKET, COMMERCIAL;
+    /** The label iOS shows: "Shore / beach" and "Day ticket" rather than the enum's own spelling. */
+    val title: String get() = when (this) { SHORE -> "Shore / beach"; DAY_TICKET -> "Day ticket"; else -> name.lowercase().replaceFirstChar(Char::uppercase) }
+}
+enum class GearCategory { ROD, REEL, LINE, HOOK, TERMINAL, LURE, NET, CLOTHING, OTHER;
+    val title: String get() = if (this == TERMINAL) "Terminal tackle" else name.lowercase().replaceFirstChar(Char::uppercase)
+}
 enum class PresetKind { RIG, BAIT }
 
 class Converters {
@@ -31,6 +36,8 @@ class Converters {
 @Entity data class AppSettings(@PrimaryKey val id: Int = 1, val unitSystem: UnitSystem = UnitSystem.METRIC, val activeDisciplines: List<String> = Discipline.entries.map { it.name }, val onboardingComplete: Boolean = false, val backupEnabled: Boolean = false, val speciesIdToken: String = "", val worldTidesKey: String = "", @ColumnInfo(defaultValue="0") val freeSessionsStarted:Int = 0)
 @Entity data class Species(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val discipline: Discipline, val scientificName: String? = null, val commonName: String? = null, val about: String? = null, val referencePhotoUrl: String? = null, val photoAttribution: String? = null, @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
 @Entity data class Water(@PrimaryKey(autoGenerate = true) val id: Long = 0, val name: String, val type: WaterType, val region: String, val disciplines: List<String> = emptyList(), val swimNotes: String = "", @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
+/** "Lake · Norfolk", or just "Lake" when no region was given — the same rule as `Water.subtitle` on iOS. */
+val Water.subtitle: String get() = region.trim().let { if (it.isEmpty()) type.title else "${type.title} · $it" }
 @Entity(indices = [Index("waterId")]) data class FishingSession(@ColumnInfo(defaultValue="0") val isTrialSession:Boolean = false, @PrimaryKey(autoGenerate = true) val id: Long = 0, val waterId: Long? = null, val startAt: Instant = Instant.now(), val endAt: Instant? = null, val notes: String = "", @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
 @Entity(indices = [Index("speciesId"), Index("sessionId"), Index("waterId")]) data class Catch(@PrimaryKey(autoGenerate = true) val id: Long = 0, val speciesId: Long? = null, val weightGrams: Double? = null, val lengthCm: Double? = null, val returned: Boolean = true, val photoUri: String? = null, val rig: String? = null, val bait: String? = null, val caughtAt: Instant = Instant.now(), val sessionId: Long? = null, val waterId: Long? = null, val notes: String = "", @ColumnInfo(defaultValue="''") val portableID: String = java.util.UUID.randomUUID().toString())
 @Entity(indices = [Index(value=["catchId"], unique=true)]) data class ConditionsSnapshot(@PrimaryKey(autoGenerate = true) val id: Long = 0, val catchId: Long, val airTempC: Double? = null, val windDirection: String? = null, val windSpeedKph: Double? = null, val pressureHpa: Double? = null, val pressureTrend: String? = null, val moonPhase: String? = null)
@@ -109,6 +116,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("DELETE FROM Water") suspend fun clearWaters()
     @Query("DELETE FROM GearItem") suspend fun clearGear()
     @Query("DELETE FROM TacklePreset") suspend fun clearPresets()
+    @Query("DELETE FROM Species") suspend fun clearSpecies()
 }
 
 @Database(entities=[AppSettings::class,Species::class,Water::class,FishingSession::class,Catch::class,CatchPhoto::class,ConditionsSnapshot::class,GearItem::class,TacklePreset::class], version=6, exportSchema=true)

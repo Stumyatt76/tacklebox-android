@@ -13,10 +13,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -53,7 +56,7 @@ object SessionRules {
 }
 
 @Composable fun Sessions(s: AppState, vm: MainViewModel, nav: NavHostController) {
-    var selected by rememberSaveable { mutableStateOf<Long?>(null) }
+    var starting by rememberSaveable { mutableStateOf(false) }
     val access by vm.store.state.collectAsState()
     val canStart=SessionAllowance.canStart(s.settings.freeSessionsStarted,access.unlimited)
     val active = s.sessions.firstOrNull { it.item.endAt == null }
@@ -62,9 +65,9 @@ object SessionRules {
         item { TextButton({nav.navigate("unlimited")}) { Text(if(access.unlimited)"Unlimited sessions" else SessionAllowance.label(s.settings.freeSessionsStarted)) } }
         item { HeritageCard {
             if (active == null) {
-                Text("Start a session",style=MaterialTheme.typography.titleLarge)
-                WaterChoice(s.waters,selected) { selected=it }
-                Button({if(canStart)vm.startSession(selected) else nav.navigate("unlimited")}) { Text(if(canStart)"Start fishing" else "Unlock Unlimited") }
+                // One button into the shared water sheet, as iOS does; the first water arrives pre-ticked.
+                Button({if(canStart)starting=true else nav.navigate("unlimited")},Modifier.fillMaxWidth().height(52.dp).testTag("startSession"),shape=androidx.compose.foundation.shape.RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Filled.PlayArrow,null);Spacer(Modifier.width(8.dp));Text(if(canStart)"Start a session" else "Unlock Unlimited",fontWeight=androidx.compose.ui.text.font.FontWeight.Bold) }
             } else {
                 Text("SESSION IN PROGRESS",color=Teal)
                 Text(active.water?.name ?: "Open session",style=MaterialTheme.typography.headlineMedium)
@@ -82,6 +85,7 @@ object SessionRules {
             }
         }
     }
+    if (starting) WaterSelectionSheet(vm,s.waters,"Start a Session","Start session",onDismiss={starting=false}) { vm.startSession(it) }
 }
 
 @Composable fun WaterChoice(waters: List<Water>, selected: Long?, onChange: (Long?) -> Unit) {
@@ -98,11 +102,14 @@ object SessionRules {
 @Composable fun SessionDetail(s: AppState, vm: MainViewModel, id: Long?, nav: NavHostController) {
     val row=s.sessions.firstOrNull { it.item.id==id }
     var editing by rememberSaveable { mutableStateOf(false) }
+    var assigning by rememberSaveable { mutableStateOf(false) }
     PushedScreen("Session",onBack={nav.popBackStack()}) {
         if (row == null) item { Empty("Session unavailable","It may have been removed from the journal.") }
         else {
             item { HeritageCard {
                 Text(row.water?.name ?: "Open session",style=MaterialTheme.typography.headlineMedium)
+                // "WATER" — tap to assign or change through the shared sheet, as the iOS detail does.
+                TextButton({assigning=true},Modifier.testTag("assignWater")) { Text(if(row.water==null)"Assign a water" else "Change water") }
                 Text(row.item.startAt.pretty(),color=Muted)
                 Text(row.item.endAt?.pretty() ?: "Still fishing",color=Muted)
                 Text(row.catches.size.toString()+" catches · "+"%.1f h".format(java.time.Duration.between(row.item.startAt,row.item.endAt ?: Instant.now()).seconds.coerceAtLeast(0)/3600.0),color=BrassSoft)
@@ -121,6 +128,7 @@ object SessionRules {
         }
     }
     if (editing && row != null) SessionEditor(row,s.waters,{editing=false}) { vm.saveSession(it) { editing=false } }
+    if (assigning && row != null) WaterSelectionSheet(vm,s.waters,"Choose Water","Assign water",initialWaterId=row.item.waterId,onDismiss={assigning=false}) { vm.assignSessionWater(row.item,it) }
 }
 
 @Composable private fun SessionEditor(row: SessionRow, waters: List<Water>, dismiss: () -> Unit, save: (FishingSession) -> Unit) {
@@ -136,7 +144,7 @@ object SessionRules {
             Text("Existing catches keep their individually recorded waters.",color=Muted,style=MaterialTheme.typography.bodySmall)
             SessionDateField("Started",start) { startMillis=it.toEpochMilli() }
             if(end!=null) SessionDateField("Finished",end) { endMillis=it.toEpochMilli() }
-            OutlinedTextField(notes,{notes=it},label={Text("Session notes")},minLines=3)
+            OutlinedTextField(notes,{notes=it},label={Text("Session notes")},placeholder={Text("The story of your session")},minLines=3)
             error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
         }
     },confirmButton={TextButton({save(row.item.copy(startAt=start,endAt=end,waterId=water,notes=notes.trim()))},enabled=error==null){Text("Save")}},

@@ -25,7 +25,15 @@ object JournalExport {
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun write(context:Context, state:AppState):Uri {
-        val payload = mapOf(
+        val dir = File(context.cacheDir,"exports").apply { mkdirs() }
+        // One stable filename: repeated exports replace the previous file rather than filling the cache.
+        val file = File(dir,"tacklebox-journal.json")
+        file.writeText(gson.toJson(payload(state)))
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+
+    /** The document itself, separated from the file so its shape can be tested without a device. */
+    fun payload(state:AppState):Map<String,Any?> = mapOf(
             "app" to "Tacklebox",
             "schema" to SCHEMA,
             "exportedAt" to Instant.now().toString(),
@@ -42,7 +50,9 @@ object JournalExport {
                 "rig" to row.item.rig,
                 "bait" to row.item.bait,
                 "notes" to row.item.notes.ifBlank { null },
-                "photoUri" to row.item.photoUri,
+                // `hasPhoto`, as iOS writes it. The old `photoUri` leaked a device-specific path into the file and
+                // meant nothing on any other device.
+                "hasPhoto" to (row.item.photoUri!=null),
                 "photoCount" to row.allPhotoUris.size,
                 "conditions" to row.conditions?.let { mapOf(
                     "airTempC" to it.airTempC, "windDirection" to it.windDirection, "windSpeedKph" to it.windSpeedKph,
@@ -55,10 +65,4 @@ object JournalExport {
             "gear" to state.gear.map { mapOf("name" to it.name,"category" to it.category.name,"notes" to it.notes) },
             "presets" to state.presets.map { mapOf("name" to it.name,"kind" to it.kind.name) }
         )
-        val dir = File(context.cacheDir,"exports").apply { mkdirs() }
-        // One stable filename: repeated exports replace the previous file rather than filling the cache.
-        val file = File(dir,"tacklebox-journal.json")
-        file.writeText(gson.toJson(payload))
-        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    }
 }
