@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Stuart Myatt. All rights reserved.
+ * Proprietary — source is public for reference only. See LICENSE at the repository root.
+ */
 package uk.co.tacklebox.app
 
 import androidx.activity.compose.LocalActivity
@@ -13,6 +17,7 @@ import uk.co.tacklebox.app.ui.*
         item { HeritageCard {
             Text("Two free sessions. All catches and features included. Unlock unlimited sessions with one purchase; no subscription.")
             Text("Your existing catches, photos and exports stay available. Deleting a session does not reset the free allowance.",color=Muted)
+            if(state.includedWithPurchase) Text("Unlimited sessions are included with your original Tacklebox purchase.",color=Muted)
             if(!state.unlimited) {
                 Text(SessionAllowance.label(s.settings.freeSessionsStarted))
                 Button({activity?.let(vm.store::purchase)},enabled=state.price!=null && activity!=null && !state.busy && BuildConfig.PLAY_BILLING_PUBLIC_KEY.isNotBlank()) { Text(state.price?.let { "Unlock Unlimited · $it" } ?: "Store unavailable") }

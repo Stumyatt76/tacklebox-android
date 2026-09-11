@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Stuart Myatt. All rights reserved.
+ * Proprietary — source is public for reference only. See LICENSE at the repository root.
+ */
 package uk.co.tacklebox.app
 
 import android.app.Activity
@@ -14,13 +18,30 @@ object SessionAllowance {
     fun label(used:Int):String { val left=maxOf(0,FREE_LIMIT-used);return "$left free ${if(left==1)"session" else "sessions"} remaining" }
     fun canStart(used:Int,unlimited:Boolean)=unlimited || used<FREE_LIMIT
 }
-data class StoreState(val unlimited:Boolean=false,val price:String?=null,val busy:Boolean=false,val message:String?=null)
+data class StoreState(val unlimited:Boolean=false,val price:String?=null,val busy:Boolean=false,val message:String?=null,val includedWithPurchase:Boolean=false)
 
 /** One non-consumable. Signed receipts are checked again before using an offline entitlement. */
 class UnlimitedStore(context:Context):PurchasesUpdatedListener {
-    companion object { const val PRODUCT_ID="tacklebox_unlimited" }
+    companion object {
+        const val PRODUCT_ID="tacklebox_unlimited"
+        /**
+         * Tacklebox 1.8–2.1 (versionCode ≤ 12) sold on Google Play as a paid app with everything included. Google Play
+         * cannot tell a paid-era buyer from a later free download, so anyone whose Play Store install predates the
+         * switch to the free download keeps unlimited sessions without buying again. Sideloaded installs do not qualify.
+         */
+        val PAID_ERA_END:Long=java.time.Instant.parse("2026-09-12T00:00:00Z").toEpochMilli()
+        fun includedWithOriginalPurchase(installer:String?,firstInstallTime:Long,paidEraEnd:Long=PAID_ERA_END):Boolean=
+            installer=="com.android.vending" && firstInstallTime<paidEraEnd
+        private fun includedWithOriginalPurchase(context:Context):Boolean=runCatching {
+            val pm=context.packageManager
+            val installer=if(android.os.Build.VERSION.SDK_INT>=30)pm.getInstallSourceInfo(context.packageName).installingPackageName
+                else @Suppress("DEPRECATION") pm.getInstallerPackageName(context.packageName)
+            includedWithOriginalPurchase(installer,pm.getPackageInfo(context.packageName,0).firstInstallTime)
+        }.getOrDefault(false)
+    }
     private val preferences=context.getSharedPreferences("tacklebox-purchases",Context.MODE_PRIVATE)
-    val state=MutableStateFlow(StoreState())
+    private val includedWithPurchase=includedWithOriginalPurchase(context)
+    val state=MutableStateFlow(StoreState(unlimited=includedWithPurchase,includedWithPurchase=includedWithPurchase))
     private var product:ProductDetails?=null
     private var connecting=false
     private var restoring=false
@@ -65,7 +86,7 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result,purchases->
             if(result.responseCode==BillingClient.BillingResponseCode.OK) {
                 val owned=purchases.firstOrNull(::verified)
-                if(owned==null) { preferences.edit().remove("receipt").remove("signature").apply();state.value=state.value.copy(unlimited=false,busy=false,message=if(restoring)"No verified Unlimited purchase was found for this Google Play account." else state.value.message) }
+                if(owned==null) { preferences.edit().remove("receipt").remove("signature").apply();state.value=state.value.copy(unlimited=includedWithPurchase,busy=false,message=if(restoring)"No verified Unlimited purchase was found for this Google Play account." else state.value.message) }
                 else accept(owned)
                 restoring=false
                 if(purchases.any { PRODUCT_ID in it.products && it.purchaseState==Purchase.PurchaseState.PENDING })state.value=state.value.copy(message="Purchase pending approval. Unlimited unlocks when Google Play confirms it.")

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Stuart Myatt. All rights reserved.
+ * Proprietary — source is public for reference only. See LICENSE at the repository root.
+ */
 package uk.co.tacklebox.app
 
 import android.app.Application
@@ -43,6 +47,14 @@ class FeatureExpansionTest {
         assertEquals("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",SpeciesOAuth.challenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"))
         assertEquals("abc",SpeciesOAuth.code(Uri.parse("uk.co.tacklebox.app://oauth/inaturalist?code=abc&state=expected"),"expected"))
         for(text in listOf("uk.co.tacklebox.app://oauth/inaturalist?code=abc&state=wrong","uk.co.tacklebox.app://oauth/inaturalist?code=abc&state=expected&state=expected","uk.co.tacklebox.app://wrong/inaturalist?code=abc&state=expected","uk.co.tacklebox.app://oauth/inaturalist?error=access_denied&state=expected"))assertTrue(runCatching { SpeciesOAuth.code(Uri.parse(text),"expected") }.isFailure)
+    }
+    @Test fun paidEraPlayInstallsKeepUnlimitedButLaterAndSideloadedInstallsDoNot() {
+        val end=UnlimitedStore.PAID_ERA_END
+        assertTrue(UnlimitedStore.includedWithOriginalPurchase("com.android.vending",end-1,end))
+        assertFalse(UnlimitedStore.includedWithOriginalPurchase("com.android.vending",end,end))
+        assertFalse(UnlimitedStore.includedWithOriginalPurchase("com.android.vending",end+86_400_000,end))
+        assertFalse(UnlimitedStore.includedWithOriginalPurchase(null,end-1,end))
+        assertFalse(UnlimitedStore.includedWithOriginalPurchase("com.android.packageinstaller",end-1,end))
     }
     @Test fun forecastKeepsMissingValuesMissingAndRejectsMismatchedArrays() {
         val fixture="""{"daily":{"time":["2026-09-09"],"temperature_2m_min":[null],"temperature_2m_max":[18],"wind_speed_10m_max":[12],"precipitation_probability_max":[null]}}"""
