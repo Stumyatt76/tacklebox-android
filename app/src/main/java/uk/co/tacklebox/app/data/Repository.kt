@@ -7,7 +7,9 @@ package uk.co.tacklebox.app.data
 import android.content.Context
 import androidx.room.Room
 import androidx.room.withTransaction
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.util.Locale
 
@@ -15,8 +17,21 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
     constructor(context: Context) : this(Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db")
         .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build(), context.filesDir)
     internal val dao = db.dao()
-    /** Removes the app's own photo files once their rows are gone. Only files under `filesDir` are ever touched. */
-    private fun deletePhotoFiles(uris: Collection<String>) { val root = photoRoot ?: return; uris.forEach { uk.co.tacklebox.app.PhotoStore.delete(it, root) } }
+    /**
+     * Removes the app's own photo files once nothing references them. Only files under `filesDir/photos` and
+     * `filesDir/backup-media` are ever touched; a file still named by another catch (a restore de-duplicated by
+     * content, or the same picture attached twice) is left alone; and the deletes run off the main thread.
+     */
+    suspend fun deletePhotoFiles(uris: Collection<String>) {
+        val root = photoRoot ?: return
+        val unreferenced = uris.toSet().filter { dao.photoReferences(it) == 0 }
+        if (unreferenced.isEmpty()) return
+        withContext(Dispatchers.IO) { unreferenced.forEach { uri -> uk.co.tacklebox.app.PhotoStore.deleteOwned(uri, root) } }
+    }
+    /** A file the capture screen imported and then dropped before saving: nothing references it, so it goes now. */
+    suspend fun deleteUnsavedPhoto(uri: String) = deletePhotoFiles(listOf(uri))
+    /** Every photo any row still names — what the orphan sweep must keep. */
+    suspend fun referencedPhotos(): Set<String> = (dao.allCoverPhotos() + dao.allExtraPhotos()).toSet()
     suspend fun <T> transaction(block: suspend () -> T): T = db.withTransaction { block() }
     val settings = dao.settings().map { it ?: defaults() }.distinctUntilChanged()
     val species = dao.species()
@@ -90,7 +105,7 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
     suspend fun addCatch(v:Catch, conditions:ConditionsSnapshot?=null, photos:List<String> = emptyList()):Long = db.withTransaction {
         val id=dao.addCatch(v)
         conditions?.let { dao.addConditions(it.copy(catchId=id)) }
-        savePhotos(id, photos)
+        savePhotosInTransaction(id, photos)
         id
     }
     suspend fun startSession(waterId:Long?,unlimited:Boolean=false) = db.withTransaction {
@@ -122,14 +137,35 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
     suspend fun saveWater(v:Water)=dao.updateWater(v)
     suspend fun saveCatch(v:Catch)=dao.updateCatch(v)
     /**
-     * Replaces a catch's photos: the first is the cover on the row itself, the rest become CatchPhoto records.
-     * Files the catch no longer references are deleted once the rows are written.
+     * Replaces a catch's extra photos inside the caller's transaction: the first URI is the cover on the row
+     * itself, the rest become CatchPhoto records. Returns the files the catch no longer names so the caller can
+     * delete them **after** the transaction commits — deleting inside it destroyed photos when a later record
+     * rolled the whole restore back.
      */
-    suspend fun savePhotos(catchId:Long, uris:List<String>) {
+    suspend fun savePhotosInTransaction(catchId:Long, uris:List<String>): Set<String> {
         val previous=(listOfNotNull(dao.coverPhotoFor(catchId))+dao.extraPhotosFor(catchId)).toSet()
         dao.clearPhotosFor(catchId)
         if (uris.size > 1) dao.addPhotos(uris.drop(1).mapIndexed { index, uri -> CatchPhoto(catchId=catchId, uri=uri, order=index) })
-        deletePhotoFiles(previous - uris.toSet())
+        return previous - uris.toSet()
+    }
+    /** Replaces a catch's photos on its own, then reclaims the files it dropped. */
+    suspend fun savePhotos(catchId:Long, uris:List<String>) {
+        val orphans=db.withTransaction { savePhotosInTransaction(catchId, uris) }
+        deletePhotoFiles(orphans)
+    }
+    /**
+     * Saves an edited catch and its photo set in one transaction. The old cover is read **before** the row is
+     * rewritten — reading it afterwards saw the new cover, so a replaced cover file was never reclaimed.
+     */
+    suspend fun updateCatch(v:Catch, photos:List<String>?) {
+        val orphans=db.withTransaction {
+            val previousCover=dao.coverPhotoFor(v.id)
+            dao.updateCatch(v)
+            val dropped=if (photos==null) emptySet() else savePhotosInTransaction(v.id, photos)
+            val kept=photos ?: listOfNotNull(v.photoUri)
+            dropped + listOfNotNull(previousCover).filter { it !in kept }
+        }
+        deletePhotoFiles(orphans)
     }
     suspend fun openSession():FishingSession?=dao.openSession()
     suspend fun deleteCatch(id:Long) {

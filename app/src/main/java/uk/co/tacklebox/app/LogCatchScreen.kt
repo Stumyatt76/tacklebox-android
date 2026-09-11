@@ -98,14 +98,15 @@ import kotlin.math.roundToInt
     CaptureScaffold("Log a Catch",onCancel={nav.popBackStack()}){
         // Photos, then — as soon as there is one — the identify control, above SPECIES as iOS places it.
         item{Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
-            PhotoStrip(photos){photos=it}
+            PhotoStrip(photos,vm){photos=it}
             if(photos.isNotEmpty()){
                 TextButton(::identify,Modifier.defaultMinSize(minHeight=44.dp).testTag("identifySpecies"),contentPadding=PaddingValues(0.dp)){
                     Icon(Icons.Default.AutoAwesome,null,tint=BrassSoft,modifier=Modifier.size(18.dp));Spacer(Modifier.width(8.dp));Text("Identify species from photo",color=BrassSoft,fontWeight=FontWeight.SemiBold)}
                 Text("Sends the cover photo — the first one — to iNaturalist when you tap Identify. You choose whether to accept a suggestion.",color=Muted,style=MaterialTheme.typography.bodyMedium)}}}
         item{SectionLabel("Species")
             FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                s.species.filter { it.discipline.name in s.settings.activeDisciplines }.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}
+                val visible=s.species.filter{it.discipline.name in s.settings.activeDisciplines || it.id==species}
+                visible.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}
                 FilterChip(false,{addingSpecies=true},{Text("＋ Add species")},colors=brassChipColours(),shape=CircleShape,modifier=Modifier.testTag("addSpecies"))}}
         item{SectionLabel("Weight")
             Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){

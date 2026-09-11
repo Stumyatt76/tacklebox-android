@@ -104,6 +104,8 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Query("SELECT uri FROM CatchPhoto WHERE catchId=:id") suspend fun extraPhotosFor(id:Long): List<String>
     @Query("SELECT photoUri FROM Catch WHERE photoUri IS NOT NULL") suspend fun allCoverPhotos(): List<String>
     @Query("SELECT uri FROM CatchPhoto") suspend fun allExtraPhotos(): List<String>
+    /** How many rows still name a photo file — a cover or an extra. Zero means the file can go. */
+    @Query("SELECT (SELECT COUNT(*) FROM Catch WHERE photoUri=:uri) + (SELECT COUNT(*) FROM CatchPhoto WHERE uri=:uri)") suspend fun photoReferences(uri:String): Int
     @Query("DELETE FROM ConditionsSnapshot WHERE catchId=:id") suspend fun deleteConditionsFor(id:Long)
     @Query("DELETE FROM Catch WHERE id=:id") suspend fun deleteCatch(id:Long)
     @Query("DELETE FROM ConditionsSnapshot") suspend fun clearConditions()

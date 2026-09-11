@@ -38,9 +38,12 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
                 else @Suppress("DEPRECATION") pm.getInstallerPackageName(context.packageName)
             includedWithOriginalPurchase(installer,pm.getPackageInfo(context.packageName,0).firstInstallTime)
         }.getOrDefault(false)
+        /** Once granted, the decision is kept: a later reinstall on this device that resets `firstInstallTime` must not take it away. */
+        fun grandfathered(remembered:Boolean,computedNow:Boolean):Boolean=remembered||computedNow
     }
     private val preferences=context.getSharedPreferences("tacklebox-purchases",Context.MODE_PRIVATE)
-    private val includedWithPurchase=includedWithOriginalPurchase(context)
+    private val includedWithPurchase=grandfathered(preferences.getBoolean("grandfathered",false),includedWithOriginalPurchase(context))
+        .also { if(it)preferences.edit().putBoolean("grandfathered",true).apply() }
     val state=MutableStateFlow(StoreState(unlimited=includedWithPurchase,includedWithPurchase=includedWithPurchase))
     private var product:ProductDetails?=null
     private var connecting=false
@@ -76,7 +79,7 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
             override fun onBillingSetupFinished(result:BillingResult) {
                 connecting=false
                 if(result.responseCode==BillingClient.BillingResponseCode.OK)query()
-                else state.value=state.value.copy(busy=false,message="Google Play could not be reached. Your journal is still available.")
+                else { restoring=false;state.value=state.value.copy(busy=false,message="Google Play could not be reached. Your journal is still available.") }
             }
             override fun onBillingServiceDisconnected() { connecting=false;restoring=false;state.value=state.value.copy(busy=false) }
         })
@@ -95,7 +98,7 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
                 else accept(owned)
                 restoring=false
                 if(purchases.any { PRODUCT_ID in it.products && it.purchaseState==Purchase.PurchaseState.PENDING })state.value=state.value.copy(message="Purchase pending approval. Unlimited unlocks when Google Play confirms it.")
-            } else state.value=state.value.copy(busy=false,message="Purchases could not be checked. Please try again.")
+            } else { restoring=false;state.value=state.value.copy(busy=false,message="Purchases could not be checked. Please try again.") }
         }
     }
     private fun accept(purchase:Purchase) {

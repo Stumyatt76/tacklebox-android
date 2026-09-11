@@ -79,11 +79,12 @@ object PhotoBackup {
         PhotoBackupFormat.validate(p)
         val directory=File(context.filesDir,"backup-media/"+UUID.randomUUID()).apply { check(mkdirs()) }
         var committed=false
-        val used=mutableSetOf<String>()
+        val orphans=mutableSetOf<String>()
         try {
-            val photoUris=p.media.mapValues { (sha,encoded) ->
-                val file=File(directory,sha+".jpg");file.writeBytes(Base64.getDecoder().decode(encoded));Uri.fromFile(file).toString()
-            }
+            // Staged once per distinct image, then copied per catch below: two catches must never share one
+            // file, or deleting one catch deletes the other's photo.
+            val staged=p.media.mapValues { (sha,encoded) -> File(directory,sha+".jpg").also { it.writeBytes(Base64.getDecoder().decode(encoded)) } }
+            fun copyFor(sha:String):String { val copy=File(directory,sha+"-"+UUID.randomUUID()+".jpg"); staged.getValue(sha).copyTo(copy); return Uri.fromFile(copy).toString() }
             val result=repo.transaction {
                 val dao=repo.dao
                 val species=dao.speciesOnce().toMutableList();val waters=dao.watersOnce().toMutableList()
@@ -119,14 +120,14 @@ object PhotoBackup {
                 p.catches.forEach { r ->
                     val old=catches.firstOrNull { it.portableID==r.id }
                     if(old!=null && !replace)return@forEach
-                    val uris=r.photos.map { used.add(it);photoUris.getValue(it) }
+                    val uris=r.photos.map(::copyFor)
                     val item=Catch(id=old?.id ?: 0,speciesId=r.references["species"]?.let(speciesIds::get),
                         waterId=r.references["water"]?.let(waterIds::get),sessionId=r.references["session"]?.let(sessionIds::get),
                         weightGrams=r.fields["weightGrams"]?.toDouble(),lengthCm=r.fields["lengthCm"]?.toDouble(),
                         returned=r.fields.getValue("returned").toBooleanStrict(),notes=r.fields["notes"].orEmpty(),
                         caughtAt=Instant.parse(r.fields.getValue("caughtAt")),rig=r.fields["rig"],bait=r.fields["bait"],photoUri=uris.firstOrNull(),portableID=r.id)
                     val id=if(old==null)dao.addCatch(item) else old.id.also { dao.updateCatch(item);dao.deleteConditionsFor(it) }
-                    repo.savePhotos(id,uris)
+                    orphans+=repo.savePhotosInTransaction(id,uris)
                     if(listOf("airTempC","windDirection","windSpeedKph","pressureHpa","pressureTrend","moonPhase").any { it in r.fields })
                         dao.addConditions(ConditionsSnapshot(catchId=id,airTempC=r.fields["airTempC"]?.toDouble(),
                             windDirection=r.fields["windDirection"],windSpeedKph=r.fields["windSpeedKph"]?.toDouble(),
@@ -149,8 +150,10 @@ object PhotoBackup {
                 writes
             }
             committed=true
-            p.media.keys.filterNot { it in used }.forEach { File(directory,it+".jpg").delete() }
-            if(used.isEmpty())directory.delete()
+            staged.values.forEach { it.delete() }
+            if(directory.listFiles().isNullOrEmpty())directory.delete()
+            // Only now, with the rows committed, do the replaced files go — and only those nothing else names.
+            repo.deletePhotoFiles(orphans)
             return result
         } finally {
             // Only remove the brand-new staging directory on failed transactions.

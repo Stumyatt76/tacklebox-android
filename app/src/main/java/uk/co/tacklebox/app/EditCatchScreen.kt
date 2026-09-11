@@ -67,7 +67,7 @@ import kotlin.math.roundToInt
     val lengthCm:Double=if(metric)centimetres.toDouble() else inches*2.54
 
     CaptureScaffold("Edit Catch",onCancel={nav.popBackStack()}){
-        item{SectionLabel("Photos");Box(Modifier.padding(top=10.dp)){PhotoStrip(photos){photos=it}}}
+        item{SectionLabel("Photos");Box(Modifier.padding(top=10.dp)){PhotoStrip(photos,vm,saved=row.allPhotoUris.toSet()){photos=it}}}
         item{SectionLabel("Species")
             FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 s.species.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}}}

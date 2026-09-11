@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,23 +42,29 @@ import uk.co.tacklebox.app.ui.*
  * is what the Vault hero and list thumbnails show, so the first slot is labelled.
  */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun PhotoStrip(photos:List<String>,onChange:(List<String>)->Unit){
+@Composable fun PhotoStrip(photos:List<String>,vm:MainViewModel,saved:Set<String> = emptySet(),onChange:(List<String>)->Unit){
     val limit=8
     val context=LocalContext.current
-    val scope=rememberCoroutineScope()
     val current by rememberUpdatedState(photos)
-    var importing by remember{mutableStateOf(false)}
     var failed by remember{mutableIntStateOf(0)}
     // Every picked or captured image is copied into the app's own photo store (oriented, ≤2048 px, JPEG) and only
-    // that file's URI is kept. The picker's content:// grant dies with the process and the camera's cache file with
-    // the next cache trim — both used to make photos vanish. `cleanup` removes the camera's cache copy afterwards.
+    // that file's URI is kept. The copy runs in the view model and comes back keyed by this request id, which
+    // survives rotation — a strip rebuilt mid-import still collects the photo it asked for.
+    var pendingImport by rememberSaveable{mutableStateOf<String?>(null)}
+    val imports by vm.photoImports.collectAsStateWithLifecycle()
+    LaunchedEffect(imports,pendingImport){
+        val id=pendingImport ?: return@LaunchedEffect
+        val result=imports[id] ?: return@LaunchedEffect
+        pendingImport=null;failed=result.failed
+        if(result.stored.isNotEmpty())onChange((current+result.stored).take(limit))
+        vm.consumePhotoImport(id)}
+    val importing=pendingImport!=null
     fun add(sources:List<Uri>,cleanup:()->Unit={}){
         if(sources.isEmpty())return
-        scope.launch{
-            importing=true
-            val stored=withContext(Dispatchers.IO){sources.mapNotNull{source->runCatching{PhotoStore.import(context,source)}.getOrNull()}}
-            cleanup();failed=sources.size-stored.size;importing=false
-            if(stored.isNotEmpty())onChange((current+stored).take(limit))}}
+        val id=java.util.UUID.randomUUID().toString();pendingImport=id
+        vm.importPhotos(id,sources,cleanup)}
+    // A photo dropped before the catch is saved leaves no row behind it, so its file goes with it.
+    fun remove(index:Int){val uri=photos[index];onChange(photos.filterIndexed{i,_->i!=index});if(uri !in saved)vm.discardUnsavedPhoto(uri)}
     val picker=rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()){uris->add(uris)}
     // rememberSaveable: the camera app is exactly when Android kills the caller, and a `remember` here forgot the
     // destination on the way back, so the photo just taken was silently dropped.
@@ -81,7 +88,7 @@ import uk.co.tacklebox.app.ui.*
                             Modifier.fillMaxSize().clip(RoundedRectangle14)
                                 .border(if(index==0)2.dp else 1.dp,if(index==0)Brass else Muted.copy(alpha=.4f),RoundedRectangle14),
                             contentScale=ContentScale.Crop)
-                        IconButton({onChange(photos.filterIndexed{i,_->i!=index})},Modifier.align(Alignment.TopEnd)){
+                        IconButton({remove(index)},Modifier.align(Alignment.TopEnd)){
                             Icon(Icons.Default.Cancel,"Remove photo ${index+1}",tint=Ink)}
                         if(index==0)Text("COVER",color=Background,style=MaterialTheme.typography.bodyMedium,
                             modifier=Modifier.align(Alignment.BottomStart).padding(4.dp).background(Brass,RoundedCornerShape(6.dp)).padding(horizontal=5.dp))}}}

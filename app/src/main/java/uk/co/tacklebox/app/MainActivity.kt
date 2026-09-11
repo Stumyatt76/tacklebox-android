@@ -69,12 +69,21 @@ class MainActivity:ComponentActivity(){
     override fun onResume(){super.onResume();(application as TackleboxApp).unlimitedStore.refresh()}
     override fun onCreate(b:Bundle?){
         super.onCreate(b)
-        requestedRoute.value=intent.getStringExtra("tacklebox.route")
+        // Only on a fresh start: after rotation or process restore the extra is still on the intent, and re-applying
+        // it threw the angler back to Sessions from wherever they had got to.
+        if(b==null)requestedRoute.value=requestedRoute(intent.getStringExtra(ROUTE_EXTRA))
+        intent.removeExtra(ROUTE_EXTRA)
         setContent{TackleboxTheme{TackleboxRoot(requestedRoute=requestedRoute.value,onRouteConsumed={requestedRoute.value=null})}}
     }
     // singleTask in the manifest: a second launch reaches the running instance here instead of stacking another
     // activity, another ViewModel and another set of Room subscriptions on top of the first.
-    override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);requestedRoute.value=intent.getStringExtra("tacklebox.route")}
+    override fun onNewIntent(intent:Intent){super.onNewIntent(intent);setIntent(intent);requestedRoute.value=requestedRoute(intent.getStringExtra(ROUTE_EXTRA));intent.removeExtra(ROUTE_EXTRA)}
+    companion object {
+        const val ROUTE_EXTRA="tacklebox.route"
+        /** The destinations another component may ask for. Anything else — `adb`, another app — is ignored rather than crashing navigation. */
+        val ROUTES=setOf("sessions","settings","data-services")
+        fun requestedRoute(extra:String?):String?=extra?.takeIf{it in ROUTES}
+    }
 }
 data class Tab(val route:String,val label:String,val icon:androidx.compose.ui.graphics.vector.ImageVector)
 // The same four symbols as the iOS tab bar, in their outline weight: shield, drop, calendar, chart.bar. Android
@@ -391,7 +400,7 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
             Column(Modifier.weight(1f)){
                 if(next!=null){
                     Text("Next ${if(next.major)"Major" else "Minor"} · ${next.start.hm()}",style=MaterialTheme.typography.titleLarge)
-                    Text(countdownTo(now,next.start),color=Teal,style=MaterialTheme.typography.bodyMedium,fontWeight=FontWeight.SemiBold)
+                    Text(windowCountdown(now,next),color=Teal,style=MaterialTheme.typography.bodyMedium,fontWeight=FontWeight.SemiBold)
                 }else Text("Today's windows have passed",style=MaterialTheme.typography.titleLarge)}
             Icon(Icons.Default.ChevronRight,null,tint=BrassSoft)}
         Spacer(Modifier.height(10.dp))
@@ -412,6 +421,8 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         Text("$label ${at.hm()}",color=Muted,style=MaterialTheme.typography.bodyMedium,fontWeight=FontWeight.SemiBold)}
 }
 
+/** A window already under way — including one that started before midnight — is "Happening now", not "in 23h". */
+fun windowCountdown(now:LocalTime,window:BiteWindow):String=if(window.contains(now))"Happening now" else countdownTo(now,window.start)
 /** "in 4m", "in 2h 31m", or "Happening now" — the same wording as iOS. */
 fun countdownTo(now:LocalTime,start:LocalTime):String{
     val minutes=java.time.Duration.between(now,start).toMinutes()

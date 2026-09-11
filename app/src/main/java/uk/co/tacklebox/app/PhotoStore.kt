@@ -53,6 +53,24 @@ object PhotoStore {
     /** Deletes a stored photo file. Anything that is not the store's own file is left untouched. */
     fun delete(uri: String, root: File): Boolean = isOwned(uri, root) && (Uri.parse(uri).path?.let { File(it).delete() } ?: false)
 
+    /** The two places the app writes photos under `filesDir`: its own store and restored backup media. */
+    fun isAppPhoto(uri: String, filesDir: File): Boolean = isOwned(uri, File(filesDir, DIRECTORY)) || isOwned(uri, File(filesDir, BACKUP_MEDIA))
+    /** Deletes only a file inside `filesDir/photos` or `filesDir/backup-media` — never anything else under `files/`. */
+    fun deleteOwned(uri: String, filesDir: File): Boolean = isAppPhoto(uri, filesDir) && (Uri.parse(uri).path?.let { File(it).delete() } ?: false)
+    const val BACKUP_MEDIA = "backup-media"
+
+    /**
+     * Reclaims files in the store that no row names and that are older than [maxAgeMs]: an abandoned capture, a
+     * photo removed from the strip before saving, an import whose result never reached a screen. Fresh files are
+     * left alone because a capture in progress has not been saved yet.
+     */
+    fun sweep(context: Context, referenced: Set<String>, maxAgeMs: Long = 24L * 3600 * 1000, now: Long = System.currentTimeMillis()): Int {
+        val keep = referenced.mapNotNull { Uri.parse(it).path }.toSet()
+        return directory(context).listFiles().orEmpty().count { file ->
+            file.isFile && file.path !in keep && now - file.lastModified() > maxAgeMs && file.delete()
+        }
+    }
+
     /**
      * Decodes an image at most `maxEdge` px on its longest side, with the EXIF orientation applied so a portrait
      * phone photo is upright wherever it is drawn.

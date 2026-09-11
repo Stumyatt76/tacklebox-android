@@ -37,7 +37,26 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     /** Which provider is being tested, and the last message per provider — the Connect data services cards. */
     val testingService=MutableStateFlow<String?>(null)
     val serviceMessages=MutableStateFlow<Map<String,String>>(emptyMap())
-    init { viewModelScope.launch { repo.repairSpeciesMetadata(); runCatching { secrets.migrateFrom(repo) } } }
+    init { viewModelScope.launch { repo.repairSpeciesMetadata(); runCatching { secrets.migrateFrom(repo) }
+        // Reclaim photo files no row names once the journal has loaded — abandoned captures and undelivered imports.
+        state.first { it.loaded }; withContext(Dispatchers.IO) { runCatching { PhotoStore.sweep(getApplication(), repo.referencedPhotos()) } } } }
+    /** A finished photo import: the stored file URIs and how many sources could not be read. */
+    data class PhotoImport(val stored:List<String>,val failed:Int)
+    /** Results keyed by the strip's request id, so a strip recreated by rotation still collects its photos. */
+    val photoImports=MutableStateFlow<Map<String,PhotoImport>>(emptyMap())
+    /**
+     * Copies picked or captured images into the photo store. Runs here, not in the screen's composition scope:
+     * rotation during "Saving photo…" used to cancel the import and drop the photo just taken (with an orphan
+     * file left on disk). NonCancellable finishes the copies even if this view model is cleared.
+     */
+    fun importPhotos(requestId:String,sources:List<Uri>,cleanup:()->Unit={})=viewModelScope.launch{
+        val stored=withContext(kotlinx.coroutines.NonCancellable+Dispatchers.IO){sources.mapNotNull{source->runCatching{PhotoStore.import(getApplication(),source)}.getOrNull()}}
+        cleanup()
+        photoImports.value=photoImports.value+(requestId to PhotoImport(stored,sources.size-stored.size))
+    }
+    fun consumePhotoImport(requestId:String){photoImports.value=photoImports.value-requestId}
+    /** A photo removed from the strip before the catch was saved: nothing names it, so the file goes now. */
+    fun discardUnsavedPhoto(uri:String)=viewModelScope.launch{runCatching{repo.deleteUnsavedPhoto(uri)}}
     private fun serviceMessage(name:String,message:String?){serviceMessages.value=if(message==null)serviceMessages.value-name else serviceMessages.value+(name to message)}
     fun saveSecret(name:String,value:String){
         val trimmed=value.trim()
@@ -193,7 +212,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     fun updateWater(v:Water,onDone:()->Unit={})=viewModelScope.launch {
         runCatching { repo.saveWater(v) }.onSuccess { onDone() }.onFailure { fail("Couldn't save this water","Please try again.") }
     }
-    fun updateCatch(v:Catch,photos:List<String>?=null)=viewModelScope.launch{repo.saveCatch(v);photos?.let{repo.savePhotos(v.id,it)}}
+    fun updateCatch(v:Catch,photos:List<String>?=null)=viewModelScope.launch{runCatching{repo.updateCatch(v,photos)}.onFailure{fail("Couldn't save this catch","Your entries are still here. Please try saving again.")}}
     /** Adds or reuses a species by name and hands back its id, so the capture screen can select it straight away. */
     fun addSpecies(name:String,discipline:Discipline?=null,onDone:(Long)->Unit={})=viewModelScope.launch{
         runCatching { repo.addSpecies(name,state.value.settings.activeDisciplines,discipline) }.onSuccess(onDone).onFailure { fail("Couldn't add this species",it.message ?: "Please try again.") }
