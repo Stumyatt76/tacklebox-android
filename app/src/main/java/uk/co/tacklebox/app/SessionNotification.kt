@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Stuart Myatt. All rights reserved.
+ * Proprietary — source is public for reference only. See LICENSE at the repository root.
+ */
 package uk.co.tacklebox.app
 
 import android.Manifest
@@ -26,13 +30,18 @@ object SessionNotification {
     fun recordPlace(context:Context,lat:Double,lon:Double) {
         context.getSharedPreferences("tacklebox-live",Context.MODE_PRIVATE).edit().putString("lat",lat.toString()).putString("lon",lon.toString()).putLong("locationTime",System.currentTimeMillis()).apply()
     }
-    private fun window(context:Context):String {
+    /** The last rounded position the app obtained, if it is less than a week old. Shared with the widget. */
+    fun lastPlace(context:Context):Pair<Double,Double>? {
         val preferences=context.getSharedPreferences("tacklebox-live",Context.MODE_PRIVATE)
-        if(System.currentTimeMillis()-preferences.getLong("locationTime",0)>7*24*3600*1000L)return "Open Tacklebox for bite windows"
-        val lat=preferences.getString("lat",null)?.toDoubleOrNull() ?: return "Open Tacklebox for bite windows"
-        val lon=preferences.getString("lon",null)?.toDoubleOrNull() ?: return "Open Tacklebox for bite windows"
-        val now=LocalTime.now();val next=Astronomy.calculate(latitude=lat,longitude=lon).windows.firstOrNull { if(it.end<it.start)now>=it.start || now<=it.end else it.end>=now }
-        return next?.let { "${LocalDate.now()}: ${it.start}–${it.end} bite window" } ?: "No more bite windows today"
+        if(System.currentTimeMillis()-preferences.getLong("locationTime",0)>7*24*3600*1000L)return null
+        val lat=preferences.getString("lat",null)?.toDoubleOrNull() ?: return null
+        val lon=preferences.getString("lon",null)?.toDoubleOrNull() ?: return null
+        return lat to lon
+    }
+    private fun window(context:Context):String {
+        val (lat,lon)=lastPlace(context) ?: return "Open Tacklebox to update bite windows"
+        val next=BiteWindows.next(Astronomy.calculate(latitude=lat,longitude=lon).windows,LocalTime.now())
+        return next?.let { "Bite window ${it.start.hm()}–${it.end.hm()}" } ?: "No more bite windows today"
     }
     fun enabled(context:Context)=context.getSharedPreferences("tacklebox-live",Context.MODE_PRIVATE).getBoolean("enabled",false)
     fun setEnabled(context:Context,value:Boolean) { context.getSharedPreferences("tacklebox-live",Context.MODE_PRIVATE).edit().putBoolean("enabled",value).apply() }
@@ -41,7 +50,7 @@ object SessionNotification {
         if(!enabled(context) || session==null){manager.cancel(ID);return}
         if(Build.VERSION.SDK_INT>=33 && ContextCompat.checkSelfPermission(context,Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return
         manager.createNotificationChannel(NotificationChannel(CHANNEL,"Fishing sessions",NotificationManager.IMPORTANCE_LOW).apply { description="Elapsed time and catch count for your active session";lockscreenVisibility=Notification.VISIBILITY_PRIVATE })
-        val open=PendingIntent.getActivity(context,ID,Intent(context,MainActivity::class.java).putExtra("tacklebox.route","sessions"),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val open=PendingIntent.getActivity(context,ID,Intent(context,MainActivity::class.java).putExtra("tacklebox.route","sessions").addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val end=PendingIntent.getBroadcast(context,ID,Intent(context,SessionNotificationReceiver::class.java).setAction("uk.co.tacklebox.END_SESSION").putExtra("sessionID",session.item.id),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val text="${session.catches.size} ${if(session.catches.size==1)"catch" else "catches"} · "+window(context)
         val notification=NotificationCompat.Builder(context,CHANNEL).setSmallIcon(R.drawable.ic_session_notification)

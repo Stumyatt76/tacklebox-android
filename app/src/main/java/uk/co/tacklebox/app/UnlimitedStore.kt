@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Stuart Myatt. All rights reserved.
+ * Proprietary — source is public for reference only. See LICENSE at the repository root.
+ */
 package uk.co.tacklebox.app
 
 import android.app.Activity
@@ -14,17 +18,42 @@ object SessionAllowance {
     fun label(used:Int):String { val left=maxOf(0,FREE_LIMIT-used);return "$left free ${if(left==1)"session" else "sessions"} remaining" }
     fun canStart(used:Int,unlimited:Boolean)=unlimited || used<FREE_LIMIT
 }
-data class StoreState(val unlimited:Boolean=false,val price:String?=null,val busy:Boolean=false,val message:String?=null)
+data class StoreState(val unlimited:Boolean=false,val price:String?=null,val busy:Boolean=false,val message:String?=null,val includedWithPurchase:Boolean=false)
 
 /** One non-consumable. Signed receipts are checked again before using an offline entitlement. */
 class UnlimitedStore(context:Context):PurchasesUpdatedListener {
-    companion object { const val PRODUCT_ID="tacklebox_unlimited" }
+    companion object {
+        const val PRODUCT_ID="tacklebox_unlimited"
+        /**
+         * Tacklebox 1.8–2.1 (versionCode ≤ 12) sold on Google Play as a paid app with everything included. Google Play
+         * cannot tell a paid-era buyer from a later free download, so anyone whose Play Store install predates the
+         * switch to the free download keeps unlimited sessions without buying again. Sideloaded installs do not qualify.
+         */
+        val PAID_ERA_END:Long=java.time.Instant.parse("2026-09-12T00:00:00Z").toEpochMilli()
+        fun includedWithOriginalPurchase(installer:String?,firstInstallTime:Long,paidEraEnd:Long=PAID_ERA_END):Boolean=
+            installer=="com.android.vending" && firstInstallTime<paidEraEnd
+        private fun includedWithOriginalPurchase(context:Context):Boolean=runCatching {
+            val pm=context.packageManager
+            val installer=if(android.os.Build.VERSION.SDK_INT>=30)pm.getInstallSourceInfo(context.packageName).installingPackageName
+                else @Suppress("DEPRECATION") pm.getInstallerPackageName(context.packageName)
+            includedWithOriginalPurchase(installer,pm.getPackageInfo(context.packageName,0).firstInstallTime)
+        }.getOrDefault(false)
+        /** Once granted, the decision is kept: a later reinstall on this device that resets `firstInstallTime` must not take it away. */
+        fun grandfathered(remembered:Boolean,computedNow:Boolean):Boolean=remembered||computedNow
+    }
     private val preferences=context.getSharedPreferences("tacklebox-purchases",Context.MODE_PRIVATE)
-    val state=MutableStateFlow(StoreState())
+    private val includedWithPurchase=grandfathered(preferences.getBoolean("grandfathered",false),includedWithOriginalPurchase(context))
+        .also { if(it)preferences.edit().putBoolean("grandfathered",true).apply() }
+    val state=MutableStateFlow(StoreState(unlimited=includedWithPurchase,includedWithPurchase=includedWithPurchase))
     private var product:ProductDetails?=null
     private var connecting=false
     private var restoring=false
-    fun restore() { restoring=true;state.value=state.value.copy(busy=true,message=null);refresh() }
+    fun restore() {
+        // A connection attempt already under way will report through the same listener; marking busy now and
+        // returning from refresh() early left the spinner on and the button disabled for good if that attempt died.
+        if(connecting){state.value=state.value.copy(message="Google Play is still connecting. Please try again in a moment.");return}
+        restoring=true;state.value=state.value.copy(busy=true,message=null);refresh()
+    }
     private val client=BillingClient.newBuilder(context).setListener(this)
         .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .enableAutoServiceReconnection().build()
@@ -50,9 +79,9 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
             override fun onBillingSetupFinished(result:BillingResult) {
                 connecting=false
                 if(result.responseCode==BillingClient.BillingResponseCode.OK)query()
-                else state.value=state.value.copy(busy=false,message="Google Play could not be reached. Your journal is still available.")
+                else { restoring=false;state.value=state.value.copy(busy=false,message="Google Play could not be reached. Your journal is still available.") }
             }
-            override fun onBillingServiceDisconnected() { connecting=false }
+            override fun onBillingServiceDisconnected() { connecting=false;restoring=false;state.value=state.value.copy(busy=false) }
         })
     }
     private fun query() {
@@ -65,16 +94,19 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result,purchases->
             if(result.responseCode==BillingClient.BillingResponseCode.OK) {
                 val owned=purchases.firstOrNull(::verified)
-                if(owned==null) { preferences.edit().remove("receipt").remove("signature").apply();state.value=state.value.copy(unlimited=false,busy=false,message=if(restoring)"No verified Unlimited purchase was found for this Google Play account." else state.value.message) }
+                if(owned==null) { preferences.edit().remove("receipt").remove("signature").apply();state.value=state.value.copy(unlimited=includedWithPurchase,busy=false,message=if(restoring)"No verified Unlimited purchase was found for this Google Play account." else state.value.message) }
                 else accept(owned)
                 restoring=false
                 if(purchases.any { PRODUCT_ID in it.products && it.purchaseState==Purchase.PurchaseState.PENDING })state.value=state.value.copy(message="Purchase pending approval. Unlimited unlocks when Google Play confirms it.")
-            } else state.value=state.value.copy(busy=false,message="Purchases could not be checked. Please try again.")
+            } else { restoring=false;state.value=state.value.copy(busy=false,message="Purchases could not be checked. Please try again.") }
         }
     }
     private fun accept(purchase:Purchase) {
         preferences.edit().putString("receipt",purchase.originalJson).putString("signature",purchase.signature).apply()
-        state.value=state.value.copy(unlimited=true,busy=false,message="Unlimited unlocked.")
+        // Say "unlocked" once, when it changes: this also runs on every onResume, and repeating the line made the
+        // Unlimited screen look as though something had just happened each time the app came back.
+        val announce=!state.value.unlimited || restoring
+        state.value=state.value.copy(unlimited=true,busy=false,message=if(announce)"Unlimited unlocked." else state.value.message)
         if(!purchase.isAcknowledged)client.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()) { result->
             if(result.responseCode!=BillingClient.BillingResponseCode.OK)state.value=state.value.copy(message="Unlimited unlocked. Reopen the app online to finish confirming your purchase.")
         }

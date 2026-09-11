@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Stuart Myatt. All rights reserved.
+ * Proprietary — source is public for reference only. See LICENSE at the repository root.
+ */
 package uk.co.tacklebox.app
 
 import android.app.Activity
@@ -143,7 +147,7 @@ class SpeciesOAuthCallbackActivity:Activity() {
         if(url==null){finish();return}
         CoroutineScope(Dispatchers.Main).launch {
             (application as TackleboxApp).speciesConnection.complete(url)
-            startActivity(Intent(this@SpeciesOAuthCallbackActivity,MainActivity::class.java).putExtra("tacklebox.route","settings"))
+            startActivity(Intent(this@SpeciesOAuthCallbackActivity,MainActivity::class.java).putExtra("tacklebox.route","data-services").addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP))
             finish()
         }
     }

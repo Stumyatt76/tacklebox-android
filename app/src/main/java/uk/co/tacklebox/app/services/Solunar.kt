@@ -24,7 +24,22 @@ enum class SolunarRating {
     val title: String get() = name.lowercase().replaceFirstChar(Char::uppercase)
 }
 
-data class BiteWindow(val label: String, val start: LocalTime, val end: LocalTime, val major: Boolean)
+data class BiteWindow(val label: String, val start: LocalTime, val end: LocalTime, val major: Boolean) {
+    /** A transit near midnight yields a window whose end is earlier than its start on the clock. */
+    val wrapsMidnight: Boolean get() = end < start
+    fun contains(now: LocalTime): Boolean = if (wrapsMidnight) now >= start || now <= end else now >= start && now <= end
+}
+
+/**
+ * The window an angler should be told about: the one happening now, else the next one to start today.
+ *
+ * Kept in one place because the Vault card and the widget each had their own `firstOrNull { !it.end.isBefore(now) }`,
+ * which treats a window straddling midnight (start 23:30, end 01:30) as already over for the whole evening.
+ */
+object BiteWindows {
+    fun next(windows: List<BiteWindow>, now: LocalTime): BiteWindow? =
+        windows.firstOrNull { it.contains(now) } ?: windows.filter { it.start > now }.minByOrNull { it.start }
+}
 
 data class SolunarDay(
     val sunrise: LocalTime,
@@ -34,6 +49,8 @@ data class SolunarDay(
     val rating: SolunarRating,
     val moonPhase: String,
     val windows: List<BiteWindow>,
+    /** The sun's highest point — the SUN & MOON row iOS shows between sunrise and sunset. */
+    val solarNoon: LocalTime? = null,
 )
 
 /**
@@ -90,6 +107,7 @@ object Astronomy {
             rating = phase.second,
             moonPhase = phase.first,
             windows = (majors + minors).sortedBy { it.start },
+            solarNoon = solar.noon.local(zone),
         )
     }
 

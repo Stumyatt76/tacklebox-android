@@ -72,9 +72,11 @@ class AuditRegressionTest {
             db.dao().addConditions(ConditionsSnapshot(catchId=999,airTempC=99.0))
             repo.deleteAllUserData()
             assertTrue(repo.catches.first().isEmpty())
-            for(table in listOf("ConditionsSnapshot","CatchPhoto","Catch","FishingSession","Water","GearItem","TacklePreset")) {
+            for(table in listOf("ConditionsSnapshot","CatchPhoto","Catch","FishingSession","Water","GearItem")) {
                 db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM `$table`").use { it.moveToFirst(); assertEquals(table,0,it.getInt(0)) }
             }
+            // The angler's presets go too, but the eleven starters are put back so the capture screen keeps its chips.
+            assertEquals(TackleboxRepository.seedPresets.map { it.name }.toSet(), db.dao().presetsOnce().map { it.name }.toSet())
         } finally { db.close() }
     }
     @Test fun failedPhotoInsertionDoesNotLeaveCatchOrConditions() = runBlocking {

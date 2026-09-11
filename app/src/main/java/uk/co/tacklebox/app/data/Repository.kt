@@ -7,14 +7,31 @@ package uk.co.tacklebox.app.data
 import android.content.Context
 import androidx.room.Room
 import androidx.room.withTransaction
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.util.Locale
 
-class TackleboxRepository internal constructor(private val db: TackleboxDatabase) {
+class TackleboxRepository internal constructor(private val db: TackleboxDatabase, private val photoRoot: java.io.File? = null) {
     constructor(context: Context) : this(Room.databaseBuilder(context, TackleboxDatabase::class.java, "tacklebox.db")
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build())
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build(), context.filesDir)
     internal val dao = db.dao()
+    /**
+     * Removes the app's own photo files once nothing references them. Only files under `filesDir/photos` and
+     * `filesDir/backup-media` are ever touched; a file still named by another catch (a restore de-duplicated by
+     * content, or the same picture attached twice) is left alone; and the deletes run off the main thread.
+     */
+    suspend fun deletePhotoFiles(uris: Collection<String>) {
+        val root = photoRoot ?: return
+        val unreferenced = uris.toSet().filter { dao.photoReferences(it) == 0 }
+        if (unreferenced.isEmpty()) return
+        withContext(Dispatchers.IO) { unreferenced.forEach { uri -> uk.co.tacklebox.app.PhotoStore.deleteOwned(uri, root) } }
+    }
+    /** A file the capture screen imported and then dropped before saving: nothing references it, so it goes now. */
+    suspend fun deleteUnsavedPhoto(uri: String) = deletePhotoFiles(listOf(uri))
+    /** Every photo any row still names — what the orphan sweep must keep. */
+    suspend fun referencedPhotos(): Set<String> = (dao.allCoverPhotos() + dao.allExtraPhotos()).toSet()
     suspend fun <T> transaction(block: suspend () -> T): T = db.withTransaction { block() }
     val settings = dao.settings().map { it ?: defaults() }.distinctUntilChanged()
     val species = dao.species()
@@ -54,7 +71,31 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         val used=dao.settings().first()?.freeSessionsStarted ?: 0
         dao.saveSettings(v.copy(freeSessionsStarted=maxOf(used,v.freeSessionsStarted)))
     }
-    suspend fun addSpecies(name:String):Long=dao.addSpecies(Species(name=name, discipline=Discipline.COARSE))
+    /**
+     * Adds a species the angler typed, or returns the one that already exists under that name (case-insensitive) —
+     * a second "Tench" split the PB board, the species filter and the year summary across two ids. New species are
+     * filed under the first discipline the angler has active, so they appear in the chip row they were added from;
+     * everything used to land on COARSE and vanished for anyone who had switched that discipline off.
+     */
+    suspend fun addSpecies(name:String, activeDisciplines:List<String> = emptyList(), discipline:Discipline? = null):Long = db.withTransaction {
+        val trimmed=name.trim()
+        require(trimmed.isNotEmpty()) { "Give this species a name." }
+        dao.speciesOnce().firstOrNull { it.name.equals(trimmed, ignoreCase=true) }?.let { return@withTransaction it.id }
+        // The Add Species sheet lets the angler pick the discipline, as iOS does; without a choice it lands on the
+        // first active one.
+        val chosen=discipline ?: activeDisciplines.firstNotNullOfOrNull { d -> Discipline.entries.firstOrNull { it.name.equals(d, ignoreCase=true) } } ?: Discipline.COARSE
+        dao.addSpecies(Species(name=trimmed, discipline=chosen, scientificName=uk.co.tacklebox.app.services.SpeciesLookup.canonicalName(trimmed)))
+    }
+    /**
+     * The species an iNaturalist suggestion resolves to: an existing one under either the common or the scientific
+     * name, else a new record under the display name carrying both, filed under the first active discipline.
+     */
+    suspend fun speciesForSuggestion(displayName:String, scientificName:String, commonName:String?, activeDisciplines:List<String>):Long = db.withTransaction {
+        val names=listOfNotNull(commonName, scientificName).map { it.trim() }.filter { it.isNotEmpty() }
+        dao.speciesOnce().firstOrNull { sp -> names.any { it.equals(sp.name, ignoreCase=true) } }?.let { return@withTransaction it.id }
+        val discipline=activeDisciplines.firstNotNullOfOrNull { d -> Discipline.entries.firstOrNull { it.name.equals(d, ignoreCase=true) } } ?: Discipline.COARSE
+        dao.addSpecies(Species(name=displayName.trim(), discipline=discipline, scientificName=scientificName, commonName=commonName))
+    }
     suspend fun addWater(v:Water)=dao.addWater(v)
     suspend fun addSession(v:FishingSession)=dao.addSession(v)
     suspend fun existingSpecies():List<Species> = dao.speciesOnce()
@@ -64,15 +105,16 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
     suspend fun addCatch(v:Catch, conditions:ConditionsSnapshot?=null, photos:List<String> = emptyList()):Long = db.withTransaction {
         val id=dao.addCatch(v)
         conditions?.let { dao.addConditions(it.copy(catchId=id)) }
-        savePhotos(id, photos)
+        savePhotosInTransaction(id, photos)
         id
     }
-    suspend fun startSession(waterId:Long?,unlimited:Boolean=false) = db.withTransaction {
-        require(dao.openSession()==null) { "A fishing session is already running." }
+    /** `startAt` lets the capture sheet start a session at the catch's own time, so the fish on the form joins it. Never later than now. */
+    suspend fun startSession(waterId:Long?,unlimited:Boolean=false,startAt:Instant=Instant.now()) = db.withTransaction {
+        require(dao.openSession()==null) { "A session is already running." }
         val current=dao.settings().first() ?: defaults()
         require(uk.co.tacklebox.app.SessionAllowance.canStart(current.freeSessionsStarted,unlimited)) { "Your two free sessions are complete. Unlock Unlimited to start another." }
         if(!unlimited)dao.saveSettings(current.copy(freeSessionsStarted=current.freeSessionsStarted+1))
-        dao.addSession(FishingSession(waterId=waterId,isTrialSession=!unlimited))
+        dao.addSession(FishingSession(waterId=waterId,isTrialSession=!unlimited,startAt=minOf(startAt,Instant.now())))
     }
     suspend fun saveSession(value:FishingSession) = db.withTransaction {
         val current=dao.sessions().first().firstOrNull { it.item.id==value.id }
@@ -86,6 +128,8 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         if(value.id==0L)dao.addGear(value) else dao.updateGear(value)
     }
     suspend fun stopSession(id:Long)=dao.stopSession(id)
+    /** Deleting a session keeps its catches, which simply lose the session. The free allowance is not returned. */
+    suspend fun deleteSession(id:Long) = db.withTransaction { dao.detachCatchesFromSession(id); dao.deleteSession(id) }
     suspend fun addGear(v:GearItem)=dao.addGear(v)
     suspend fun deleteGear(v:GearItem)=dao.deleteGear(v)
     suspend fun addPreset(v:TacklePreset)=dao.addPreset(v)
@@ -93,13 +137,46 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
     suspend fun saveSpecies(v:Species)=dao.updateSpecies(v)
     suspend fun saveWater(v:Water)=dao.updateWater(v)
     suspend fun saveCatch(v:Catch)=dao.updateCatch(v)
-    /** Replaces a catch's photos: the first is the cover on the row itself, the rest become CatchPhoto records. */
-    suspend fun savePhotos(catchId:Long, uris:List<String>) {
+    /**
+     * Replaces a catch's extra photos inside the caller's transaction: the first URI is the cover on the row
+     * itself, the rest become CatchPhoto records. Returns the files the catch no longer names so the caller can
+     * delete them **after** the transaction commits — deleting inside it destroyed photos when a later record
+     * rolled the whole restore back.
+     */
+    suspend fun savePhotosInTransaction(catchId:Long, uris:List<String>): Set<String> {
+        val previous=(listOfNotNull(dao.coverPhotoFor(catchId))+dao.extraPhotosFor(catchId)).toSet()
         dao.clearPhotosFor(catchId)
         if (uris.size > 1) dao.addPhotos(uris.drop(1).mapIndexed { index, uri -> CatchPhoto(catchId=catchId, uri=uri, order=index) })
+        return previous - uris.toSet()
+    }
+    /** Replaces a catch's photos on its own, then reclaims the files it dropped. */
+    suspend fun savePhotos(catchId:Long, uris:List<String>) {
+        val orphans=db.withTransaction { savePhotosInTransaction(catchId, uris) }
+        deletePhotoFiles(orphans)
+    }
+    /**
+     * Saves an edited catch and its photo set in one transaction. The old cover is read **before** the row is
+     * rewritten — reading it afterwards saw the new cover, so a replaced cover file was never reclaimed.
+     */
+    suspend fun updateCatch(v:Catch, photos:List<String>?) {
+        val orphans=db.withTransaction {
+            val previousCover=dao.coverPhotoFor(v.id)
+            dao.updateCatch(v)
+            val dropped=if (photos==null) emptySet() else savePhotosInTransaction(v.id, photos)
+            val kept=photos ?: listOfNotNull(v.photoUri)
+            dropped + listOfNotNull(previousCover).filter { it !in kept }
+        }
+        deletePhotoFiles(orphans)
     }
     suspend fun openSession():FishingSession?=dao.openSession()
-    suspend fun deleteCatch(id:Long) = db.withTransaction { dao.deleteConditionsFor(id); dao.clearPhotosFor(id); dao.deleteCatch(id) }
+    suspend fun deleteCatch(id:Long) {
+        val photos=db.withTransaction {
+            val uris=listOfNotNull(dao.coverPhotoFor(id))+dao.extraPhotosFor(id)
+            dao.deleteConditionsFor(id); dao.clearPhotosFor(id); dao.deleteCatch(id)
+            uris
+        }
+        deletePhotoFiles(photos)
+    }
     /** Deleting a water keeps its catches and sessions; there are no foreign keys, so detach them explicitly. */
     suspend fun deleteWater(id:Long) = db.withTransaction { dao.detachCatchesFromWater(id); dao.detachSessionsFromWater(id); dao.deleteWater(id) }
     fun species(id:Long)=dao.species(id); fun water(id:Long)=dao.water(id); fun catchById(id:Long)=dao.catchById(id)
@@ -170,7 +247,37 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         result
     }
 
-    suspend fun deleteAllUserData() = db.withTransaction { dao.clearConditions(); dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters() }
+    /**
+     * "Delete catches, waters & gear". The starter rig and bait presets are put back afterwards — they were only
+     * ever seeded at onboarding, so a reset left the capture screen with nothing but "＋ Add" — and the app's own
+     * photo files go with their rows, so a reset does not leave every picture on disk.
+     */
+    suspend fun deleteAllUserData() {
+        val photos=db.withTransaction {
+            val uris=dao.allCoverPhotos()+dao.allExtraPhotos()
+            dao.clearConditions(); dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters()
+            seedPresets.forEach { dao.addPreset(it) }
+            uris
+        }
+        deletePhotoFiles(photos)
+    }
+    /**
+     * "Reset to a fresh vault", with the same meaning as `SeedData.reset` on iOS: every record and photo goes, the
+     * species catalogue and the starter presets come back, units and disciplines return to their defaults, and
+     * onboarding replays. The free-session count is the one thing kept, so a reset cannot mint new free sessions.
+     */
+    suspend fun resetVault() {
+        val photos=db.withTransaction {
+            val used=dao.settings().first()?.freeSessionsStarted ?: 0
+            val uris=dao.allCoverPhotos()+dao.allExtraPhotos()
+            dao.clearConditions(); dao.clearPhotos(); dao.clearCatches(); dao.clearSessions(); dao.clearGear(); dao.clearPresets(); dao.clearWaters(); dao.clearSpecies()
+            seedSpecies.forEach { dao.addSpecies(it) }
+            seedPresets.forEach { dao.addPreset(it) }
+            dao.saveSettings(defaults().copy(freeSessionsStarted=used, onboardingComplete=false))
+            uris
+        }
+        deletePhotoFiles(photos)
+    }
     companion object {
         /**
          * The same two waters as `SeedData.swift`, so "Begin with sample waters" means the same thing on both

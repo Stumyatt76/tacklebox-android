@@ -22,7 +22,9 @@ import androidx.glance.GlanceId
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import uk.co.tacklebox.app.MainActivity
+import uk.co.tacklebox.app.SessionNotification
 import uk.co.tacklebox.app.services.Astronomy
+import uk.co.tacklebox.app.services.BiteWindows
 import uk.co.tacklebox.app.services.DeviceLocation
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -38,16 +40,21 @@ import java.time.format.DateTimeFormatter
  * when the position is a fallback rather than the angler's own.
  */
 class BiteWindowWidget : GlanceAppWidget() {
+    /** Small and medium, as the iOS widget ships; the medium one is headed "TODAY ON THE BANK". */
+    override val sizeMode = androidx.glance.appwidget.SizeMode.Responsive(setOf(SMALL, MEDIUM))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Location is read here rather than in the composable: a widget's content must be ready before it draws.
-        val place = DeviceLocation.current(context)
+        // The last rounded position the app obtained, not a live fix: a widget updates in the background, where an
+        // app holding only foreground location permission cannot get one, so asking here always fell back to
+        // central UK and spent up to eight seconds of wake time every half hour doing it.
+        val place = SessionNotification.lastPlace(context)
         val (latitude, longitude) = place ?: DeviceLocation.FALLBACK_INLAND
         val day = Astronomy.calculate(latitude = latitude, longitude = longitude)
         val now = LocalTime.now()
-        val next = day.windows.firstOrNull { !it.end.isBefore(now) }
+        val next = BiteWindows.next(day.windows, now)
 
         provideContent {
+            val wide = androidx.glance.LocalSize.current.width >= MEDIUM.width
             GlanceTheme {
                 Column(
                     GlanceModifier.fillMaxSize().background(Background).padding(12.dp)
@@ -55,7 +62,7 @@ class BiteWindowWidget : GlanceAppWidget() {
                 ) {
                     // fillMaxWidth, or the spacer has no room to work in and the rating butts against the label.
                     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("NEXT WINDOW", style = TextStyle(color = androidx.glance.unit.ColorProvider(Brass),
+                        Text(if (wide) "TODAY ON THE BANK" else "NEXT WINDOW", style = TextStyle(color = androidx.glance.unit.ColorProvider(Brass),
                             fontSize = 10.sp, fontWeight = FontWeight.Bold))
                         Spacer(GlanceModifier.defaultWeight())
                         // The word, as the iOS widget shows it — not "n/5", a scale whose lower half was
@@ -84,7 +91,7 @@ class BiteWindowWidget : GlanceAppWidget() {
                     // Says plainly when the times are a guess, rather than passing off central-UK times as local.
                     Text(
                         if (place != null) "↑ ${day.sunrise.format(clock)}   ↓ ${day.sunset.format(clock)}"
-                        else "Showing central UK · open Tacklebox",
+                        else "Showing central UK · open Tacklebox to set your spot",
                         style = TextStyle(color = androidx.glance.unit.ColorProvider(Dim), fontSize = 10.sp)
                     )
                 }
@@ -93,6 +100,8 @@ class BiteWindowWidget : GlanceAppWidget() {
     }
 
     companion object {
+        val SMALL = androidx.compose.ui.unit.DpSize(110.dp, 110.dp)
+        val MEDIUM = androidx.compose.ui.unit.DpSize(250.dp, 110.dp)
         private val clock: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
         private val Background = Color(0xFF0E1A1E)

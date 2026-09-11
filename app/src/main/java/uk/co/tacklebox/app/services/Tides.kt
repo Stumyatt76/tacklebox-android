@@ -80,6 +80,7 @@ object Tides {
             val result = TideResult(events.sortedBy { it.time }, source, cached = false)
             cache = Triple(latitude, longitude, result)
             result
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
         } catch (e: TideError) {
             nearbyCache(latitude, longitude) ?: throw e
         } catch (e: Exception) {
@@ -113,9 +114,16 @@ object Tides {
         TideEvent(at, feet * 0.3048, kind)
     }
 
+    /**
+     * Locale-independent: `"%.2f".format(x)` follows the device locale, so a German or French phone sent
+     * `lat=50,15` and the only non-US tide source rejected every request.
+     */
+    internal fun worldTidesUrl(latitude: Double, longitude: Double, key: String): String =
+        "https://www.worldtides.info/api/v3?extremes" +
+            "&lat=${"%.2f".format(java.util.Locale.US, latitude)}&lon=${"%.2f".format(java.util.Locale.US, longitude)}&key=$key"
+
     private suspend fun worldTides(latitude: Double, longitude: Double, key: String): List<TideEvent> {
-        val url = "https://www.worldtides.info/api/v3?extremes" +
-            "&lat=${"%.2f".format(latitude)}&lon=${"%.2f".format(longitude)}&key=$key"
+        val url = worldTidesUrl(latitude, longitude, key)
         val today = LocalDate.now()
         return api.worldTides(url).extremes.mapNotNull { e ->
             val kind = when (e.type?.lowercase()) { "high" -> TideKind.HIGH; "low" -> TideKind.LOW; else -> null }
@@ -132,6 +140,25 @@ object Tides {
         LocalDateTime.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
             .atZone(ZoneId.systemDefault()).toInstant()
     } catch (_: Exception) { null }
+
+    const val WORLD_TIDES_UNREACHABLE="Couldn't reach WorldTides. Try again later."
+    /** Asks WorldTides for today's extremes off Brighton (50.70, -0.10) with the key, exactly as iOS validates one. */
+    suspend fun validateWorldTidesKey(key:String):uk.co.tacklebox.app.DataServiceTestResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val request = okhttp3.Request.Builder().url(worldTidesUrl(50.70, -0.10, key)).header("User-Agent", "Tacklebox Android tides").build()
+            Services.client.newCall(request).execute().use { classifyWorldTides(it.code, it.body?.string()) }
+        } catch (e:kotlinx.coroutines.CancellationException) { throw e }
+        catch (_:Exception) { uk.co.tacklebox.app.DataServiceTestResult.Unreachable(WORLD_TIDES_UNREACHABLE) }
+    }
+    /** 4xx → invalid; anything but 200 → unreachable; a body with `error`/`status` or no extremes → invalid. */
+    fun classifyWorldTides(code:Int, body:String?):uk.co.tacklebox.app.DataServiceTestResult {
+        if (code in 400..499) return uk.co.tacklebox.app.DataServiceTestResult.Invalid
+        if (code != 200) return uk.co.tacklebox.app.DataServiceTestResult.Unreachable(WORLD_TIDES_UNREACHABLE)
+        val json = runCatching { com.google.gson.JsonParser.parseString(body ?: "").asJsonObject }.getOrNull() ?: return uk.co.tacklebox.app.DataServiceTestResult.Invalid
+        if (json.has("error") || json.has("status")) return uk.co.tacklebox.app.DataServiceTestResult.Invalid
+        val extremes = json.get("extremes")?.takeIf { it.isJsonArray }?.asJsonArray
+        return if (extremes != null && extremes.size() > 0) uk.co.tacklebox.app.DataServiceTestResult.Connected else uk.co.tacklebox.app.DataServiceTestResult.Invalid
+    }
 
     /** Haversine, in kilometres — used to pick the nearest station and to judge whether the cache still applies. */
     fun distanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Stuart Myatt. All rights reserved.
+ * Proprietary — source is public for reference only. See LICENSE at the repository root.
+ */
 package uk.co.tacklebox.app
 
 import android.app.Application
@@ -40,6 +44,19 @@ class PhotoBackupTest {
             fish.allPhotoUris.forEach { uri->assertArrayEquals(byteArrayOf(1,2,3,4),context.contentResolver.openInputStream(android.net.Uri.parse(uri))!!.use { it.readBytes() }) }
             assertNull(fish.conditions?.pressureHpa);assertEquals(-2.5,fish.conditions!!.airTempC!!,0.0)
             assertEquals(repo.sessions.first().single().item.id,fish.item.sessionId)
+        } finally { db.close() }
+    }
+    @Test fun restoreMatchesWatersByNameWhenIDsAreForeign()=runBlocking {
+        val db=database()
+        try {
+            val repo=TackleboxRepository(db)
+            repo.addWater(Water(name="alder mere",type=WaterType.LAKE,region="Oxfordshire"))
+            val p=fixture()
+            assertEquals(3,PhotoBackup.restore(context,repo,p,false))
+            val waters=repo.waters.first()
+            assertEquals(1,waters.size);assertEquals("Oxfordshire",waters.single().region)
+            assertEquals(waters.single().id,repo.catches.first().single().item.waterId)
+            assertTrue(PhotoBackup.existing(AppState(loaded=true,waters=waters),p).getValue("waters").contains("water-1"))
         } finally { db.close() }
     }
     @Test fun repeatKeepsEditsUntilReplacementSelected()=runBlocking {

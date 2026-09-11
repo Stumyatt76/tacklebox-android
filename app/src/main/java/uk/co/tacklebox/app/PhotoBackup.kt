@@ -17,11 +17,19 @@ import java.util.UUID
 object PhotoBackup {
     private fun fields(vararg values: Pair<String,Any?>): Map<String,String> =
         values.mapNotNull { (key,value)->value?.let { key to it.toString() } }.toMap()
-    fun payload(context: Context, s: AppState): BackupPayload {
+    /** What a backup was written from: the shareable file and how many photos had to be left out. */
+    data class Written(val uri: Uri, val skippedPhotos: Int)
+
+    /**
+     * Builds the payload. A photo that can no longer be read — a library pick whose grant expired before the app
+     * kept its own copies — is left out and counted in [skipped] rather than failing the whole backup, which used to
+     * make one lost photo block the only feature that could have preserved the rest.
+     */
+    fun payload(context: Context, s: AppState, skipped: MutableList<String> = mutableListOf()): BackupPayload {
         val media=linkedMapOf<String,String>()
-        fun photos(row: CatchRow): List<String> = row.allPhotoUris.map { uri ->
-            val bytes=context.contentResolver.openInputStream(Uri.parse(uri))?.use(PhotoBackupFormat::readBounded)
-                ?: error("A catch photo is unavailable. Restore access to it before backing up.")
+        fun photos(row: CatchRow): List<String> = row.allPhotoUris.mapNotNull { uri ->
+            val bytes=runCatching { context.contentResolver.openInputStream(Uri.parse(uri))?.use(PhotoBackupFormat::readBounded) }.getOrNull()
+            if (bytes==null || bytes.isEmpty()) { skipped+=uri; return@mapNotNull null }
             val sha=PhotoBackupFormat.digest(bytes)
             media[sha]=Base64.getEncoder().encodeToString(bytes);sha
         }
@@ -49,20 +57,22 @@ object PhotoBackup {
             catches=fish,gear=s.gear.map { BackupRecord(it.portableID,fields("name" to it.name,"category" to it.category.name.lowercase(),"notes" to it.notes)) },
             presets=s.presets.map { BackupRecord(it.portableID,fields("name" to it.name,"kind" to it.kind.name.lowercase())) },media=media)
     }
-    fun write(context: Context, s: AppState): Uri {
+    fun write(context: Context, s: AppState): Written {
         val directory=File(context.cacheDir,"photo-backups").apply { mkdirs() }
         val file=File(directory,PhotoBackupFormat.FILE_NAME)
-        val bytes=PhotoBackupFormat.encode(payload(context,s))
+        val skipped=mutableListOf<String>()
+        val bytes=PhotoBackupFormat.encode(payload(context,s,skipped))
         val temporary=File(directory,"pending-"+UUID.randomUUID())
         temporary.writeBytes(bytes)
         check(temporary.renameTo(file)) { "The photo backup could not be written." }
-        return FileProvider.getUriForFile(context,context.packageName+".fileprovider",file)
+        return Written(FileProvider.getUriForFile(context,context.packageName+".fileprovider",file), skipped.size)
     }
     fun existing(s: AppState, p: BackupPayload): Map<String,Set<String>> {
         val speciesAliases=p.species.filter { record->s.species.any { it.name.equals(record.fields["name"],true) } }.map { it.id }
         val presetAliases=p.presets.filter { record->s.presets.any { it.name.equals(record.fields["name"],true) && it.kind.name.equals(record.fields["kind"],true) } }.map { it.id }
+        val waterAliases=p.waters.filter { record->s.waters.any { it.name.equals(record.fields["name"],true) } }.map { it.id }
         return mapOf("species" to (s.species.map { it.portableID }+speciesAliases).toSet(),
-            "waters" to s.waters.map { it.portableID }.toSet(),"sessions" to s.sessions.map { it.item.portableID }.toSet(),
+            "waters" to (s.waters.map { it.portableID }+waterAliases).toSet(),"sessions" to s.sessions.map { it.item.portableID }.toSet(),
             "catches" to s.catches.map { it.item.portableID }.toSet(),"gear" to s.gear.map { it.portableID }.toSet(),
             "presets" to (s.presets.map { it.portableID }+presetAliases).toSet())
     }
@@ -70,11 +80,12 @@ object PhotoBackup {
         PhotoBackupFormat.validate(p)
         val directory=File(context.filesDir,"backup-media/"+UUID.randomUUID()).apply { check(mkdirs()) }
         var committed=false
-        val used=mutableSetOf<String>()
+        val orphans=mutableSetOf<String>()
         try {
-            val photoUris=p.media.mapValues { (sha,encoded) ->
-                val file=File(directory,sha+".jpg");file.writeBytes(Base64.getDecoder().decode(encoded));Uri.fromFile(file).toString()
-            }
+            // Staged once per distinct image, then copied per catch below: two catches must never share one
+            // file, or deleting one catch deletes the other's photo.
+            val staged=p.media.mapValues { (sha,encoded) -> File(directory,sha+".jpg").also { it.writeBytes(Base64.getDecoder().decode(encoded)) } }
+            fun copyFor(sha:String):String { val copy=File(directory,sha+"-"+UUID.randomUUID()+".jpg"); staged.getValue(sha).copyTo(copy); return Uri.fromFile(copy).toString() }
             val result=repo.transaction {
                 val dao=repo.dao
                 val species=dao.speciesOnce().toMutableList();val waters=dao.watersOnce().toMutableList()
@@ -92,12 +103,14 @@ object PhotoBackup {
                         else old.id.also { if(replace){dao.updateSpecies(item);writes++} }
                 }
                 p.waters.forEach { r ->
-                    val old=waters.firstOrNull { it.portableID==r.id }
+                    // Match by portable ID, then by name: a backup made on the other phone (or before IDs existed)
+                    // carries IDs this journal has never seen, and "Alder Mere" must not come back twice.
+                    val old=waters.firstOrNull { it.portableID==r.id } ?: waters.firstOrNull { it.name.equals(r.fields["name"],true) }
                     val item=Water(id=old?.id ?: 0,name=r.fields.getValue("name"),
                         type=if(r.fields["type"]=="dayTicket")WaterType.DAY_TICKET else WaterType.valueOf(r.fields.getValue("type").uppercase()),
                         region=r.fields["region"].orEmpty(),swimNotes=r.fields["swimNotes"].orEmpty(),
-                        disciplines=r.fields["disciplines"].orEmpty().split(",").filter(String::isNotBlank).map(String::uppercase),portableID=r.id)
-                    waterIds[r.id]=if(old==null)dao.addWater(item).also { writes++ }
+                        disciplines=r.fields["disciplines"].orEmpty().split(",").filter(String::isNotBlank).map(String::uppercase),portableID=old?.portableID ?: r.id)
+                    waterIds[r.id]=if(old==null)dao.addWater(item).also { waters.add(item.copy(id=it));writes++ }
                         else old.id.also { if(replace){dao.updateWater(item);writes++} }
                 }
                 p.sessions.forEach { r ->
@@ -110,14 +123,17 @@ object PhotoBackup {
                 p.catches.forEach { r ->
                     val old=catches.firstOrNull { it.portableID==r.id }
                     if(old!=null && !replace)return@forEach
-                    val uris=r.photos.map { used.add(it);photoUris.getValue(it) }
+                    val uris=r.photos.map(::copyFor)
                     val item=Catch(id=old?.id ?: 0,speciesId=r.references["species"]?.let(speciesIds::get),
                         waterId=r.references["water"]?.let(waterIds::get),sessionId=r.references["session"]?.let(sessionIds::get),
                         weightGrams=r.fields["weightGrams"]?.toDouble(),lengthCm=r.fields["lengthCm"]?.toDouble(),
                         returned=r.fields.getValue("returned").toBooleanStrict(),notes=r.fields["notes"].orEmpty(),
                         caughtAt=Instant.parse(r.fields.getValue("caughtAt")),rig=r.fields["rig"],bait=r.fields["bait"],photoUri=uris.firstOrNull(),portableID=r.id)
+                    // The old cover is read before the row is rewritten — afterwards it is already the new one.
+                    val previousCover=old?.let { dao.coverPhotoFor(it.id) }
                     val id=if(old==null)dao.addCatch(item) else old.id.also { dao.updateCatch(item);dao.deleteConditionsFor(it) }
-                    repo.savePhotos(id,uris)
+                    orphans+=repo.savePhotosInTransaction(id,uris)
+                    if(previousCover!=null && previousCover !in uris)orphans+=previousCover
                     if(listOf("airTempC","windDirection","windSpeedKph","pressureHpa","pressureTrend","moonPhase").any { it in r.fields })
                         dao.addConditions(ConditionsSnapshot(catchId=id,airTempC=r.fields["airTempC"]?.toDouble(),
                             windDirection=r.fields["windDirection"],windSpeedKph=r.fields["windSpeedKph"]?.toDouble(),
@@ -140,8 +156,10 @@ object PhotoBackup {
                 writes
             }
             committed=true
-            p.media.keys.filterNot { it in used }.forEach { File(directory,it+".jpg").delete() }
-            if(used.isEmpty())directory.delete()
+            staged.values.forEach { it.delete() }
+            if(directory.listFiles().isNullOrEmpty())directory.delete()
+            // Only now, with the rows committed, do the replaced files go — and only those nothing else names.
+            repo.deletePhotoFiles(orphans)
             return result
         } finally {
             // Only remove the brand-new staging directory on failed transactions.

@@ -14,7 +14,7 @@ import uk.co.tacklebox.app.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val Background=Color(0xFF0E1A1E); val Surface=Color(0xFF15272D); val Inset=Color(0xFF1C343B); val Ink=Color(0xFFF3EEE4); val Muted=Color(0xFF9BB0B3); val Brass=Color(0xFFC9A24B); val BrassSoft=Color(0xFFE2C890); val Teal=Color(0xFF57B3A6)
+val Background=Color(0xFF0E1A1E); val Surface=Color(0xFF15272D); val Inset=Color(0xFF1C343B); val Ink=Color(0xFFF3EEE4); val Muted=Color(0xFF9BB0B3); val Dim=Color(0xFF6F8589); val Brass=Color(0xFFC9A24B); val BrassSoft=Color(0xFFE2C890); val Teal=Color(0xFF57B3A6)
 private val scheme=darkColorScheme(primary=Brass,onPrimary=Background,secondary=Teal,background=Background,onBackground=Ink,surface=Surface,onSurface=Ink,surfaceVariant=Inset,onSurfaceVariant=Muted,outline=Color(0xFF38515A),error=Color(0xFFFFB4AB))
 private val spectral=FontFamily(Font(R.font.spectral_regular, FontWeight.Normal),Font(R.font.spectral_medium, FontWeight.Medium),Font(R.font.spectral_semibold, FontWeight.SemiBold),Font(R.font.spectral_bold, FontWeight.Bold))
 private val figtree=FontFamily(Font(R.font.figtree_regular, FontWeight.Normal),Font(R.font.figtree_medium, FontWeight.Medium),Font(R.font.figtree_semibold, FontWeight.SemiBold),Font(R.font.figtree_bold, FontWeight.Bold))
