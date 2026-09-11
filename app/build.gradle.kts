@@ -50,6 +50,24 @@ android {
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
         }
     }
+}
+
+// A release without the Play licensing public key cannot verify or sell Unlimited: after two sessions every user is
+// locked out with "Purchase verification is not configured yet." Refuse to build one. Debug builds stay buildable
+// without the key so contributors and PR CI are unaffected.
+val playBillingPublicKey = providers.gradleProperty("tackleboxPlayBillingPublicKey").orNull.orEmpty()
+gradle.taskGraph.whenReady {
+    val releaseTasks = setOf("assembleRelease", "bundleRelease", "packageRelease", "packageReleaseBundle")
+    val buildingRelease = allTasks.any { it.project == project && it.name in releaseTasks }
+    if (buildingRelease && playBillingPublicKey.isBlank()) {
+        throw GradleException(
+            "Release builds need the Play billing public key: pass -PtackleboxPlayBillingPublicKey=<key> " +
+                "(or set it in gradle.properties). Without it the app cannot verify or sell Unlimited."
+        )
+    }
+}
+
+android {
     // MigrationTestHelper reads the exported schemas from the test APK's assets.
     sourceSets["androidTest"].assets.srcDir("$projectDir/schemas")
     buildFeatures { compose = true; buildConfig = true }

@@ -34,6 +34,18 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      # Without the Play licensing key the app can neither verify nor sell Unlimited: after two sessions every
+      # user is locked out with "Purchase verification is not configured yet." The Gradle release build refuses
+      # to run without it too; this step just gives the clearer message first.
+      - name: Check Play billing public key
+        env:
+          PLAY_BILLING_PUBLIC_KEY: ${{ vars.PLAY_BILLING_PUBLIC_KEY }}
+        run: |
+          if [ -z "$PLAY_BILLING_PUBLIC_KEY" ]; then
+            echo "::error::PLAY_BILLING_PUBLIC_KEY repository variable is empty — set it to the app's Play licensing public key before tagging a release."
+            exit 1
+          fi
+
       - name: Decode keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
