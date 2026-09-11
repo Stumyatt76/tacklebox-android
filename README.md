@@ -50,7 +50,7 @@ Navigation covers onboarding, Vault, catch logging/details, species records, Wat
 
 ## Privacy and optional services
 
-All journal features work offline. Open-Meteo marine/weather and Environment Agency gauge requests fail into retryable UI states. Solunar calculations are local. The species-identification affordance remains disabled until the user supplies a token. The Google Drive backup preference is off by default; a production distributor must configure its own OAuth client before connecting the app-data implementation. User location is requested only for live conditions and is not persisted.
+All journal features work offline. Open-Meteo marine/weather and Environment Agency gauge requests fail into retryable UI states. Solunar calculations are local. Photo identification needs an iNaturalist token or sign-in from Connect data services; species can always be chosen by hand. There is no cloud sync: Photo backup writes a portable `.tacklebox` file that restores on either platform. User location is requested only for live conditions and is not persisted.
 
 Photos are selected through Android's document picker and stored as local content references. Missing images use the app's fish-glyph treatment.
 
