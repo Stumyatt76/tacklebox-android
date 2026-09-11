@@ -45,7 +45,12 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
     private var product:ProductDetails?=null
     private var connecting=false
     private var restoring=false
-    fun restore() { restoring=true;state.value=state.value.copy(busy=true,message=null);refresh() }
+    fun restore() {
+        // A connection attempt already under way will report through the same listener; marking busy now and
+        // returning from refresh() early left the spinner on and the button disabled for good if that attempt died.
+        if(connecting){state.value=state.value.copy(message="Google Play is still connecting. Please try again in a moment.");return}
+        restoring=true;state.value=state.value.copy(busy=true,message=null);refresh()
+    }
     private val client=BillingClient.newBuilder(context).setListener(this)
         .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .enableAutoServiceReconnection().build()
@@ -73,7 +78,7 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
                 if(result.responseCode==BillingClient.BillingResponseCode.OK)query()
                 else state.value=state.value.copy(busy=false,message="Google Play could not be reached. Your journal is still available.")
             }
-            override fun onBillingServiceDisconnected() { connecting=false }
+            override fun onBillingServiceDisconnected() { connecting=false;restoring=false;state.value=state.value.copy(busy=false) }
         })
     }
     private fun query() {
@@ -95,7 +100,10 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
     }
     private fun accept(purchase:Purchase) {
         preferences.edit().putString("receipt",purchase.originalJson).putString("signature",purchase.signature).apply()
-        state.value=state.value.copy(unlimited=true,busy=false,message="Unlimited unlocked.")
+        // Say "unlocked" once, when it changes: this also runs on every onResume, and repeating the line made the
+        // Unlimited screen look as though something had just happened each time the app came back.
+        val announce=!state.value.unlimited || restoring
+        state.value=state.value.copy(unlimited=true,busy=false,message=if(announce)"Unlimited unlocked." else state.value.message)
         if(!purchase.isAcknowledged)client.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()) { result->
             if(result.responseCode!=BillingClient.BillingResponseCode.OK)state.value=state.value.copy(message="Unlimited unlocked. Reopen the app online to finish confirming your purchase.")
         }

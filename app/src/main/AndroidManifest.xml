@@ -20,7 +20,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:theme="@style/Theme.Tacklebox">
-        <activity android:name=".MainActivity" android:exported="true">
+        <!-- singleTask: the session notification and the OAuth callback re-enter the running instance through
+             onNewIntent instead of stacking a second MainActivity with its own ViewModel and Room subscriptions. -->
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -147,7 +147,7 @@ class SpeciesOAuthCallbackActivity:Activity() {
         if(url==null){finish();return}
         CoroutineScope(Dispatchers.Main).launch {
             (application as TackleboxApp).speciesConnection.complete(url)
-            startActivity(Intent(this@SpeciesOAuthCallbackActivity,MainActivity::class.java).putExtra("tacklebox.route","settings"))
+            startActivity(Intent(this@SpeciesOAuthCallbackActivity,MainActivity::class.java).putExtra("tacklebox.route","settings").addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP))
             finish()
         }
     }
