@@ -5,6 +5,7 @@
     android:targetCellWidth="2"
     android:targetCellHeight="2"
     android:description="@string/widget_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

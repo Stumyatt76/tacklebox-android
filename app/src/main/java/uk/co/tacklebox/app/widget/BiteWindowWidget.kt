@@ -22,7 +22,9 @@ import androidx.glance.GlanceId
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import uk.co.tacklebox.app.MainActivity
+import uk.co.tacklebox.app.SessionNotification
 import uk.co.tacklebox.app.services.Astronomy
+import uk.co.tacklebox.app.services.BiteWindows
 import uk.co.tacklebox.app.services.DeviceLocation
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -40,12 +42,14 @@ import java.time.format.DateTimeFormatter
 class BiteWindowWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Location is read here rather than in the composable: a widget's content must be ready before it draws.
-        val place = DeviceLocation.current(context)
+        // The last rounded position the app obtained, not a live fix: a widget updates in the background, where an
+        // app holding only foreground location permission cannot get one, so asking here always fell back to
+        // central UK and spent up to eight seconds of wake time every half hour doing it.
+        val place = SessionNotification.lastPlace(context)
         val (latitude, longitude) = place ?: DeviceLocation.FALLBACK_INLAND
         val day = Astronomy.calculate(latitude = latitude, longitude = longitude)
         val now = LocalTime.now()
-        val next = day.windows.firstOrNull { !it.end.isBefore(now) }
+        val next = BiteWindows.next(day.windows, now)
 
         provideContent {
             GlanceTheme {

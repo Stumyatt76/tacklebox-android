@@ -46,13 +46,14 @@ import java.time.*
         } catch(_:Exception){forecast=null;message="Could not update the weather. Bite windows and your journal history are still available."}
         finally { busy=false }
     }
-    Screen("Choose your next day","Trip planner") {
+    PushedScreen("Trip planner",onBack={nav.popBackStack()}) {
+        item { SectionLabel("Choose your next day") }
         item { Text(if(place==null)"Showing central UK estimates. Enable Location for forecasts near you." else "Forecasts near your current location. Selecting a water filters your catch history; it does not move the forecast.",color=Muted) }
         if(!DeviceLocation.hasPermission(context))item { TextButton({permission.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)}) { Text("Use my location") } }
         item { WaterChoice(s.waters,selectedWater){selectedWater=it} }
         item { LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) { items(dates) { value->FilterChip(value==date,{selected=dates.indexOf(value)},{Text(value.dayOfWeek.name.take(3)+" "+value.dayOfMonth)},colors=brassChipColours()) } } }
         item { HeritageCard {
-            Text(date.toString(),style=MaterialTheme.typography.headlineSmall)
+            Text(date.pretty(),style=MaterialTheme.typography.headlineSmall)
             if(busy)CircularProgressIndicator()
             val values=forecast?.days?.firstOrNull { it.date==date.toString() }
             if(values!=null){Text(temperature(values.low)+" to "+temperature(values.high));Text("Peak wind ${wind(values.wind)} · Rain chance ${values.rainChance?.let { "%.0f%%".format(it) } ?: "unavailable"}")}
@@ -64,7 +65,7 @@ import java.time.*
         } }
         item { HeritageCard {
             Text("Bite windows · ${day.rating.title}",style=MaterialTheme.typography.titleLarge);Text(day.moonPhase,color=Muted)
-            day.windows.forEach { Text("${if(it.major)"Major" else "Minor"} · ${it.start}–${it.end}") }
+            day.windows.forEach { Text("${if(it.major)"Major" else "Minor"} · ${it.start.hm()}–${it.end.hm()}") }
             Text("Astronomical estimates, not a catch-success forecast.",color=Muted)
         } }
         item { HeritageCard { Text("Your history in this month",style=MaterialTheme.typography.titleLarge);Text("${TripHistory.matchingMonth(history.map { it.item.caughtAt },date,zone)} recorded catches across all years.");Text("This describes your journal; it does not account for trips without catches or fishing effort.",color=Muted) } }

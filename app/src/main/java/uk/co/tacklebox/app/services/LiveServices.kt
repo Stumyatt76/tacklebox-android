@@ -73,6 +73,7 @@ object SpeciesId {
         if (token.isBlank()) throw SpeciesIdException("Add an iNaturalist token in Settings to identify from a photo.")
         val part = MultipartBody.Part.createFormData("image","catch.jpg", bytes.toRequestBody("image/jpeg".toMediaType()))
         val result = try { Services.vision.score(bearer(token), part) }
+        catch (e:kotlinx.coroutines.CancellationException) { throw e }
         catch (e:HttpException) { throw SpeciesIdException(if (e.code()==401||e.code()==403) EXPIRED else "Couldn’t reach the identification service. Try again.") }
         catch (e:Exception) { throw SpeciesIdException("Couldn’t reach the identification service. Try again.") }
         return result.results.mapNotNull { r ->
@@ -109,5 +110,17 @@ object PressureTrend {
             change <= -1 -> "Falling"
             else -> "Steady"
         }
+    }
+}
+
+/**
+ * Where "now" falls in Open-Meteo's hourly series. The series starts at local midnight, so taking the first eight
+ * entries showed this morning's sea state all afternoon.
+ */
+object MarineHours {
+    fun firstFromNow(times: List<String>, now: LocalDateTime = LocalDateTime.now()): Int {
+        val hour = now.withMinute(0).withSecond(0).withNano(0)
+        val index = times.indexOfFirst { t -> runCatching { !LocalDateTime.parse(t).isBefore(hour) }.getOrDefault(false) }
+        return if (index < 0) 0 else index
     }
 }

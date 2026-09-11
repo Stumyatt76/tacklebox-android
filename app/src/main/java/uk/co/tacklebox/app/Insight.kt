@@ -22,12 +22,19 @@ object Insight {
 
         timeOfDay(catches)?.let { parts += it }
         if (withWeather.size >= MINIMUM) {
+            // Both apps stamp Open-Meteo's surface_pressure, which depends on the water's altitude, so a fixed
+            // "settled above 1020 hPa" threshold called every catch on an upland reservoir a low-pressure fish.
+            // iOS reads the recorded trend instead — the direction of the glass is what anglers act on — so this
+            // reports the most common trend and quotes the mean reading only as context.
             withWeather.mapNotNull { it.conditions?.pressureHpa }.takeIf { it.size >= MINIMUM }?.let { pressures ->
-                val mean = pressures.average()
-                parts += when {
-                    mean >= 1020 -> "on settled high pressure (around ${mean.toInt()} hPa)"
-                    mean <= 1005 -> "on low pressure (around ${mean.toInt()} hPa)"
-                    else -> "around ${mean.toInt()} hPa"
+                val mean = pressures.average().toInt()
+                val trend = withWeather.mapNotNull { it.conditions?.pressureTrend?.trim()?.lowercase()?.takeIf(String::isNotEmpty) }
+                    .groupingBy { it }.eachCount().maxByOrNull { it.value }?.key
+                parts += when (trend) {
+                    "falling" -> "on a falling glass (around $mean hPa)"
+                    "rising" -> "on a rising glass (around $mean hPa)"
+                    "steady" -> "on steady pressure (around $mean hPa)"
+                    else -> "around $mean hPa"
                 }
             }
             withWeather.mapNotNull { it.conditions?.windDirection }.takeIf { it.isNotEmpty() }

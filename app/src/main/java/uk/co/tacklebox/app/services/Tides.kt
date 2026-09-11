@@ -80,6 +80,7 @@ object Tides {
             val result = TideResult(events.sortedBy { it.time }, source, cached = false)
             cache = Triple(latitude, longitude, result)
             result
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
         } catch (e: TideError) {
             nearbyCache(latitude, longitude) ?: throw e
         } catch (e: Exception) {
@@ -113,9 +114,16 @@ object Tides {
         TideEvent(at, feet * 0.3048, kind)
     }
 
+    /**
+     * Locale-independent: `"%.2f".format(x)` follows the device locale, so a German or French phone sent
+     * `lat=50,15` and the only non-US tide source rejected every request.
+     */
+    internal fun worldTidesUrl(latitude: Double, longitude: Double, key: String): String =
+        "https://www.worldtides.info/api/v3?extremes" +
+            "&lat=${"%.2f".format(java.util.Locale.US, latitude)}&lon=${"%.2f".format(java.util.Locale.US, longitude)}&key=$key"
+
     private suspend fun worldTides(latitude: Double, longitude: Double, key: String): List<TideEvent> {
-        val url = "https://www.worldtides.info/api/v3?extremes" +
-            "&lat=${"%.2f".format(latitude)}&lon=${"%.2f".format(longitude)}&key=$key"
+        val url = worldTidesUrl(latitude, longitude, key)
         val today = LocalDate.now()
         return api.worldTides(url).extremes.mapNotNull { e ->
             val kind = when (e.type?.lowercase()) { "high" -> TideKind.HIGH; "low" -> TideKind.LOW; else -> null }
