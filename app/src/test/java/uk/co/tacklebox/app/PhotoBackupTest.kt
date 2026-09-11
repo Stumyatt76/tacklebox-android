@@ -46,6 +46,19 @@ class PhotoBackupTest {
             assertEquals(repo.sessions.first().single().item.id,fish.item.sessionId)
         } finally { db.close() }
     }
+    @Test fun restoreMatchesWatersByNameWhenIDsAreForeign()=runBlocking {
+        val db=database()
+        try {
+            val repo=TackleboxRepository(db)
+            repo.addWater(Water(name="alder mere",type=WaterType.LAKE,region="Oxfordshire"))
+            val p=fixture()
+            assertEquals(3,PhotoBackup.restore(context,repo,p,false))
+            val waters=repo.waters.first()
+            assertEquals(1,waters.size);assertEquals("Oxfordshire",waters.single().region)
+            assertEquals(waters.single().id,repo.catches.first().single().item.waterId)
+            assertTrue(PhotoBackup.existing(AppState(loaded=true,waters=waters),p).getValue("waters").contains("water-1"))
+        } finally { db.close() }
+    }
     @Test fun repeatKeepsEditsUntilReplacementSelected()=runBlocking {
         val db=database()
         try {

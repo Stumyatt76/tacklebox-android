@@ -70,8 +70,9 @@ object PhotoBackup {
     fun existing(s: AppState, p: BackupPayload): Map<String,Set<String>> {
         val speciesAliases=p.species.filter { record->s.species.any { it.name.equals(record.fields["name"],true) } }.map { it.id }
         val presetAliases=p.presets.filter { record->s.presets.any { it.name.equals(record.fields["name"],true) && it.kind.name.equals(record.fields["kind"],true) } }.map { it.id }
+        val waterAliases=p.waters.filter { record->s.waters.any { it.name.equals(record.fields["name"],true) } }.map { it.id }
         return mapOf("species" to (s.species.map { it.portableID }+speciesAliases).toSet(),
-            "waters" to s.waters.map { it.portableID }.toSet(),"sessions" to s.sessions.map { it.item.portableID }.toSet(),
+            "waters" to (s.waters.map { it.portableID }+waterAliases).toSet(),"sessions" to s.sessions.map { it.item.portableID }.toSet(),
             "catches" to s.catches.map { it.item.portableID }.toSet(),"gear" to s.gear.map { it.portableID }.toSet(),
             "presets" to (s.presets.map { it.portableID }+presetAliases).toSet())
     }
@@ -102,12 +103,14 @@ object PhotoBackup {
                         else old.id.also { if(replace){dao.updateSpecies(item);writes++} }
                 }
                 p.waters.forEach { r ->
-                    val old=waters.firstOrNull { it.portableID==r.id }
+                    // Match by portable ID, then by name: a backup made on the other phone (or before IDs existed)
+                    // carries IDs this journal has never seen, and "Alder Mere" must not come back twice.
+                    val old=waters.firstOrNull { it.portableID==r.id } ?: waters.firstOrNull { it.name.equals(r.fields["name"],true) }
                     val item=Water(id=old?.id ?: 0,name=r.fields.getValue("name"),
                         type=if(r.fields["type"]=="dayTicket")WaterType.DAY_TICKET else WaterType.valueOf(r.fields.getValue("type").uppercase()),
                         region=r.fields["region"].orEmpty(),swimNotes=r.fields["swimNotes"].orEmpty(),
-                        disciplines=r.fields["disciplines"].orEmpty().split(",").filter(String::isNotBlank).map(String::uppercase),portableID=r.id)
-                    waterIds[r.id]=if(old==null)dao.addWater(item).also { writes++ }
+                        disciplines=r.fields["disciplines"].orEmpty().split(",").filter(String::isNotBlank).map(String::uppercase),portableID=old?.portableID ?: r.id)
+                    waterIds[r.id]=if(old==null)dao.addWater(item).also { waters.add(item.copy(id=it));writes++ }
                         else old.id.also { if(replace){dao.updateWater(item);writes++} }
                 }
                 p.sessions.forEach { r ->

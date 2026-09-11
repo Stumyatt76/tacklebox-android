@@ -126,8 +126,8 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
             // No selection pill and brassSoft on the selected item, as iOS does it — Material's filled indicator
             // capsule put a shape behind one tab that has no counterpart on the other platform (TB-P-10).
             colors=NavigationBarItemDefaults.colors(selectedIconColor=BrassSoft,selectedTextColor=BrassSoft,unselectedIconColor=Dim,unselectedTextColor=Dim,indicatorColor=Color.Transparent))}}
-    // The word "Log" under the brass circle, as the iOS bar shows it.
-    if(showFab)Column(Modifier.align(Alignment.Center),horizontalAlignment=Alignment.CenterHorizontally){FloatingActionButton(onClick={nav.navigate("log")},containerColor=Brass,contentColor=Background,shape=CircleShape,modifier=Modifier.testTag("logCatchFab")){Icon(Icons.Default.Add,"Log a catch")};Text("Log",color=Dim,fontSize=10.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp))}}}
+    // No label under the brass circle: the iOS bar only labels the four tabs.
+    if(showFab)Column(Modifier.align(Alignment.Center),horizontalAlignment=Alignment.CenterHorizontally){FloatingActionButton(onClick={nav.navigate("log")},containerColor=Brass,contentColor=Background,shape=CircleShape,modifier=Modifier.testTag("logCatchFab")){Icon(Icons.Default.Add,"Log a catch")}}}}
 
 // safeDrawingPadding keeps the wordmark clear of the status bar; without it the header collided with the clock (TB-A-01).
 /**
