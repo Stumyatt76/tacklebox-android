@@ -38,6 +38,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -98,7 +100,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
     else if(!state.settings.onboardingComplete){Onboarding(vm)} else Scaffold(containerColor=Background,bottomBar={if(!modal)BottomBar(nav,showFab)}){pad ->
         NavHost(nav,"vault",Modifier.padding(pad)){
             composable("vault"){Vault(state,vm,nav)}; composable("waters"){Waters(state,vm,nav)}; composable("sessions"){Sessions(state,vm,nav)}; composable("insights"){Insights(state,nav)}; composable("log"){LogCatch(state,vm,nav)}
-            composable("session/{id}"){SessionDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm,nav)}; composable("solunar"){Solunar(vm,nav)}; composable("tides"){Tides(vm,nav)}; composable("rivers"){Rivers(vm,nav)}; composable("settings"){Settings(state,vm,nav)}; composable("year"){YearOnWater(state,nav)}; composable("backup"){PhotoBackupScreen(state,vm,nav)}; composable("unlimited"){UnlimitedScreen(state,vm,nav)}; composable("season-book"){SeasonBookScreen(state,nav)}; composable("planner"){TripPlannerScreen(state,nav)}
+            composable("session/{id}"){SessionDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catches"){Catches(state,nav)}; composable("edit/{id}"){EditCatch(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("tackle"){Tacklebox(state,vm,nav)}; composable("solunar"){Solunar(vm,nav)}; composable("tides"){Tides(vm,nav)}; composable("rivers"){Rivers(vm,nav)}; composable("settings"){Settings(state,vm,nav)}; composable("year"){YearOnWater(state,nav)}; composable("backup"){PhotoBackupScreen(state,vm,nav)}; composable("unlimited"){UnlimitedScreen(state,vm,nav)}; composable("season-book"){SeasonBookScreen(state,nav)}; composable("planner"){TripPlannerScreen(state,nav)}; composable("data-services"){DataServicesScreen(vm,nav)}
             composable("water/{id}"){WaterPassport(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("species/{id}"){SpeciesDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}; composable("catch/{id}"){CatchDetail(state,vm,it.arguments?.getString("id")?.toLongOrNull(),nav)}
         }
         // A route requested by the notification or the OAuth callback, applied once the graph exists. The start
@@ -114,7 +116,9 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
 @Composable fun BottomBar(nav:NavHostController,showFab:Boolean){val back by nav.currentBackStackEntryAsState();Box{NavigationBar(containerColor=Surface){tabs.forEachIndexed{i,t->if(i==2)Spacer(Modifier.weight(.65f));NavigationBarItem(selected=back?.destination?.route==t.route,onClick={nav.navigate(t.route){popUpTo("vault"){saveState=true};launchSingleTop=true;restoreState=true}},icon={Icon(t.icon,null)},label={Text(t.label,fontSize=if(LocalDensity.current.fontScale>=2f)9.sp else 10.sp,lineHeight=12.sp,letterSpacing=0.sp,fontWeight=FontWeight.SemiBold,maxLines=2,softWrap=true,textAlign=TextAlign.Center)},modifier=Modifier.testTag("tab_${t.route}"),
             // No selection pill and brassSoft on the selected item, as iOS does it — Material's filled indicator
             // capsule put a shape behind one tab that has no counterpart on the other platform (TB-P-10).
-            colors=NavigationBarItemDefaults.colors(selectedIconColor=BrassSoft,selectedTextColor=BrassSoft,unselectedIconColor=Muted.copy(alpha=.6f),unselectedTextColor=Muted.copy(alpha=.6f),indicatorColor=Color.Transparent))}};if(showFab)FloatingActionButton(onClick={nav.navigate("log")},containerColor=Brass,contentColor=Background,shape=CircleShape,modifier=Modifier.align(Alignment.Center).testTag("logCatchFab")){Icon(Icons.Default.Add,"Log a catch")}}}
+            colors=NavigationBarItemDefaults.colors(selectedIconColor=BrassSoft,selectedTextColor=BrassSoft,unselectedIconColor=Dim,unselectedTextColor=Dim,indicatorColor=Color.Transparent))}}
+    // The word "Log" under the brass circle, as the iOS bar shows it.
+    if(showFab)Column(Modifier.align(Alignment.Center),horizontalAlignment=Alignment.CenterHorizontally){FloatingActionButton(onClick={nav.navigate("log")},containerColor=Brass,contentColor=Background,shape=CircleShape,modifier=Modifier.testTag("logCatchFab")){Icon(Icons.Default.Add,"Log a catch")};Text("Log",color=Dim,fontSize=10.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=2.dp))}}}
 
 // safeDrawingPadding keeps the wordmark clear of the status bar; without it the header collided with the clock (TB-A-01).
 /**
@@ -150,8 +154,9 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
                     PrivacyRow(Icons.Default.NearMe,"Location with restraint","Used for weather, tides and bite times. Your precise spot is never stored.")
                     HorizontalDivider(Modifier.padding(vertical=18.dp),color=Muted.copy(alpha=.2f))
                     PrivacyRow(Icons.Default.Photo,"Photos stay with you","Catch photos stay on your device as part of your private vault.")}}}}
-        Row(Modifier.fillMaxWidth().padding(bottom=20.dp),horizontalArrangement=Arrangement.Center){
-            repeat(3){i->Box(Modifier.padding(horizontal=4.dp).size(width=if(i==pager.currentPage)24.dp else 8.dp,height=8.dp).background(if(i==pager.currentPage)Brass else Inset,RoundedCornerShape(4.dp)))}}
+        // Capsule progress with "Step n of 3", as iOS — not page dots.
+        Row(Modifier.fillMaxWidth().padding(horizontal=24.dp,vertical=20.dp).semantics{contentDescription="Step ${pager.currentPage+1} of 3"},horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            repeat(3){i->Box(Modifier.weight(1f).height(6.dp).background(if(i==pager.currentPage)Brass else Ink.copy(alpha=.09f),CircleShape))}}
         Column(Modifier.padding(horizontal=24.dp).padding(bottom=24.dp)){
             if(pager.currentPage==2){
                 Button(onClick={vm.seed(true)},Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp)){Text("Begin with sample waters",fontWeight=FontWeight.Bold)}
@@ -412,32 +417,6 @@ fun countdownTo(now:LocalTime,start:LocalTime):String{
     val minutes=java.time.Duration.between(now,start).toMinutes()
     if(minutes<=0)return "Happening now"
     return if(minutes>=60)"in ${minutes/60}h ${minutes%60}m" else "in ${maxOf(1,minutes)}m"
-}
-
-// Gear was always filed as OTHER and presets always as RIG, with no way to pick either and no way to delete
-// anything — deleteGear existed in the DAO but nothing reached it, and presets had no delete at all.
-@Composable fun Tacklebox(s:AppState,vm:MainViewModel,nav:NavHostController){
-    var name by rememberSaveable{mutableStateOf("")}
-    var category by rememberSaveable{mutableStateOf(GearCategory.ROD)}
-    var kind by rememberSaveable{mutableStateOf(PresetKind.RIG)}
-    var editingGear by remember { mutableStateOf<GearItem?>(null) }
-    var showGearEditor by rememberSaveable { mutableStateOf(false) }
-    PushedScreen("My Tacklebox",onBack={nav.popBackStack()}){
-        item{SectionLabel("Ready for the bank")}
-        item { OutlinedButton({editingGear=null;showGearEditor=true}){Text("Add gear with notes")} }
-        item { GearPerformance(s) }
-        items(s.gear){g->HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(g.name,style=MaterialTheme.typography.titleLarge);Text(g.category.name.lowercase().replaceFirstChar(Char::uppercase),color=Muted)};IconButton({editingGear=g;showGearEditor=true}){Icon(Icons.Default.Edit,"Edit "+g.name)};IconButton({vm.deleteGear(g)}){Icon(Icons.Default.Delete,"Delete ${g.name}",tint=Muted)}}}}
-        item{OutlinedTextField(name,{name=it},label={Text("New gear or preset")},modifier=Modifier.fillMaxWidth().testTag("gearName"))
-            Text("Gear category",color=Muted,style=MaterialTheme.typography.bodyMedium)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(GearCategory.entries.toList()){c->FilterChip(category==c,{category=c},{Text(c.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours(),shape=CircleShape)}}
-            Row(Modifier.padding(top=8.dp)){Button({if(name.isNotBlank()){vm.addGear(name.trim(),category);name=""}}){Text("Add gear")}
-                Spacer(Modifier.width(8.dp))
-                OutlinedButton({if(name.isNotBlank()){vm.addPreset(name.trim(),kind);name=""}}){Text("Save ${kind.name.lowercase()}")}}
-            LazyRow(Modifier.padding(top=8.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){items(PresetKind.entries.toList()){k->FilterChip(kind==k,{kind=k},{Text(k.name.lowercase().replaceFirstChar(Char::uppercase))},colors=brassChipColours(),shape=CircleShape)}}}
-        item{SectionLabel("Quick picks");if(s.presets.isEmpty())Text("No saved rigs or baits",color=Muted)}
-        items(s.presets){p->HeritageCard{Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(p.name);Text(p.kind.name.lowercase().replaceFirstChar(Char::uppercase),color=Muted,style=MaterialTheme.typography.bodyMedium)};IconButton({vm.deletePreset(p)}){Icon(Icons.Default.Delete,"Delete ${p.name}",tint=Muted)}}}}
-    }
-    if(showGearEditor)GearEditor(editingGear,{showGearEditor=false}){vm.saveGear(it){showGearEditor=false}}
 }
 
 @Composable fun Empty(title:String,body:String,icon:androidx.compose.ui.graphics.vector.ImageVector?=null,onClick:(()->Unit)?=null){HeritageCard(onClick=onClick){Column(Modifier.fillMaxWidth().padding(vertical=14.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){

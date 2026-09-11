@@ -34,7 +34,7 @@ interface MarineApi { @GET("v1/marine") suspend fun forecast(@Query("latitude") 
 object Services {
     // Explicit timeouts: the bare client had none, so a captive portal or a stalled gauge left the Rivers and Tides
     // screens spinning indefinitely with no way back but killing the app.
-    private val client=OkHttpClient.Builder()
+    val client=OkHttpClient.Builder()
         .connectTimeout(10,TimeUnit.SECONDS).readTimeout(20,TimeUnit.SECONDS).callTimeout(30,TimeUnit.SECONDS)
         .build()
     private fun <T> api(url:String,c:Class<T>):T=Retrofit.Builder().baseUrl(url).client(client).addConverterFactory(GsonConverterFactory.create()).build().create(c)
@@ -102,7 +102,20 @@ object SpeciesId {
         SpeciesSuggestion(name, r.taxon.commonName, raw.coerceIn(0.0, 100.0), r.taxon.defaultPhoto?.squareUrl)
     }.sortedByDescending { it.score }.take(5)
 
-    suspend fun validate(token:String):Boolean = try { Services.vision.me(bearer(token)); true } catch (_:Exception) { false }
+    /** `GET /v1/users/me` with the token: 200 connected, 401/403 invalid, anything else unreachable — as iOS tests it. */
+    suspend fun validateToken(token:String):uk.co.tacklebox.app.DataServiceTestResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val request = okhttp3.Request.Builder().url("https://api.inaturalist.org/v1/users/me").header("Authorization", bearer(token)).build()
+            Services.client.newCall(request).execute().use { classifyINaturalist(it.code) }
+        } catch (e:kotlinx.coroutines.CancellationException) { throw e }
+        catch (_:Exception) { uk.co.tacklebox.app.DataServiceTestResult.Unreachable(INATURALIST_UNREACHABLE) }
+    }
+    const val INATURALIST_UNREACHABLE="Couldn't reach iNaturalist. Try again later."
+    fun classifyINaturalist(code:Int):uk.co.tacklebox.app.DataServiceTestResult = when (code) {
+        200 -> uk.co.tacklebox.app.DataServiceTestResult.Connected
+        401, 403 -> uk.co.tacklebox.app.DataServiceTestResult.Invalid
+        else -> uk.co.tacklebox.app.DataServiceTestResult.Unreachable(INATURALIST_UNREACHABLE)
+    }
 
     private fun bearer(token:String) = if (token.startsWith("Bearer ",ignoreCase=true)) token else "Bearer $token"
 }

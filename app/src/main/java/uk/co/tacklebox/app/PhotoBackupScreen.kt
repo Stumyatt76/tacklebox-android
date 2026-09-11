@@ -31,7 +31,7 @@ import uk.co.tacklebox.app.ui.*
         ShareSheet.file(context,it,"application/octet-stream","Tacklebox photo backup")
         vm.photoBackupExport.value=null
     } }
-    PushedScreen("Photo backup",onBack={nav.popBackStack()}) {
+    PushedScreen("",onBack={nav.popBackStack()},eyebrow="Your journal, kept safe",heading="Photo backup") {
         item { HeritageCard {
             Text("Every catch. Every photo.",style=MaterialTheme.typography.headlineMedium)
             Text("A portable copy for either Tacklebox app, including photos, notes, waters, sessions, gear and presets.")
@@ -39,7 +39,7 @@ import uk.co.tacklebox.app.ui.*
             Button({vm.createPhotoBackup()},enabled=!busy) { Text("Create photo backup") }
             OutlinedButton({picker.launch(arrayOf("*/*"))},enabled=!busy) { Text("Restore a photo backup") }
         } }
-        if(busy)item { Loading() }
+        if(busy)item { Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(18.dp),color=Brass,strokeWidth=2.dp);Spacer(Modifier.width(10.dp));Text("Working with your photo backup…",color=Muted) } }
         payload?.let { p ->
             val preview=PhotoBackupFormat.preview(p,PhotoBackup.existing(s,p))
             item { HeritageCard {

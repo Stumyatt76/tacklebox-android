@@ -75,8 +75,9 @@ import kotlin.math.roundToInt
     val connection by vm.connection.state.collectAsStateWithLifecycle()
     var showingSuggestions by rememberSaveable{mutableStateOf(false)}
     var showingSetup by rememberSaveable{mutableStateOf(false)}
-    val configured=connection.connected||s.settings.speciesIdToken.isNotBlank()
-    fun identify(){if(!configured){showingSetup=true;return};vm.identify(photos.firstOrNull(),s.settings.speciesIdToken);showingSuggestions=true}
+    val stored by vm.secrets.state.collectAsStateWithLifecycle()
+    val configured=connection.connected||stored.speciesIdToken.isNotBlank()
+    fun identify(){if(!configured){showingSetup=true;return};vm.identify(photos.firstOrNull());showingSuggestions=true}
     val scope=rememberCoroutineScope()
 
     val enteredGrams:Double=if(metric)(kilograms*1000+grams).toDouble() else (Weights.fromPoundsAndOunces(pounds.toString(),ounces.toString())?:0.0)
@@ -160,7 +161,7 @@ import kotlin.math.roundToInt
     if(addingSpecies)AddSpeciesDialog(s.settings.activeDisciplines,onDismiss={addingSpecies=false}){name,discipline->vm.addSpecies(name,discipline){species=it};addingSpecies=false}
     addingPreset?.let{kind->AddPresetDialog(kind,s.presets,onDismiss={addingPreset=null}){name->vm.addPreset(name,kind);if(kind==PresetKind.RIG)rig=name else bait=name;addingPreset=null}}
     if(needsSession)FreeSessionSheet(s,vm,nav,onDismiss={vm.showAccess.value=false})
-    if(showingSetup)SpeciesIDSetupSheet(onOpenSettings={showingSetup=false;nav.navigate("settings")},onDismiss={showingSetup=false})
+    if(showingSetup)SpeciesIDSetupSheet(onOpenSettings={showingSetup=false;nav.navigate("data-services")},onDismiss={showingSetup=false})
     if(showingSuggestions)SpeciesSuggestionsSheet(suggestions,onRetry=::identify,onDismiss={showingSuggestions=false;vm.clearSuggestions()}){sug->
         vm.pickSuggestion(sug){species=it};showingSuggestions=false;vm.clearSuggestions()}
 }

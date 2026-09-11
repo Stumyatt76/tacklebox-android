@@ -7,4 +7,4 @@ package uk.co.tacklebox.app
 import android.app.Application
 import uk.co.tacklebox.app.data.TackleboxRepository
 
-class TackleboxApp:Application(){ val speciesConnection by lazy { SpeciesConnection(this) }; val unlimitedStore by lazy { UnlimitedStore(this) }; val repository by lazy { TackleboxRepository(this) } }
+class TackleboxApp:Application(){ val speciesConnection by lazy { SpeciesConnection(this) }; val unlimitedStore by lazy { UnlimitedStore(this) }; val repository by lazy { TackleboxRepository(this) }; val secrets by lazy { Secrets(this) } }

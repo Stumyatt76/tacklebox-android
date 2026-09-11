@@ -33,7 +33,34 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     val store=(app as TackleboxApp).unlimitedStore
     val showAccess=MutableStateFlow(false)
     val repo=(app as TackleboxApp).repository
-    init { viewModelScope.launch { repo.repairSpeciesMetadata() } }
+    val secrets=(app as TackleboxApp).secrets
+    /** Which provider is being tested, and the last message per provider — the Connect data services cards. */
+    val testingService=MutableStateFlow<String?>(null)
+    val serviceMessages=MutableStateFlow<Map<String,String>>(emptyMap())
+    init { viewModelScope.launch { repo.repairSpeciesMetadata(); runCatching { secrets.migrateFrom(repo) } } }
+    private fun serviceMessage(name:String,message:String?){serviceMessages.value=if(message==null)serviceMessages.value-name else serviceMessages.value+(name to message)}
+    fun saveSecret(name:String,value:String){
+        val trimmed=value.trim()
+        if(secrets.save(name,trimmed))serviceMessage(name,if(trimmed.isEmpty())null else "Saved securely. Tap Test to validate.")
+        else serviceMessage(name,if(name==Secrets.WORLD_TIDES)"Couldn't save the key. Try again." else "Couldn't save the token. Try again.")
+    }
+    fun clearSecret(name:String){secrets.save(name,"");serviceMessage(name,null)}
+    private fun applyTest(name:String,result:DataServiceTestResult){when(result){
+        DataServiceTestResult.Connected->{secrets.setStatus(name,DataServiceStatus.CONNECTED);serviceMessage(name,null)}
+        DataServiceTestResult.Invalid->{secrets.setStatus(name,DataServiceStatus.INVALID);serviceMessage(name,null)}
+        is DataServiceTestResult.Unreachable->serviceMessage(name,result.message)}}
+    fun testWorldTides()=viewModelScope.launch{
+        val key=secrets.worldTidesKey
+        if(key.isEmpty()){serviceMessage(Secrets.WORLD_TIDES,"Save a key before testing.");return@launch}
+        testingService.value=Secrets.WORLD_TIDES;serviceMessage(Secrets.WORLD_TIDES,null)
+        try{applyTest(Secrets.WORLD_TIDES,Tides.validateWorldTidesKey(key))}finally{testingService.value=null}
+    }
+    fun testINaturalist()=viewModelScope.launch{
+        val token=secrets.speciesIdToken
+        if(token.isEmpty()){serviceMessage(Secrets.SPECIES_ID,"Save a token before testing.");return@launch}
+        testingService.value=Secrets.SPECIES_ID;serviceMessage(Secrets.SPECIES_ID,null)
+        try{applyTest(Secrets.SPECIES_ID,SpeciesId.validateToken(token))}finally{testingService.value=null}
+    }
     val state=combine(repo.settings,repo.species,repo.waters,repo.catches,repo.sessions,repo.gear,repo.presets){ a:Array<Any?> ->
         @Suppress("UNCHECKED_CAST") AppState(true,a[0] as AppSettings,a[1] as List<Species>,a[2] as List<Water>,a[3] as List<CatchRow>,a[4] as List<SessionRow>,a[5] as List<GearItem>,a[6] as List<TacklePreset>)
     }.onEach { SessionNotification.update(app,it.sessions.firstOrNull { row->row.item.endAt==null }) }.stateIn(viewModelScope,SharingStarted.WhileSubscribed(5000),AppState())
@@ -235,7 +262,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
         val place=livePlace(!refresh)
         marineLocated.value=place!=null
         val (lat,lon)=place ?: DeviceLocation.FALLBACK_INLAND
-        val key=repo.settings.first().worldTidesKey
+        val key=secrets.worldTidesKey
         tides.value=runCatching{LiveState.Data(Tides.tides(lat,lon,key))}
             .getOrElse{LiveState.Error(it.message ?: "Couldn’t update tide predictions. Try again.")}
     }
@@ -249,7 +276,8 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     }
 
     /** Sends the cover photo and the rounded position to iNaturalist, as iOS does, and reports in its words. */
-    fun identify(photoUri:String?,token:String)=viewModelScope.launch{
+    fun identify(photoUri:String?)=viewModelScope.launch{
+        val token=secrets.speciesIdToken
         if(photoUri==null){suggestions.value=LiveState.Error(SpeciesId.NO_RESULTS);return@launch}
         suggestions.value=LiveState.Loading
         suggestions.value=try{
