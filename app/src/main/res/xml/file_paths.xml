@@ -7,4 +7,6 @@
     <files-path name="photo-store" path="photos/" />
     <cache-path name="photo-backups" path="photo-backups/" />
     <cache-path name="season-books" path="season-books/" />
+    <!-- Rendered share cards (catch and season), handed to the share sheet as JPEGs. -->
+    <cache-path name="shares" path="shares/" />
 </paths>

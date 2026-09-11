@@ -71,6 +71,16 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         val chosen=discipline ?: activeDisciplines.firstNotNullOfOrNull { d -> Discipline.entries.firstOrNull { it.name.equals(d, ignoreCase=true) } } ?: Discipline.COARSE
         dao.addSpecies(Species(name=trimmed, discipline=chosen, scientificName=uk.co.tacklebox.app.services.SpeciesLookup.canonicalName(trimmed)))
     }
+    /**
+     * The species an iNaturalist suggestion resolves to: an existing one under either the common or the scientific
+     * name, else a new record under the display name carrying both, filed under the first active discipline.
+     */
+    suspend fun speciesForSuggestion(displayName:String, scientificName:String, commonName:String?, activeDisciplines:List<String>):Long = db.withTransaction {
+        val names=listOfNotNull(commonName, scientificName).map { it.trim() }.filter { it.isNotEmpty() }
+        dao.speciesOnce().firstOrNull { sp -> names.any { it.equals(sp.name, ignoreCase=true) } }?.let { return@withTransaction it.id }
+        val discipline=activeDisciplines.firstNotNullOfOrNull { d -> Discipline.entries.firstOrNull { it.name.equals(d, ignoreCase=true) } } ?: Discipline.COARSE
+        dao.addSpecies(Species(name=displayName.trim(), discipline=discipline, scientificName=scientificName, commonName=commonName))
+    }
     suspend fun addWater(v:Water)=dao.addWater(v)
     suspend fun addSession(v:FishingSession)=dao.addSession(v)
     suspend fun existingSpecies():List<Species> = dao.speciesOnce()

@@ -51,36 +51,56 @@ object Services {
 // --- Species identification (iNaturalist computer vision) -------------------------------------------------------
 // The Log screen offered an "Identify from photo" button whose onClick was empty and had no client behind it at all
 // (TB-A-07). This mirrors the iOS SpeciesIDService: multipart upload, bearer token, top suggestions by score.
-data class VisionTaxon(val name:String?=null, @SerializedName("preferred_common_name") val commonName:String?=null)
-data class VisionScore(@SerializedName("combined_score") val score:Double?=null, val taxon:VisionTaxon?=null)
+data class VisionPhoto(@SerializedName("square_url") val squareUrl:String?=null)
+data class VisionTaxon(val name:String?=null, @SerializedName("preferred_common_name") val commonName:String?=null, @SerializedName("default_photo") val defaultPhoto:VisionPhoto?=null)
+data class VisionScore(@SerializedName("combined_score") val score:Double?=null, @SerializedName("score") val visionScore:Double?=null, val taxon:VisionTaxon?=null)
 data class VisionResult(val results:List<VisionScore> = emptyList())
-data class SpeciesSuggestion(val scientificName:String, val commonName:String?, val score:Double)
+data class SpeciesSuggestion(val scientificName:String, val commonName:String?, val score:Double, val thumbnailUrl:String?=null) {
+    val displayName:String get() = commonName ?: scientificName
+}
 
 interface VisionApi {
     @Multipart @POST("v1/computervision/score_image")
-    suspend fun score(@Header("Authorization") authorization:String, @Part image:MultipartBody.Part):VisionResult
+    suspend fun score(@Header("Authorization") authorization:String, @Part image:MultipartBody.Part, @Part("lat") lat:okhttp3.RequestBody?, @Part("lng") lng:okhttp3.RequestBody?):VisionResult
     @GET("v1/users/me") suspend fun me(@Header("Authorization") authorization:String):ResponseBody
 }
 
 class SpeciesIdException(message:String):Exception(message)
 
+/** The five outcomes iOS's `SpeciesIDError` names, with its strings. */
 object SpeciesId {
-    // The iNaturalist token is a short-lived JWT (about 24 hours), so an expired token is the common case, not an
-    // edge case. Say so plainly rather than surfacing a raw HTTP error.
-    private const val EXPIRED="That species-ID token has expired. iNaturalist tokens last about a day — paste a fresh one in Settings."
+    const val NOT_CONFIGURED="Species identification is not set up yet. Connect iNaturalist in Settings."
+    const val UNAUTHORIZED="Please reconnect iNaturalist in Settings. If sign-in succeeds but photo identification is unavailable, provider access may be required."
+    const val OFFLINE="Identification is unavailable offline. Try again when you're connected."
+    const val NO_RESULTS="iNaturalist couldn't identify this photo. Try a clear side-on photo."
+    const val UNREACHABLE="Couldn't reach iNaturalist. Check your connection and try again."
 
-    suspend fun identify(bytes:ByteArray, token:String):List<SpeciesSuggestion> {
-        if (token.isBlank()) throw SpeciesIdException("Add an iNaturalist token in Settings to identify from a photo.")
+    /** Sends the cover photo and, when known, the rounded position — iNaturalist ranks by range as well as by looks. */
+    suspend fun identify(bytes:ByteArray, token:String, latitude:Double?=null, longitude:Double?=null):List<SpeciesSuggestion> {
+        if (token.isBlank()) throw SpeciesIdException(NOT_CONFIGURED)
         val part = MultipartBody.Part.createFormData("image","catch.jpg", bytes.toRequestBody("image/jpeg".toMediaType()))
-        val result = try { Services.vision.score(bearer(token), part) }
+        fun field(value:Double?) = value?.let { "%.2f".format(java.util.Locale.US, it).toRequestBody("text/plain".toMediaType()) }
+        val result = try { Services.vision.score(bearer(token), part, field(latitude), field(longitude)) }
         catch (e:kotlinx.coroutines.CancellationException) { throw e }
-        catch (e:HttpException) { throw SpeciesIdException(if (e.code()==401||e.code()==403) EXPIRED else "Couldn’t reach the identification service. Try again.") }
-        catch (e:Exception) { throw SpeciesIdException("Couldn’t reach the identification service. Try again.") }
-        return result.results.mapNotNull { r ->
-            val name = r.taxon?.name ?: return@mapNotNull null
-            SpeciesSuggestion(name, r.taxon.commonName, r.score ?: 0.0)
-        }.sortedByDescending { it.score }.take(5)
+        catch (e:Exception) { throw SpeciesIdException(describe(e)) }
+        val suggestions = suggestionsFrom(result)
+        if (suggestions.isEmpty()) throw SpeciesIdException(NO_RESULTS)
+        return suggestions
     }
+
+    /** Which iOS message a failed request maps to: 401/403 → reconnect, no network → offline, anything else → unreachable. */
+    fun describe(e:Throwable):String = when {
+        e is HttpException && (e.code()==401 || e.code()==403) -> UNAUTHORIZED
+        e is java.net.UnknownHostException || e is java.net.ConnectException || e is java.net.NoRouteToHostException -> OFFLINE
+        else -> UNREACHABLE
+    }
+
+    /** The top five by score, each with its name, common name and square thumbnail. Scores are clamped to 0–100. */
+    fun suggestionsFrom(result:VisionResult):List<SpeciesSuggestion> = result.results.mapNotNull { r ->
+        val name = r.taxon?.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        val raw = r.score ?: r.visionScore ?: return@mapNotNull null
+        SpeciesSuggestion(name, r.taxon.commonName, raw.coerceIn(0.0, 100.0), r.taxon.defaultPhoto?.squareUrl)
+    }.sortedByDescending { it.score }.take(5)
 
     suspend fun validate(token:String):Boolean = try { Services.vision.me(bearer(token)); true } catch (_:Exception) { false }
 

@@ -237,17 +237,25 @@ class MainViewModel(app:Application):AndroidViewModel(app){
             .getOrElse{LiveState.Error(it.message ?: "Couldn’t update river gauges. Try again.")}
     }
 
+    /** Sends the cover photo and the rounded position to iNaturalist, as iOS does, and reports in its words. */
     fun identify(photoUri:String?,token:String)=viewModelScope.launch{
-        if(photoUri==null){suggestions.value=LiveState.Error("Add a photo first.");return@launch}
+        if(photoUri==null){suggestions.value=LiveState.Error(SpeciesId.NO_RESULTS);return@launch}
         suggestions.value=LiveState.Loading
         suggestions.value=try{
             val bytes=withContext(Dispatchers.IO){getApplication<Application>().contentResolver.openInputStream(Uri.parse(photoUri))?.use{it.readBytes()}}
-                ?: throw SpeciesIdException("That photo could not be read.")
-            LiveState.Data(SpeciesId.identify(bytes,connection.apiToken(token)))
+                ?: throw SpeciesIdException(SpeciesId.NO_RESULTS)
+            val place=DeviceLocation.current(getApplication())
+            LiveState.Data(SpeciesId.identify(bytes,connection.apiToken(token),place?.first,place?.second))
         }catch(e:kotlinx.coroutines.CancellationException){throw e}
-        catch(e:Exception){LiveState.Error(e.message ?: "Identification failed.")}
+        catch(e:SpeciesIdException){LiveState.Error(e.message ?: SpeciesId.UNREACHABLE)}
+        catch(_:Exception){LiveState.Error(SpeciesId.UNAUTHORIZED)}
     }
     fun clearSuggestions(){suggestions.value=LiveState.Idle}
+    /** Accepts a suggestion: reuses a species under either name, else adds one, and hands back the id to select. */
+    fun pickSuggestion(s:SpeciesSuggestion,onDone:(Long)->Unit)=viewModelScope.launch{
+        runCatching { repo.speciesForSuggestion(s.displayName,s.scientificName,s.commonName,state.value.settings.activeDisciplines) }
+            .onSuccess(onDone).onFailure { fail("Couldn't add this species",it.message ?: "Please try again.") }
+    }
 
     /** Writes the whole journal to a shareable JSON file. The button existed but did nothing at all (TB-A-05). */
     fun exportJson()=viewModelScope.launch{

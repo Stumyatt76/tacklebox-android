@@ -30,6 +30,8 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import uk.co.tacklebox.app.ui.*
 
 // --- Multiple photos per catch ----------------------------------------------------------------------------------
@@ -69,8 +71,8 @@ import uk.co.tacklebox.app.ui.*
     val largeText=LocalDensity.current.fontScale>=1.5f
     Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
         if(photos.isEmpty()){
-            Box(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(18.dp)).background(Inset).clickable{picker.launch("image/*")},contentAlignment=Alignment.Center){
-                Column(horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.Phishing,null,tint=Teal,modifier=Modifier.size(44.dp));Text("Add the moment",color=Muted)}}
+            Box(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(18.dp)).background(Inset).clickable{picker.launch("image/*")}.semantics{contentDescription="No photos yet"},contentAlignment=Alignment.Center){
+                Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(10.dp)){FishGlyphOutline(Teal,Modifier.size(90.dp,45.dp));Text("Add the moment",color=Muted,style=MaterialTheme.typography.bodyMedium)}}
         } else {
             LazyRow(horizontalArrangement=Arrangement.spacedBy(10.dp)){
                 itemsIndexed(photos){index,uri->
@@ -86,13 +88,13 @@ import uk.co.tacklebox.app.ui.*
         }
         FlowRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(10.dp),maxItemsInEachRow=if(largeText)1 else 2){
             FilledTonalButton({picker.launch("image/*")},Modifier.weight(1f),enabled=photos.size<limit&&!importing,shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.filledTonalButtonColors(containerColor=Inset,contentColor=BrassSoft)){
-                Icon(Icons.Default.PhotoLibrary,null);Text(if(photos.isEmpty())" Library" else " Add more")}
+                Icon(Icons.Default.PhotoLibrary,null);Spacer(Modifier.width(8.dp));Text(if(photos.isEmpty())"Library" else "Add more")}
             FilledTonalButton({if(CapturePhoto.permitted(context))capture() else cameraPermission.launch(Manifest.permission.CAMERA)},Modifier.weight(1f),enabled=photos.size<limit&&!importing,shape=RoundedCornerShape(12.dp),colors=ButtonDefaults.filledTonalButtonColors(containerColor=Inset,contentColor=BrassSoft)){
-                Icon(Icons.Default.PhotoCamera,null);Text(" Camera")}}
+                Icon(Icons.Default.PhotoCamera,null);Spacer(Modifier.width(8.dp));Text("Camera")}}
         if(importing)Row(verticalAlignment=Alignment.CenterVertically){CircularProgressIndicator(Modifier.size(16.dp),color=BrassSoft,strokeWidth=2.dp);Spacer(Modifier.width(9.dp));Text("Saving photo…",color=Muted,style=MaterialTheme.typography.bodyMedium)}
         else if(failed>0)Text(if(failed==1)"One photo could not be read and was not added." else "$failed photos could not be read and were not added.",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium)
         if(photos.size>=limit)Text("That's the limit of $limit photos for one catch.",color=Muted,style=MaterialTheme.typography.bodyMedium)
-        else if(photos.size>1)Text("The first photo is the one that appears on your board.",color=Muted,style=MaterialTheme.typography.bodyMedium)
+        else if(photos.size>1)Text("The first photo is the one that appears on your board and shared cards.",color=Dim,style=MaterialTheme.typography.bodyMedium)
     }
 }
 

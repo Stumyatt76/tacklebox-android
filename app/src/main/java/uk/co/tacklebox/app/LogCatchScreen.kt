@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +72,11 @@ import kotlin.math.roundToInt
     var celebration by remember{mutableStateOf<PBCelebration?>(null)}
     val needsSession by vm.showAccess.collectAsStateWithLifecycle()
     val suggestions by vm.suggestions.collectAsStateWithLifecycle()
+    val connection by vm.connection.state.collectAsStateWithLifecycle()
+    var showingSuggestions by rememberSaveable{mutableStateOf(false)}
+    var showingSetup by rememberSaveable{mutableStateOf(false)}
+    val configured=connection.connected||s.settings.speciesIdToken.isNotBlank()
+    fun identify(){if(!configured){showingSetup=true;return};vm.identify(photos.firstOrNull(),s.settings.speciesIdToken);showingSuggestions=true}
     val scope=rememberCoroutineScope()
 
     val enteredGrams:Double=if(metric)(kilograms*1000+grams).toDouble() else (Weights.fromPoundsAndOunces(pounds.toString(),ounces.toString())?:0.0)
@@ -89,13 +95,17 @@ import kotlin.math.roundToInt
 
     Box(Modifier.fillMaxSize()){
     CaptureScaffold("Log a Catch",onCancel={nav.popBackStack()}){
-        item{PhotoStrip(photos){photos=it}}
+        // Photos, then — as soon as there is one — the identify control, above SPECIES as iOS places it.
+        item{Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+            PhotoStrip(photos){photos=it}
+            if(photos.isNotEmpty()){
+                TextButton(::identify,Modifier.defaultMinSize(minHeight=44.dp).testTag("identifySpecies"),contentPadding=PaddingValues(0.dp)){
+                    Icon(Icons.Default.AutoAwesome,null,tint=BrassSoft,modifier=Modifier.size(18.dp));Spacer(Modifier.width(8.dp));Text("Identify species from photo",color=BrassSoft,fontWeight=FontWeight.SemiBold)}
+                Text("Sends the cover photo — the first one — to iNaturalist when you tap Identify. You choose whether to accept a suggestion.",color=Muted,style=MaterialTheme.typography.bodyMedium)}}}
         item{SectionLabel("Species")
             FlowRow(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 s.species.filter { it.discipline.name in s.settings.activeDisciplines }.forEach{sp->FilterChip(species==sp.id,{species=sp.id},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}
                 FilterChip(false,{addingSpecies=true},{Text("＋ Add species")},colors=brassChipColours(),shape=CircleShape,modifier=Modifier.testTag("addSpecies"))}}
-        // Added or matched, the species is selected straight away — addSpecies reuses an existing name and hands back the id.
-        item{SpeciesIdRow(s,vm,photos.firstOrNull(),suggestions,onPick={name->vm.addSpecies(name){species=it};vm.clearSuggestions()})}
         item{SectionLabel("Weight")
             Row(Modifier.padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
                 if(metric){
@@ -150,6 +160,9 @@ import kotlin.math.roundToInt
     if(addingSpecies)AddSpeciesDialog(s.settings.activeDisciplines,onDismiss={addingSpecies=false}){name,discipline->vm.addSpecies(name,discipline){species=it};addingSpecies=false}
     addingPreset?.let{kind->AddPresetDialog(kind,s.presets,onDismiss={addingPreset=null}){name->vm.addPreset(name,kind);if(kind==PresetKind.RIG)rig=name else bait=name;addingPreset=null}}
     if(needsSession)FreeSessionSheet(s,vm,nav,onDismiss={vm.showAccess.value=false})
+    if(showingSetup)SpeciesIDSetupSheet(onOpenSettings={showingSetup=false;nav.navigate("settings")},onDismiss={showingSetup=false})
+    if(showingSuggestions)SpeciesSuggestionsSheet(suggestions,onRetry=::identify,onDismiss={showingSuggestions=false;vm.clearSuggestions()}){sug->
+        vm.pickSuggestion(sug){species=it};showingSuggestions=false;vm.clearSuggestions()}
 }
 
 /** The WATER picker card: "Choose a water" or the chosen name over "type · region", opening the selection sheet. */
@@ -285,16 +298,45 @@ data class PBCelebration(val species:String,val weight:String,val margin:String?
         if(onAdd!=null)FilterChip(false,onAdd,{Text("＋ Add")},colors=brassChipColours(),shape=CircleShape)}
 }
 
-/** Photo species identification. The button used to be inert with no client behind it (TB-A-07). */
-@Composable fun SpeciesIdRow(s:AppState,vm:MainViewModel,photo:String?,suggestions:LiveState<List<SpeciesSuggestion>>,onPick:(String)->Unit){
-    val connection by vm.connection.state.collectAsStateWithLifecycle()
-    if(s.settings.speciesIdToken.isBlank() && !connection.connected){Text("Connect iNaturalist in Settings to identify a photo. Manual species selection is always available.",color=Muted);return}
-    OutlinedButton({vm.identify(photo,s.settings.speciesIdToken)},enabled=photo!=null&&suggestions !is LiveState.Loading){
-        Icon(Icons.Default.AutoAwesome,null);Text(if(suggestions is LiveState.Loading)" Identifying…" else " Identify from photo")}
-    when(val x=suggestions){
-        is LiveState.Error->Text(x.message,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodyMedium)
-        is LiveState.Data->if(x.value.isEmpty())Text("No confident match. Pick the species by hand.",color=Muted)
-            else Column{x.value.forEach{sug->TextButton({onPick(sug.commonName?:sug.scientificName)}){Text("${sug.commonName?:sug.scientificName} · ${(sug.score).roundToInt()}%")}}}
-        else->{}
-    }
+/** "Species identification" — shown when neither a sign-in nor a token is set up. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun SpeciesIDSetupSheet(onOpenSettings:()->Unit,onDismiss:()->Unit){
+    ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=Background,dragHandle=null){
+        Column(Modifier.fillMaxWidth().padding(bottom=32.dp)){
+            Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
+                TextButton(onDismiss){Text("Close",color=BrassSoft,fontWeight=FontWeight.SemiBold)}
+                Spacer(Modifier.weight(1f));Text("Species identification",fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));Spacer(Modifier.width(64.dp))}
+            Column(Modifier.padding(horizontal=20.dp),verticalArrangement=Arrangement.spacedBy(18.dp)){
+                Icon(Icons.Default.Key,null,tint=Brass,modifier=Modifier.size(34.dp))
+                Text("Species identification isn't set up yet",style=MaterialTheme.typography.headlineMedium)
+                Text("Connect iNaturalist in Settings to identify a species from your catch photo. Manual species selection is always available.",color=Muted)
+                Button(onOpenSettings,Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp)){Text("Open Settings",fontWeight=FontWeight.Bold)}}}}
+}
+
+/** "Suggested species": the spinner, up to five rows with a thumbnail and "NN% match", or the failure and "Try again". */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun SpeciesSuggestionsSheet(state:LiveState<List<SpeciesSuggestion>>,onRetry:()->Unit,onDismiss:()->Unit,onSelect:(SpeciesSuggestion)->Unit){
+    ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=Background,dragHandle=null){
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.85f)){
+            Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically){
+                TextButton(onDismiss){Text("Close",color=BrassSoft,fontWeight=FontWeight.SemiBold)}
+                Spacer(Modifier.weight(1f));Text("Suggested species",fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));Spacer(Modifier.width(64.dp))}
+            when(state){
+                is LiveState.Data->Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+                    state.value.forEach{sug->HeritageCard(onClick={onSelect(sug)}){Row(Modifier.defaultMinSize(minHeight=58.dp),verticalAlignment=Alignment.CenterVertically){
+                        Box(Modifier.size(58.dp).clip(RoundedCornerShape(11.dp)).background(Inset),contentAlignment=Alignment.Center){
+                            if(sug.thumbnailUrl!=null)coil.compose.AsyncImage(sug.thumbnailUrl,null,Modifier.fillMaxSize(),contentScale=androidx.compose.ui.layout.ContentScale.Crop)
+                            else FishGlyph(Teal,Modifier.fillMaxSize().padding(8.dp))}
+                        Spacer(Modifier.width(13.dp))
+                        Column(Modifier.weight(1f)){
+                            Text(sug.displayName,fontWeight=FontWeight.Bold)
+                            Text(sug.scientificName,color=Muted,fontStyle=androidx.compose.ui.text.font.FontStyle.Italic,style=MaterialTheme.typography.bodyMedium)
+                            Text("${sug.score.roundToInt()}% match",color=BrassSoft,fontWeight=FontWeight.SemiBold,style=MaterialTheme.typography.bodyMedium)}
+                        Icon(Icons.Default.ChevronRight,null,tint=Dim)}}}}
+                is LiveState.Error->Column(Modifier.fillMaxWidth().padding(24.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
+                    Icon(Icons.Default.WifiOff,null,tint=Brass,modifier=Modifier.size(32.dp))
+                    Text(state.message,color=Muted,textAlign=TextAlign.Center)
+                    Button(onRetry,Modifier.defaultMinSize(minWidth=140.dp,minHeight=44.dp),shape=RoundedCornerShape(12.dp)){Text("Try again",fontWeight=FontWeight.Bold)}}
+                else->Column(Modifier.fillMaxWidth().padding(40.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(14.dp)){
+                    CircularProgressIndicator(color=Brass);Text("Asking iNaturalist…",color=Muted)}}}}
 }

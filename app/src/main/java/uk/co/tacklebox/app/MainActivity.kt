@@ -200,7 +200,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
  * this way. Android showed them with the same large header as a tab root, so a pushed screen and a top-level one
  * were indistinguishable (TB-P-08).
  */
-@Composable fun PushedScreen(title:String,onBack:()->Unit,actions:@Composable RowScope.()->Unit={},content:LazyListScope.()->Unit){
+@Composable fun PushedScreen(title:String,onBack:()->Unit,actions:@Composable RowScope.()->Unit={},eyebrow:String?=null,heading:String?=null,content:LazyListScope.()->Unit){
     Column(Modifier.fillMaxSize()){
         Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
             IconButton(onBack,Modifier.testTag("back")){Icon(Icons.AutoMirrored.Filled.ArrowBack,"Back",tint=BrassSoft)}
@@ -209,7 +209,13 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
             Spacer(Modifier.weight(1f))
             Row{actions()}
             Spacer(Modifier.width(4.dp))}
-        LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=18.dp,top=4.dp,end=18.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp),content=content)}
+        LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(start=18.dp,top=4.dp,end=18.dp,bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+            // iOS pushes some screens with an inline (empty) bar title and a `ScreenHeader` — eyebrow over a serif
+            // title — at the top of the content: Species record, Water passport, Session detail, the live screens.
+            if(heading!=null)item{Column{
+                eyebrow?.let{Text(it.uppercase(),color=Brass,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=1.8.sp);Spacer(Modifier.height(4.dp))}
+                Text(heading,style=MaterialTheme.typography.headlineLarge,maxLines=2)}}
+            content()}}
 }
 // Only a card with something to do gets the clickable overload: `onClick = onClick ?: {}` turned every static card
 // into a button with a ripple, which TalkBack announced as dozens of inert controls.
@@ -303,15 +309,32 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         // what makes the first screen say what to do rather than showing an ornament (TB-P-12).
         item{if(s.catches.isEmpty())Empty("Your vault is empty","Tap + to log your first catch and begin your private record.")
              else FeaturedPersonalBest(pb,s.settings.unitSystem,onClick=pb?.let{{nav.navigate("catch/${it.item.id}")}})}
-        item{TextButton({nav.navigate("planner")}){Text("Plan a trip")}}
+        item{TextButton({nav.navigate("planner")},contentPadding=PaddingValues(0.dp)){Text("Plan a trip",color=BrassSoft)}}
         item{TodayOnTheBank(sol,located,onClick={nav.navigate("solunar")})}
         // Stats and the board only once there is something to count, as iOS does — an empty vault showed three
         // zeroes and a PB BOARD heading with nothing under it (TB-P-12).
         if(s.catches.isNotEmpty()){
             item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Stat("${s.catches.size}","fish landed",Modifier.weight(1f).clickable{nav.navigate("catches")});Stat("${s.catches.mapNotNull{it.species?.id}.distinct().size}","species",Modifier.weight(1f));Stat("${s.waters.size}","waters",Modifier.weight(1f))}}
             item{SectionLabel("PB board")}}
-        // A record needs a species: catches with none have no page to open, so they do not get a board card.
-        items(s.catches.filter{it.item.weightGrams!=null&&it.species!=null}.groupBy{it.species!!.id}.mapNotNull{(_,v)->v.maxByOrNull{it.item.weightGrams?:0.0}}){c->HeritageCard(onClick={nav.navigate("species/${c.species?.id}")}){Row{Text(c.species?.name?:"Unknown",Modifier.weight(1f));Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft)}}}
+        // A record needs a species: catches with none have no page to open, so they do not get a board card. Two
+        // columns with a chevron, as the iOS `LazyVGrid` lays the board out, sorted by species name.
+        val board=CatchFilter.personalBests(s.catches).entries.sortedBy{it.key}.map{it.value}
+        items(board.chunked(2)){pair->Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+            pair.forEach{c->HeritageCard(Modifier.weight(1f),onClick={nav.navigate("species/${c.species?.id}")}){
+                Row(Modifier.defaultMinSize(minHeight=44.dp),verticalAlignment=Alignment.CenterVertically){
+                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){
+                        Text(c.species?.name.orEmpty(),color=Muted,style=MaterialTheme.typography.bodyMedium,fontWeight=FontWeight.SemiBold,maxLines=2)
+                        Text(c.item.weightGrams?.weight(s.settings.unitSystem).orEmpty(),color=BrassSoft,style=MaterialTheme.typography.titleLarge,maxLines=1)}
+                    Icon(Icons.Default.ChevronRight,null,tint=Dim,modifier=Modifier.size(16.dp))}}}
+            if(pair.size==1)Spacer(Modifier.weight(1f))}}
+        if(s.catches.isNotEmpty()){
+            item{SectionLabel("Last session")}
+            item{val last=s.sessions.maxByOrNull{it.item.startAt}
+                HeritageCard{if(last!=null){
+                    Text(last.water?.name?:"Unassigned water",style=MaterialTheme.typography.titleLarge)
+                    Text(last.item.startAt.atZone(ZoneId.systemDefault()).toLocalDate().pretty(),color=Muted,style=MaterialTheme.typography.bodyMedium)
+                    Text("${last.catches.size} fish · ${last.catches.mapNotNull{it.weightGrams}.sum().weight(s.settings.unitSystem)}",style=MaterialTheme.typography.bodyMedium)
+                } else Text("No sessions yet",color=Muted)}}}
 }
 }
 
@@ -336,10 +359,10 @@ fun Instant.pretty():String=atZone(ZoneId.systemDefault()).format(DateTimeFormat
         Column(Modifier.align(Alignment.BottomStart).padding(18.dp)){
             Text("FEATURED PERSONAL BEST",color=Brass,style=MaterialTheme.typography.labelLarge,letterSpacing=1.3.sp)
             Spacer(Modifier.height(4.dp))
-            Text(pb?.item?.weightGrams?.weight(unit)?:"Log your first catch",style=MaterialTheme.typography.headlineLarge)
+            Text(pb?.item?.weightGrams?.weight(unit)?:"—",style=MaterialTheme.typography.headlineLarge)
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment=Alignment.CenterVertically){
-                Text(pb?.species?.name?:"Your finest catch awaits",color=Ink.copy(alpha=.88f),fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
+                Text(pb?.species?.name?:"Log your first catch",color=Ink.copy(alpha=.88f),fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
                 if(pb!=null)Icon(Icons.Default.ChevronRight,null,tint=BrassSoft)}}}
 }
 
@@ -583,60 +606,9 @@ private fun java.time.Instant.hm():String=
     Text(label.uppercase(),color=Background,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,
         modifier=Modifier.background(colour,RoundedCornerShape(12.dp)).padding(horizontal=9.dp,vertical=4.dp))
 }
-@Composable fun SpeciesDetail(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
-    val sp=s.species.firstOrNull{it.id==id}
-    val catches=s.catches.filter{it.species?.id==id}
-    // Fetches the reference photo and description once, the first time the record is opened. iOS has done this
-    // since it shipped; Android had the columns and showed a flat icon (feature parity, 2026-09-08).
-    LaunchedEffect(sp?.id){sp?.let(vm::enrichSpecies)}
-    PushedScreen(sp?.name?:"Species record",onBack={nav.popBackStack()}){
-        item{SectionLabel("Species record")}
-        item{SpeciesProgression(catches,s.settings.unitSystem)}
-        sp?.scientificName?.let{n->item{Text(n,color=Muted,fontStyle=androidx.compose.ui.text.font.FontStyle.Italic)}}
-        item{Box(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(22.dp)).background(Inset),contentAlignment=Alignment.Center){
-            if(!sp?.referencePhotoUrl.isNullOrBlank())AsyncImage(sp.referencePhotoUrl,null,Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-            else Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(64.dp))}
-            sp?.photoAttribution?.takeIf{it.isNotBlank()}?.let{a->Text(a,color=Muted.copy(alpha=.7f),style=MaterialTheme.typography.bodyMedium)}}
-        item{Text(sp?.about?:"A personal record built from your catches.",color=Muted)}
-        item{SectionLabel("Catch history")}
-        items(catches){c->HeritageCard(onClick={nav.navigate("catch/${c.item.id}")}){Text(c.item.caughtAt.pretty());Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",color=Brass)}}}
-}
-@Composable fun CatchDetail(s:AppState,vm:MainViewModel,id:Long?,nav:NavHostController){
-    val c=s.catches.firstOrNull{it.item.id==id}
-    var confirmDelete by rememberSaveable{mutableStateOf(false)}
-    val context=LocalContext.current
-    PushedScreen("Catch",onBack={nav.popBackStack()}){
-        item{Text(c?.species?.name?:"Catch detail",style=MaterialTheme.typography.displaySmall)
-             c?.item?.caughtAt?.let{Text(it.pretty(),color=Muted)}}
-        item{val gallery=c?.allPhotoUris.orEmpty()
-            if(gallery.isNotEmpty())PhotoGallery(gallery)
-            else Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(22.dp)).background(Inset),contentAlignment=Alignment.Center){Icon(Icons.Default.SetMeal,null,tint=Brass,modifier=Modifier.size(72.dp))}}
-        item{HeritageCard{Text(c?.item?.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",style=MaterialTheme.typography.headlineMedium)
-            c?.item?.lengthCm?.let{Text(if(s.settings.unitSystem==UnitSystem.METRIC)"%.0f cm".format(it) else "%.1f in".format(it/2.54),color=Muted)}
-            Text("${c?.water?.name?:"Water not recorded"} · ${if(c?.item?.returned==true)"Returned" else "Kept"}",color=Muted)}}
-        item{HeritageCard{Text("Tackle",color=Brass);Text("Rig · ${c?.item?.rig?.ifBlank{"Not recorded"}?:"Not recorded"}");Text("Bait · ${c?.item?.bait?.ifBlank{"Not recorded"}?:"Not recorded"}")}}
-        // Weather is genuinely captured now, so the card reports what was recorded instead of blaming the network
-        // for a snapshot the app never even attempted (TB-A-09).
-        // Through the same summary the capture screen uses, so the units follow the setting. These four lines were
-        // hardcoded metric: an imperial angler was shown 56°F when logging the fish and 13.2 °C when reading it
-        // back. iOS has always rendered this one line through ConditionsMetrics.summary(_:unit:).
-        item{HeritageCard{Text("Conditions",color=Teal)
-            val w=c?.conditions
-            val line=w?.summary(s.settings.unitSystem).orEmpty()
-            if(line.isBlank())Text("No weather was recorded for this catch.",color=Muted) else Text(line)}}
-        item{if(!c?.item?.notes.isNullOrBlank())HeritageCard{Text("Notes",color=Brass);Text(c!!.item.notes)}}
-        item{Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
-            OutlinedButton({c?.let{nav.navigate("edit/${it.item.id}")}},Modifier.weight(1f).testTag("editCatch")){Icon(Icons.Default.Edit,null);Text(" Edit")}
-            OutlinedButton({c?.let{ShareSheet.catchCard(context,it,s.settings.unitSystem)}},Modifier.weight(1f)){Icon(Icons.Default.Share,null);Text(" Share")}}}
-        item{TextButton({confirmDelete=true},Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete this catch")}}
-    }
-    if(confirmDelete)AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete this catch?")},
-        text={Text("It is removed from your vault, your records and your insights. This cannot be undone.")},
-        confirmButton={TextButton({id?.let{vm.deleteCatch(it)};confirmDelete=false;nav.popBackStack()}){Text("Delete")}},
-        dismissButton={TextButton({confirmDelete=false}){Text("Cancel")}})
-}
-
-@Composable fun Empty(title:String,body:String){Column(Modifier.fillMaxWidth().padding(30.dp),horizontalAlignment=Alignment.CenterHorizontally){Icon(Icons.Default.SetMeal,null,tint=Brass);Text(title,style=MaterialTheme.typography.titleLarge);Text(body,color=Muted,textAlign=TextAlign.Center)}}
+@Composable fun Empty(title:String,body:String,icon:androidx.compose.ui.graphics.vector.ImageVector?=null,onClick:(()->Unit)?=null){HeritageCard(onClick=onClick){Column(Modifier.fillMaxWidth().padding(vertical=14.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(12.dp)){
+    Box(Modifier.size(52.dp).background(Inset,CircleShape),contentAlignment=Alignment.Center){if(icon!=null)Icon(icon,null,tint=Teal,modifier=Modifier.size(28.dp)) else FishGlyph(Teal,Modifier.size(34.dp,18.dp))}
+    Text(title,style=MaterialTheme.typography.headlineMedium,textAlign=TextAlign.Center);Text(body,color=Muted,textAlign=TextAlign.Center,style=MaterialTheme.typography.bodyMedium)}}}
 @Composable fun Loading(){Box(Modifier.fillMaxWidth().padding(40.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(color=Brass)}}
 @Composable fun ErrorCard(message:String,retry:()->Unit){HeritageCard{Text(message,color=MaterialTheme.colorScheme.error);TextButton(retry){Text("Try again")}}}
 // --- Catches: the browsable, searchable list -------------------------------------------------------------------
@@ -670,19 +642,16 @@ private fun java.time.Instant.hm():String=
         else{
             item{Text("${results.size} ${if(results.size==1)"catch" else "catches"}",color=Muted,style=MaterialTheme.typography.bodyMedium)}
             items(results){c->HeritageCard(onClick={nav.navigate("catch/${c.item.id}")}){Row(verticalAlignment=Alignment.CenterVertically){
-                Box(Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(Inset),contentAlignment=Alignment.Center){
-                    if(c.item.photoUri!=null)AsyncImage(c.item.photoUri,"Photo of this catch",Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-                    else Icon(Icons.Default.SetMeal,null,tint=Brass)}
-                Spacer(Modifier.width(12.dp))
+                CatchThumbnail(c,58.dp)
+                Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)){
                     Row(verticalAlignment=Alignment.CenterVertically){
-                        Text(c.species?.name?:"Unknown species",style=MaterialTheme.typography.titleLarge)
-                        if(bests[c.species?.name]?.item?.id==c.item.id){Spacer(Modifier.width(6.dp))
-                            Text("PB",color=Background,style=MaterialTheme.typography.bodyMedium,
-                                modifier=Modifier.background(BrassSoft,RoundedCornerShape(6.dp)).padding(horizontal=6.dp))}}
-                    Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"Weight not recorded",color=BrassSoft)
-                    Text(listOfNotNull(c.item.caughtAt.pretty(),c.water?.name,c.item.bait?.ifBlank{null}).joinToString(" · "),
-                        color=Muted,style=MaterialTheme.typography.bodyMedium,maxLines=1)}}}}
+                        Text(c.species?.name?:"Unknown species",fontWeight=FontWeight.SemiBold,maxLines=1)
+                        if(bests[c.species?.name]?.item?.id==c.item.id){Spacer(Modifier.width(8.dp));PBPill(small=true)}}
+                    Text(c.item.weightGrams?.weight(s.settings.unitSystem)?:"—",color=BrassSoft,style=MaterialTheme.typography.titleLarge,maxLines=1)
+                    Text(listOfNotNull(c.item.caughtAt.atZone(ZoneId.systemDefault()).toLocalDate().pretty(),s.resolvedWater(c)?.name,c.item.bait?.ifBlank{null}).joinToString(" · "),
+                        color=Muted,style=MaterialTheme.typography.bodyMedium,maxLines=1)}
+                Icon(Icons.Default.ChevronRight,null,tint=Dim,modifier=Modifier.size(18.dp))}}}
         }
     }
     if(showFilters)CatchFilterSheet(s,filter,{filter=it},{showFilters=false})
@@ -699,13 +668,16 @@ private fun java.time.Instant.hm():String=
         // and would otherwise be unreachable.
         Column(Modifier.verticalScroll(rememberScrollState()).padding(start=18.dp,end=18.dp,bottom=32.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(verticalAlignment=Alignment.CenterVertically){
-                Text("Filter",Modifier.weight(1f),style=MaterialTheme.typography.headlineMedium)
-                TextButton({onChange(CatchFilter())}){Text("Clear")}}
+                TextButton({onChange(CatchFilter())}){Text("Clear",color=BrassSoft)}
+                Text("Filter",Modifier.weight(1f),fontWeight=FontWeight.SemiBold,textAlign=TextAlign.Center)
+                TextButton(onDismiss,Modifier.testTag("filterDone")){Text("Done",color=BrassSoft)}}
             Text("WHEN",color=Brass,style=MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(CatchFilter.Period.entries.toList()){p->
                 FilterChip(filter.period==p,{onChange(filter.copy(period=p))},{Text(p.title)},colors=brassChipColours(),shape=CircleShape)}}
             Text("SPECIES",color=Brass,style=MaterialTheme.typography.labelLarge)
-            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.species.filter { it.discipline.name in s.settings.activeDisciplines }){sp->
+            // Every species with a catch, whatever its discipline: a fish of a switched-off discipline must still be findable.
+            val caught=s.catches.mapNotNull{it.species?.id}.toSet()
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){items(s.species.filter{it.id in caught}){sp->
                 FilterChip(filter.speciesName==sp.name,{onChange(filter.copy(speciesName=if(filter.speciesName==sp.name)null else sp.name))},{Text(sp.name)},colors=brassChipColours(),shape=CircleShape)}}
             if(s.waters.isNotEmpty()){
                 Text("WATER",color=Brass,style=MaterialTheme.typography.labelLarge)

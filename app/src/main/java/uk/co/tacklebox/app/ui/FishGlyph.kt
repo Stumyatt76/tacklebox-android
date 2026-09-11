@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.unit.dp
 
 /**
  * A carp in side profile, facing left. Ported point for point from the iOS `FishGlyph` (TB-P-05).
@@ -50,4 +51,9 @@ fun fishGlyphPath(size: Size): Path {
 
 @Composable fun FishGlyph(colour: Color, modifier: Modifier = Modifier) {
     Canvas(modifier) { drawPath(fishGlyphPath(size), colour) }
+}
+
+/** The same carp, stroked rather than filled — the empty photo well on the capture screen. */
+@Composable fun FishGlyphOutline(colour: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) { drawPath(fishGlyphPath(size), colour, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())) }
 }
