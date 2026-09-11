@@ -57,7 +57,7 @@ import uk.co.tacklebox.app.ui.*
     val canSave=if(creating)name.isNotBlank() else selected!=null
     fun save(){
         if(!canSave||saving)return
-        if(creating){saving=true;vm.addWater(name.trim(),type,region.trim()){id->onConfirm(id);onDismiss()}}
+        if(creating){saving=true;vm.addWater(name.trim(),type,region.trim(),onFailure={saving=false}){id->onConfirm(id);onDismiss()}}
         else selected?.let{onConfirm(it);onDismiss()}
     }
     ModalBottomSheet(onDismissRequest=onDismiss,sheetState=sheet,containerColor=Background,dragHandle=null){

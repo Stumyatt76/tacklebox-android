@@ -66,9 +66,17 @@ object PhotoStore {
      */
     fun sweep(context: Context, referenced: Set<String>, maxAgeMs: Long = 24L * 3600 * 1000, now: Long = System.currentTimeMillis()): Int {
         val keep = referenced.mapNotNull { Uri.parse(it).path }.toSet()
-        return directory(context).listFiles().orEmpty().count { file ->
+        val store = directory(context).listFiles().orEmpty().count { file ->
             file.isFile && file.path !in keep && now - file.lastModified() > maxAgeMs && file.delete()
         }
+        // Restored media lives in one directory per restore; a replaced file is swept the same way, and an emptied
+        // directory goes with it.
+        val restored = File(context.filesDir, BACKUP_MEDIA).listFiles().orEmpty().filter { it.isDirectory }.sumOf { dir ->
+            val removed = dir.listFiles().orEmpty().count { file -> file.isFile && file.path !in keep && now - file.lastModified() > maxAgeMs && file.delete() }
+            if (dir.listFiles().isNullOrEmpty()) dir.delete()
+            removed
+        }
+        return store + restored
     }
 
     /**

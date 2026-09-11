@@ -40,8 +40,8 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     init { viewModelScope.launch { repo.repairSpeciesMetadata(); runCatching { secrets.migrateFrom(repo) }
         // Reclaim photo files no row names once the journal has loaded — abandoned captures and undelivered imports.
         state.first { it.loaded }; withContext(Dispatchers.IO) { runCatching { PhotoStore.sweep(getApplication(), repo.referencedPhotos()) } } } }
-    /** A finished photo import: the stored file URIs and how many sources could not be read. */
-    data class PhotoImport(val stored:List<String>,val failed:Int)
+    /** A photo import: `pending` while the copies run, then the stored file URIs and how many sources could not be read. */
+    data class PhotoImport(val stored:List<String>,val failed:Int,val pending:Boolean=false)
     /** Results keyed by the strip's request id, so a strip recreated by rotation still collects its photos. */
     val photoImports=MutableStateFlow<Map<String,PhotoImport>>(emptyMap())
     /**
@@ -49,24 +49,26 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      * rotation during "Saving photo…" used to cancel the import and drop the photo just taken (with an orphan
      * file left on disk). NonCancellable finishes the copies even if this view model is cleared.
      */
-    fun importPhotos(requestId:String,sources:List<Uri>,cleanup:()->Unit={})=viewModelScope.launch{
+    fun importPhotos(requestId:String,sources:List<Uri>,cleanup:()->Unit={}):kotlinx.coroutines.Job{
+        photoImports.value=photoImports.value+(requestId to PhotoImport(emptyList(),0,pending=true))
+        return viewModelScope.launch{
         val stored=withContext(kotlinx.coroutines.NonCancellable+Dispatchers.IO){sources.mapNotNull{source->runCatching{PhotoStore.import(getApplication(),source)}.getOrNull()}}
         cleanup()
         photoImports.value=photoImports.value+(requestId to PhotoImport(stored,sources.size-stored.size))
-    }
+    }}
     fun consumePhotoImport(requestId:String){photoImports.value=photoImports.value-requestId}
     /** A photo removed from the strip before the catch was saved: nothing names it, so the file goes now. */
     fun discardUnsavedPhoto(uri:String)=viewModelScope.launch{runCatching{repo.deleteUnsavedPhoto(uri)}}
     private fun serviceMessage(name:String,message:String?){serviceMessages.value=if(message==null)serviceMessages.value-name else serviceMessages.value+(name to message)}
-    fun saveSecret(name:String,value:String){
+    fun saveSecret(name:String,value:String)=viewModelScope.launch{
         val trimmed=value.trim()
-        if(secrets.save(name,trimmed))serviceMessage(name,if(trimmed.isEmpty())null else "Saved securely. Tap Test to validate.")
+        if(withContext(Dispatchers.IO){secrets.save(name,trimmed)})serviceMessage(name,if(trimmed.isEmpty())null else "Saved securely. Tap Test to validate.")
         else serviceMessage(name,if(name==Secrets.WORLD_TIDES)"Couldn't save the key. Try again." else "Couldn't save the token. Try again.")
     }
-    fun clearSecret(name:String){secrets.save(name,"");serviceMessage(name,null)}
-    private fun applyTest(name:String,result:DataServiceTestResult){when(result){
-        DataServiceTestResult.Connected->{secrets.setStatus(name,DataServiceStatus.CONNECTED);serviceMessage(name,null)}
-        DataServiceTestResult.Invalid->{secrets.setStatus(name,DataServiceStatus.INVALID);serviceMessage(name,null)}
+    fun clearSecret(name:String)=viewModelScope.launch{withContext(Dispatchers.IO){secrets.save(name,"")};serviceMessage(name,null)}
+    private suspend fun applyTest(name:String,result:DataServiceTestResult){when(result){
+        DataServiceTestResult.Connected->{withContext(Dispatchers.IO){secrets.setStatus(name,DataServiceStatus.CONNECTED)};serviceMessage(name,null)}
+        DataServiceTestResult.Invalid->{withContext(Dispatchers.IO){secrets.setStatus(name,DataServiceStatus.INVALID)};serviceMessage(name,null)}
         is DataServiceTestResult.Unreachable->serviceMessage(name,result.message)}}
     fun testWorldTides()=viewModelScope.launch{
         val key=secrets.worldTidesKey
@@ -162,11 +164,11 @@ class MainViewModel(app:Application):AndroidViewModel(app){
      * passports and session catch counts were permanently zero (TB-A-02, TB-A-03); and only the moon phase was
      * recorded, while the detail screen blamed the network for the rest (TB-A-09).
      */
-    fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),stamped:ConditionsSnapshot?=null,onDone:(Long)->Unit)=viewModelScope.launch{
+    fun addCatch(speciesId:Long?,weight:Double?,length:Double?,rig:String?,bait:String?,returned:Boolean,waterId:Long?,photos:List<String> = emptyList(),notes:String="",caughtAt:Instant=Instant.now(),stamped:ConditionsSnapshot?=null,onBlocked:()->Unit={},onDone:(Long)->Unit)=viewModelScope.launch{
         // Free logging needs a session to be under way — any open session, whether it began as a trial, was
         // imported or was restored. The catch joins it only if it was caught after the session started.
         val running=repo.openSession()
-        if(!store.state.value.unlimited && running==null) { showAccess.value=true;return@launch }
+        if(!store.state.value.unlimited && running==null) { showAccess.value=true;onBlocked();return@launch }
         val openSession=running?.takeIf { !caughtAt.isBefore(it.startAt) }
         // The capture screen reads the conditions when it opens and shows them, so the angler can see what is being
         // stamped and retry a failed reading before saving. Falling back to a fresh capture keeps any other caller
@@ -179,7 +181,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
             conditions, photos)
         onDone(id)
         } catch (e: kotlinx.coroutines.CancellationException) { throw e
-        } catch (_: Exception) { fail("Couldn't save this catch","Your entries are still here. Please try saving again.") }
+        } catch (_: Exception) { fail("Couldn't save this catch","Your entries are still here. Please try saving again.");onBlocked() }
     }
 
     /** Best-effort: a failed or slow weather call must never stop a catch being saved, so the moon phase is the floor. */
@@ -205,9 +207,9 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     suspend fun solunarPlace():Pair<Double,Double> = DeviceLocation.current(getApplication()) ?: DeviceLocation.FALLBACK_INLAND
 
     /** A new water takes the active disciplines, as the iOS sheet's "Disciplines use your active app settings." says. */
-    fun addWater(name:String,type:WaterType,region:String,onDone:(Long)->Unit={})=viewModelScope.launch{
+    fun addWater(name:String,type:WaterType,region:String,onFailure:()->Unit={},onDone:(Long)->Unit={})=viewModelScope.launch{
         runCatching { repo.addWater(Water(name=name,type=type,region=region,disciplines=state.value.settings.activeDisciplines)) }
-            .onSuccess(onDone).onFailure { fail("Couldn't save this water","Please try again.") }
+            .onSuccess(onDone).onFailure { fail("Couldn't save this water","Please try again.");onFailure() }
     }
     fun updateWater(v:Water,onDone:()->Unit={})=viewModelScope.launch {
         runCatching { repo.saveWater(v) }.onSuccess { onDone() }.onFailure { fail("Couldn't save this water","Please try again.") }
@@ -217,8 +219,8 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     fun addSpecies(name:String,discipline:Discipline?=null,onDone:(Long)->Unit={})=viewModelScope.launch{
         runCatching { repo.addSpecies(name,state.value.settings.activeDisciplines,discipline) }.onSuccess(onDone).onFailure { fail("Couldn't add this species",it.message ?: "Please try again.") }
     }
-    fun startSession(water:Long?,onDone:()->Unit={})=viewModelScope.launch {
-        runCatching { repo.startSession(water,store.state.value.unlimited) }.onSuccess { onDone() }.onFailure { fail("Session unavailable",it.message ?: "Could not start this session.") }
+    fun startSession(water:Long?,startAt:Instant?=null,onDone:()->Unit={})=viewModelScope.launch {
+        runCatching { repo.startSession(water,store.state.value.unlimited,startAt ?: Instant.now()) }.onSuccess { onDone() }.onFailure { fail("Session unavailable",it.message ?: "Could not start this session.") }
     }
     fun saveSession(value:FishingSession,onDone:()->Unit={})=viewModelScope.launch {
         runCatching { repo.saveSession(value) }.onSuccess { onDone() }.onFailure { fail("Could not save session",it.message ?: "Could not save this session. Your entries are still here; try again.") }
@@ -306,7 +308,7 @@ class MainViewModel(app:Application):AndroidViewModel(app){
             LiveState.Data(SpeciesId.identify(bytes,connection.apiToken(token),place?.first,place?.second))
         }catch(e:kotlinx.coroutines.CancellationException){throw e}
         catch(e:SpeciesIdException){LiveState.Error(e.message ?: SpeciesId.UNREACHABLE)}
-        catch(_:Exception){LiveState.Error(SpeciesId.UNAUTHORIZED)}
+        catch(e:Exception){LiveState.Error(SpeciesId.describe(e))}
     }
     fun clearSuggestions(){suggestions.value=LiveState.Idle}
     /** Accepts a suggestion: reuses a species under either name, else adds one, and hands back the id to select. */

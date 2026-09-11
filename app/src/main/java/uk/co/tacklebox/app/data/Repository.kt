@@ -108,12 +108,13 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         savePhotosInTransaction(id, photos)
         id
     }
-    suspend fun startSession(waterId:Long?,unlimited:Boolean=false) = db.withTransaction {
+    /** `startAt` lets the capture sheet start a session at the catch's own time, so the fish on the form joins it. Never later than now. */
+    suspend fun startSession(waterId:Long?,unlimited:Boolean=false,startAt:Instant=Instant.now()) = db.withTransaction {
         require(dao.openSession()==null) { "A session is already running." }
         val current=dao.settings().first() ?: defaults()
         require(uk.co.tacklebox.app.SessionAllowance.canStart(current.freeSessionsStarted,unlimited)) { "Your two free sessions are complete. Unlock Unlimited to start another." }
         if(!unlimited)dao.saveSettings(current.copy(freeSessionsStarted=current.freeSessionsStarted+1))
-        dao.addSession(FishingSession(waterId=waterId,isTrialSession=!unlimited))
+        dao.addSession(FishingSession(waterId=waterId,isTrialSession=!unlimited,startAt=minOf(startAt,Instant.now())))
     }
     suspend fun saveSession(value:FishingSession) = db.withTransaction {
         val current=dao.sessions().first().firstOrNull { it.item.id==value.id }

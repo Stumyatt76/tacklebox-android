@@ -69,7 +69,11 @@ import kotlin.math.roundToInt
     var choosingWater by rememberSaveable{mutableStateOf(false)}
     var addingSpecies by rememberSaveable{mutableStateOf(false)}
     var addingPreset by rememberSaveable{mutableStateOf<PresetKind?>(null)}
-    var celebration by remember{mutableStateOf<PBCelebration?>(null)}
+    // Both survive rotation: a recreated screen must neither forget the toast nor re-enable Save on a catch that is
+    // already in the vault — that used to save the same fish twice.
+    var celebration by rememberSaveable(stateSaver=PBCelebrationSaver){mutableStateOf<PBCelebration?>(null)}
+    var saved by rememberSaveable{mutableStateOf(false)}
+    LaunchedEffect(celebration){if(celebration!=null){delay(2200);nav.popBackStack()}}
     val needsSession by vm.showAccess.collectAsStateWithLifecycle()
     val suggestions by vm.suggestions.collectAsStateWithLifecycle()
     val connection by vm.connection.state.collectAsStateWithLifecycle()
@@ -146,22 +150,21 @@ import kotlin.math.roundToInt
             Text("Your spot stays private",color=Dim,style=MaterialTheme.typography.bodyMedium)}}
         item{Button(onClick={
                 val name=s.species.firstOrNull{it.id==species}?.name.orEmpty()
-                val best=previousBest
-                vm.addCatch(species,enteredGrams.takeIf{it>0},lengthCm.takeIf{it>0},rig,bait,returned,water,photos,notes,Instant.ofEpochMilli(caughtAt),stamped){
+                val toast=PBCelebration.forSave(name,enteredGrams,previousBest,s.settings.unitSystem)
+                saved=true
+                vm.addCatch(species,enteredGrams.takeIf{it>0},lengthCm.takeIf{it>0},rig,bait,returned,water,photos,notes,Instant.ofEpochMilli(caughtAt),stamped,
+                    onBlocked={saved=false}){
                     // Only celebrate an actual record. A first-of-species catch is marked on the form instead.
-                    if(best!=null&&enteredGrams>best){
-                        celebration=PBCelebration(name,enteredGrams.weight(s.settings.unitSystem),(enteredGrams-best).weight(s.settings.unitSystem))
-                        scope.launch{delay(2200);nav.popBackStack()}
-                    } else nav.popBackStack()}
+                    if(toast!=null)celebration=toast else nav.popBackStack()}
             },modifier=Modifier.fillMaxWidth().height(52.dp).testTag("saveCatch"),shape=RoundedCornerShape(14.dp),
-            enabled=species!=null&&enteredGrams>0&&celebration==null){Text("Save to the Vault",fontWeight=FontWeight.Bold)}}
+            enabled=species!=null&&enteredGrams>0&&!saved){Text("Save to the Vault",fontWeight=FontWeight.Bold)}}
     }
     celebration?.let{PBCelebrationToast(it,Modifier.align(Alignment.BottomCenter))}
     }
     if(choosingWater)WaterSelectionSheet(vm,s.waters,"Choose Water","Use this water",initialWaterId=water,preselectFirst=false,onDismiss={choosingWater=false}){water=it;waterTouched=true}
     if(addingSpecies)AddSpeciesDialog(s.settings.activeDisciplines,onDismiss={addingSpecies=false}){name,discipline->vm.addSpecies(name,discipline){species=it};addingSpecies=false}
     addingPreset?.let{kind->AddPresetDialog(kind,s.presets,onDismiss={addingPreset=null}){name->vm.addPreset(name,kind);if(kind==PresetKind.RIG)rig=name else bait=name;addingPreset=null}}
-    if(needsSession)FreeSessionSheet(s,vm,nav,onDismiss={vm.showAccess.value=false})
+    if(needsSession)FreeSessionSheet(s,vm,nav,Instant.ofEpochMilli(caughtAt),onDismiss={vm.showAccess.value=false})
     if(showingSetup)SpeciesIDSetupSheet(onOpenSettings={showingSetup=false;nav.navigate("data-services")},onDismiss={showingSetup=false})
     if(showingSuggestions)SpeciesSuggestionsSheet(suggestions,onRetry=::identify,onDismiss={showingSuggestions=false;vm.clearSuggestions()}){sug->
         vm.pickSuggestion(sug){species=it};showingSuggestions=false;vm.clearSuggestions()}
@@ -179,7 +182,17 @@ import kotlin.math.roundToInt
             Icon(Icons.Default.ChevronRight,null,tint=Dim)}}
 }
 
-data class PBCelebration(val species:String,val weight:String,val margin:String?)
+data class PBCelebration(val species:String,val weight:String,val margin:String?){
+    companion object {
+        /** The toast for a save, or null: only a genuine record — heavier than a previous fish of the species — is celebrated. */
+        fun forSave(species:String,enteredGrams:Double,previousBest:Double?,unit:UnitSystem):PBCelebration? =
+            if(previousBest!=null&&enteredGrams>previousBest)PBCelebration(species,enteredGrams.weight(unit),(enteredGrams-previousBest).weight(unit)) else null
+    }
+}
+/** Keeps the toast across rotation. */
+val PBCelebrationSaver=androidx.compose.runtime.saveable.listSaver<PBCelebration?,String?>(
+    save={if(it==null)emptyList() else listOf(it.species,it.weight,it.margin)},
+    restore={if(it.isEmpty())null else PBCelebration(it[0]!!,it[1]!!,it[2])})
 
 /** "New {species} PB — {weight}" / "Beat your previous best by {margin}", as the iOS toast reads. */
 @Composable fun PBCelebrationToast(c:PBCelebration,modifier:Modifier=Modifier){
@@ -227,7 +240,7 @@ data class PBCelebration(val species:String,val weight:String,val margin:String?
  * The catch form behind it keeps its entries, and "Return to catch" goes straight back to them.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun FreeSessionSheet(s:AppState,vm:MainViewModel,nav:NavHostController,onDismiss:()->Unit){
+@Composable fun FreeSessionSheet(s:AppState,vm:MainViewModel,nav:NavHostController,caughtAt:Instant,onDismiss:()->Unit){
     val store by vm.store.state.collectAsStateWithLifecycle()
     val used=s.settings.freeSessionsStarted
     val canStart=SessionAllowance.canStart(used,store.unlimited)
@@ -248,7 +261,9 @@ data class PBCelebration(val species:String,val weight:String,val margin:String?
                     Icon(Icons.Default.AutoAwesome,null);Spacer(Modifier.width(8.dp));Text("Unlock Unlimited",fontWeight=FontWeight.Bold)}
                 TextButton(onDismiss,Modifier.fillMaxWidth().height(44.dp).background(Inset,RoundedCornerShape(12.dp)).testTag("returnToCatch")){Text("Return to catch",color=BrassSoft,fontWeight=FontWeight.SemiBold)}}}
     }
-    if(starting)WaterSelectionSheet(vm,s.waters,"Start a Session","Start session",onDismiss={starting=false}){water->vm.startSession(water){onDismiss()}}
+    // Started at the catch's own time (never later than now), so the fish already on the form joins the session it
+    // just started rather than being saved without one.
+    if(starting)WaterSelectionSheet(vm,s.waters,"Start a Session","Start session",onDismiss={starting=false}){water->vm.startSession(water,caughtAt){onDismiss()}}
 }
 
 /**

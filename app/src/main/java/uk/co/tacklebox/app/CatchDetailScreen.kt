@@ -82,8 +82,8 @@ fun java.time.Instant.longDateShortTime():String{val z=atZone(ZoneId.systemDefau
             LabelledHeading(Icons.Default.Air,"CONDITIONS",Teal);Spacer(Modifier.height(8.dp));Text(line)}}}
         if(c.item.notes.isNotBlank())item{HeritageCard{LabelledHeading(Icons.Default.Notes,"NOTES",Brass);Spacer(Modifier.height(8.dp));Text(c.item.notes)}}
         item{Button({if(!sharing){sharing=true;scope.launch{
-                val card=withContext(Dispatchers.IO){runCatching{ShareCards.catchCard(context,c,water?.name,s.settings.unitSystem)}.getOrNull()}
-                if(card!=null)ShareCards.share(context,card,"catch.jpg",ShareCards.catchText(c,water?.name,s.settings.unitSystem),"Share this catch")
+                val uri=withContext(Dispatchers.IO){runCatching{ShareCards.write(context,ShareCards.catchCard(context,c,water?.name,s.settings.unitSystem),"catch.jpg")}.getOrNull()}
+                if(uri!=null)ShareCards.share(context,uri,ShareCards.catchText(c,water?.name,s.settings.unitSystem),"Share this catch")
                 else ShareSheet.catchCard(context,c,s.settings.unitSystem)
                 sharing=false}}},
             Modifier.fillMaxWidth().height(52.dp).testTag("shareCatch"),shape=RoundedCornerShape(16.dp),enabled=!sharing,

@@ -52,9 +52,13 @@ class Secrets(private val vault:SecretVault) {
     suspend fun migrateFrom(repo:TackleboxRepository) {
         val settings=repo.settings.first()
         if(settings.speciesIdToken.isBlank()&&settings.worldTidesKey.isBlank())return
-        if(vault.read(SPECIES_ID).isNullOrBlank()&&settings.speciesIdToken.isNotBlank())save(SPECIES_ID,settings.speciesIdToken)
-        if(vault.read(WORLD_TIDES).isNullOrBlank()&&settings.worldTidesKey.isNotBlank())save(WORLD_TIDES,settings.worldTidesKey)
-        repo.saveSettings(settings.copy(speciesIdToken="",worldTidesKey=""))
+        // A column is blanked only when its value is now in the vault — already there, or just written and confirmed.
+        // A Keystore that refuses the write keeps the value in Room for the next launch rather than losing it.
+        val (tokenSafe,keySafe)=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val tokenSafe=vault.read(SPECIES_ID)?.isNotBlank()==true || save(SPECIES_ID,settings.speciesIdToken)
+            val keySafe=vault.read(WORLD_TIDES)?.isNotBlank()==true || save(WORLD_TIDES,settings.worldTidesKey)
+            tokenSafe to keySafe }
+        repo.saveSettings(settings.copy(speciesIdToken=if(tokenSafe)"" else settings.speciesIdToken,worldTidesKey=if(keySafe)"" else settings.worldTidesKey))
     }
 
     companion object {

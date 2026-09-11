@@ -129,8 +129,11 @@ object PhotoBackup {
                         weightGrams=r.fields["weightGrams"]?.toDouble(),lengthCm=r.fields["lengthCm"]?.toDouble(),
                         returned=r.fields.getValue("returned").toBooleanStrict(),notes=r.fields["notes"].orEmpty(),
                         caughtAt=Instant.parse(r.fields.getValue("caughtAt")),rig=r.fields["rig"],bait=r.fields["bait"],photoUri=uris.firstOrNull(),portableID=r.id)
+                    // The old cover is read before the row is rewritten — afterwards it is already the new one.
+                    val previousCover=old?.let { dao.coverPhotoFor(it.id) }
                     val id=if(old==null)dao.addCatch(item) else old.id.also { dao.updateCatch(item);dao.deleteConditionsFor(it) }
                     orphans+=repo.savePhotosInTransaction(id,uris)
+                    if(previousCover!=null && previousCover !in uris)orphans+=previousCover
                     if(listOf("airTempC","windDirection","windSpeedKph","pressureHpa","pressureTrend","moonPhase").any { it in r.fields })
                         dao.addConditions(ConditionsSnapshot(catchId=id,airTempC=r.fields["airTempC"]?.toDouble(),
                             windDirection=r.fields["windDirection"],windSpeedKph=r.fields["windSpeedKph"]?.toDouble(),

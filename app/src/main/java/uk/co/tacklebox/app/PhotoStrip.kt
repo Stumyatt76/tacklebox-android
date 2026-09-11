@@ -54,7 +54,10 @@ import uk.co.tacklebox.app.ui.*
     val imports by vm.photoImports.collectAsStateWithLifecycle()
     LaunchedEffect(imports,pendingImport){
         val id=pendingImport ?: return@LaunchedEffect
-        val result=imports[id] ?: return@LaunchedEffect
+        // A restored strip whose request the (new) view model has never heard of was lost to process death: let go
+        // of it rather than spin forever. The sweep reclaims any files that copy produced.
+        val result=imports[id] ?: run { pendingImport=null; return@LaunchedEffect }
+        if(result.pending) return@LaunchedEffect
         pendingImport=null;failed=result.failed
         if(result.stored.isNotEmpty())onChange((current+result.stored).take(limit))
         vm.consumePhotoImport(id)}

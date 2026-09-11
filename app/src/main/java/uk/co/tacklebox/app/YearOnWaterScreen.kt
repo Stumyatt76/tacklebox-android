@@ -119,10 +119,10 @@ object SeasonRules {
                     Text("Based on ${catches.count{it.conditions!=null}} catches with saved conditions",color=Dim,style=MaterialTheme.typography.bodySmall)}}}}}
             item{Button({if(!sharing){sharing=true;scope.launch{
                     val season=ShareCards.Season(year,biggest?.species?.name,biggest?.item?.weightGrams?.weight(unit),catches.size,totalWeight.weight(unit),sessions.size,speciesCount)
-                    val card=withContext(Dispatchers.IO){runCatching{
+                    val uri=withContext(Dispatchers.IO){runCatching{
                         val photo=biggest?.item?.photoUri?.let{PhotoStore.decodeOriented(context,it,1080)}
-                        ShareCards.seasonCard(context,season,photo).also{photo?.recycle()}}.getOrNull()}
-                    if(card!=null)ShareCards.share(context,card,"season-$year.jpg",ShareCards.seasonText(season,SeasonRules.hours(s.sessions,year).toLong()),"Share your season")
+                        ShareCards.write(context,ShareCards.seasonCard(context,season,photo).also{photo?.recycle()},"season-$year.jpg")}.getOrNull()}
+                    if(uri!=null)ShareCards.share(context,uri,ShareCards.seasonText(season,SeasonRules.hours(s.sessions,year).toLong()),"Share your season")
                     else ShareSheet.season(context,s,year)
                     sharing=false}}},
                 Modifier.fillMaxWidth().height(52.dp).testTag("shareSeason"),shape=RoundedCornerShape(16.dp),enabled=!sharing,colors=ButtonDefaults.buttonColors(containerColor=BrassSoft,contentColor=Background)){

@@ -34,6 +34,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
+/** The delete-session confirmation, word for word as `SessionsView.swift` has it. */
+fun deleteSessionMessage(count:Int):String = if(count==1)"Its 1 catch is kept in your vault, keeps its water and simply loses this session. The free-session allowance is not returned. This cannot be undone."
+    else "Its $count catches are kept in your vault, keep their water and simply lose this session. The free-session allowance is not returned. This cannot be undone."
 /** "6.5 h" — the session duration as the iOS detail prints it. */
 fun sessionDuration(start:Instant,end:Instant?,now:Instant=Instant.now()):String="%.1f h".format(maxOf(0.0,Duration.between(start,end?:now).seconds/3600.0))
 
@@ -58,7 +61,7 @@ fun sessionDuration(start:Instant,end:Instant?,now:Instant=Instant.now()):String
             HeritageCard(onClick={nav.navigate("session/"+row.item.id)}){Row(verticalAlignment=Alignment.CenterVertically){
                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)){
                     Text(row.water?.name?:"Open session",style=MaterialTheme.typography.titleLarge)
-                    Text(row.item.startAt.pretty(),color=Muted,style=MaterialTheme.typography.bodyMedium)}
+                    Text(row.item.startAt.atZone(ZoneId.systemDefault()).let{"${it.toLocalDate().pretty()} · ${it.toLocalTime().hm()}"},color=Muted,style=MaterialTheme.typography.bodyMedium)}
                 Column(horizontalAlignment=Alignment.End,verticalArrangement=Arrangement.spacedBy(3.dp)){
                     Text("${row.catches.size}",style=MaterialTheme.typography.headlineMedium,color=Brass)
                     Text(row.catches.mapNotNull{it.weightGrams}.sum().weight(s.settings.unitSystem),color=Muted,style=MaterialTheme.typography.bodySmall)}}}}
@@ -130,7 +133,7 @@ fun sessionDuration(start:Instant,end:Instant?,now:Instant=Instant.now()):String
     if(editing&&row!=null)SessionEditor(row,s.waters,{editing=false}){vm.saveSession(it){editing=false}}
     if(assigning&&row!=null)WaterSelectionSheet(vm,s.waters,"Choose Water","Assign water",initialWaterId=row.item.waterId,onDismiss={assigning=false}){vm.assignSessionWater(row.item,it)}
     if(confirmDelete&&row!=null)AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete this session?")},
-        text={Text("Its ${catches.size} ${if(catches.size==1)"catch is" else "catches are"} kept in your vault and simply lose this session. The free-session allowance is not returned. This cannot be undone.")},
+        text={Text(deleteSessionMessage(catches.size))},
         confirmButton={TextButton({confirmDelete=false;vm.deleteSession(row.item.id);nav.popBackStack()}){Text("Delete session",color=MaterialTheme.colorScheme.error)}},
         dismissButton={TextButton({confirmDelete=false}){Text("Cancel")}})
 }

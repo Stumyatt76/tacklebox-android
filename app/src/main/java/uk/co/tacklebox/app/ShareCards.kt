@@ -157,12 +157,16 @@ object ShareCards {
         return metrics.descent - metrics.ascent
     }
 
-    /** Writes the card to the share cache and opens the system share sheet with the image and its text fallback. */
-    fun share(context:Context, bitmap:Bitmap, name:String, text:String, title:String) {
+    /** Encodes the card into the share cache. Blocking — call it on an IO dispatcher. */
+    fun write(context:Context, bitmap:Bitmap, name:String):android.net.Uri {
         val dir = File(context.cacheDir, "shares").apply { mkdirs() }
         val file = File(dir, name)
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, it) }
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+    }
+
+    /** Opens the system share sheet with the written image and its text fallback. */
+    fun share(context:Context, uri:android.net.Uri, text:String, title:String) {
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "image/jpeg"
             putExtra(Intent.EXTRA_STREAM, uri); putExtra(Intent.EXTRA_TEXT, text)
