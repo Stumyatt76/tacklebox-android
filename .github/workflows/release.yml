@@ -99,3 +99,5 @@ jobs:
             ${{ steps.artifacts.outputs.apk }}
             ${{ steps.artifacts.outputs.aab }}
           if-no-files-found: error
+          retention-days: 14
+          overwrite: true
