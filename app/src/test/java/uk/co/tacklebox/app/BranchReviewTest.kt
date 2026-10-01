@@ -115,7 +115,7 @@ class BranchReviewTest {
     }
 
     /** M5: a grandfathering once granted is kept even when the install time no longer qualifies. */
-    @Test fun `a remembered grandfathering survives a reinstall`() {
+    @Test fun `a remembered grandfathering is kept while local preferences survive`() {
         assertTrue(UnlimitedStore.grandfathered(remembered = true, computedNow = false))
         assertTrue(UnlimitedStore.grandfathered(remembered = false, computedNow = true))
         assertFalse(UnlimitedStore.grandfathered(remembered = false, computedNow = false))

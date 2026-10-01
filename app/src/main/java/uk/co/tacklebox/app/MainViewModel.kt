@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import uk.co.tacklebox.app.data.*
 import uk.co.tacklebox.app.services.*
 import java.time.Instant
@@ -214,13 +216,28 @@ class MainViewModel(app:Application):AndroidViewModel(app){
     fun updateWater(v:Water,onDone:()->Unit={})=viewModelScope.launch {
         runCatching { repo.saveWater(v) }.onSuccess { onDone() }.onFailure { fail("Couldn't save this water","Please try again.") }
     }
-    fun updateCatch(v:Catch,photos:List<String>?=null)=viewModelScope.launch{runCatching{repo.updateCatch(v,photos)}.onFailure{fail("Couldn't save this catch","Your entries are still here. Please try saving again.")}}
+    fun updateCatch(v:Catch,photos:List<String>?=null,onResult:(Boolean)->Unit={})=viewModelScope.launch {
+        runCatching { repo.updateCatch(v,photos) }
+            .onSuccess { onResult(true) }
+            .onFailure {
+                fail("Couldn't save this catch","Your entries are still here. Please try saving again.")
+                onResult(false)
+            }
+    }
     /** Adds or reuses a species by name and hands back its id, so the capture screen can select it straight away. */
     fun addSpecies(name:String,discipline:Discipline?=null,onDone:(Long)->Unit={})=viewModelScope.launch{
         runCatching { repo.addSpecies(name,state.value.settings.activeDisciplines,discipline) }.onSuccess(onDone).onFailure { fail("Couldn't add this species",it.message ?: "Please try again.") }
     }
     fun startSession(water:Long?,startAt:Instant?=null,onDone:()->Unit={})=viewModelScope.launch {
         runCatching { repo.startSession(water,store.state.value.unlimited,startAt ?: Instant.now()) }.onSuccess { onDone() }.onFailure { fail("Session unavailable",it.message ?: "Could not start this session.") }
+    }
+    private val sessionNotesMutex=Mutex()
+    /** Writes are ordered and outlive navigation; only the notes column changes. */
+    fun saveSessionNotes(id:Long,notes:String)=viewModelScope.launch {
+        sessionNotesMutex.withLock {
+            runCatching { repo.saveSessionNotes(id,notes) }
+                .onFailure { fail("Could not save notes","Your notes are still here. Please try again.") }
+        }
     }
     fun saveSession(value:FishingSession,onDone:()->Unit={})=viewModelScope.launch {
         runCatching { repo.saveSession(value) }.onSuccess { onDone() }.onFailure { fail("Could not save session",it.message ?: "Could not save this session. Your entries are still here; try again.") }

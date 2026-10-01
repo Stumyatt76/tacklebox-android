@@ -62,6 +62,7 @@ import kotlin.math.roundToInt
     var photos by rememberSaveable{mutableStateOf(row.allPhotoUris)}
     var choosingWater by rememberSaveable{mutableStateOf(false)}
     var addingPreset by rememberSaveable{mutableStateOf<PresetKind?>(null)}
+    var saving by remember{mutableStateOf(false)}
 
     val enteredGrams:Double=if(metric)(kilograms*1000+grams).toDouble() else (Weights.fromPoundsAndOunces(pounds.toString(),ounces.toString())?:0.0)
     val lengthCm:Double=if(metric)centimetres.toDouble() else inches*2.54
@@ -93,14 +94,18 @@ import kotlin.math.roundToInt
         item{SectionLabel("Notes")
             OutlinedTextField(notes,{notes=it},placeholder={Text("Took it on the drop, margin swim, three hours in…")},minLines=3,modifier=Modifier.fillMaxWidth().padding(top=10.dp).testTag("editNotes"))}
         item{Button({
+                if(saving)return@Button
+                saving=true
                 vm.updateCatch(original.copy(speciesId=species,
                     weightGrams=EditedMeasurement.resolve(original.weightGrams,weightChanged,enteredGrams),
                     lengthCm=EditedMeasurement.resolve(original.lengthCm,lengthChanged,lengthCm),
                     rig=rig.ifBlank{null},bait=bait.ifBlank{null},returned=returned,notes=notes.trim(),
-                    waterId=water,caughtAt=Instant.ofEpochMilli(caughtAt),photoUri=photos.firstOrNull()),photos)
-                nav.popBackStack()
+                    waterId=water,caughtAt=Instant.ofEpochMilli(caughtAt),photoUri=photos.firstOrNull()),photos){saved->
+                    saving=false
+                    if(saved)nav.popBackStack()
+                }
             },Modifier.fillMaxWidth().height(52.dp).testTag("saveEdit"),shape=RoundedCornerShape(14.dp),
-            enabled=species!=null){Text("Save changes",fontWeight=FontWeight.Bold)}}
+            enabled=species!=null&&!saving){Text(if(saving)"Saving…" else "Save changes",fontWeight=FontWeight.Bold)}}
     }
     if(choosingWater)WaterSelectionSheet(vm,s.waters,"Choose Water","Use this water",initialWaterId=water,preselectFirst=false,onDismiss={choosingWater=false}){water=it}
     addingPreset?.let{kind->AddPresetDialog(kind,s.presets,onDismiss={addingPreset=null}){name->vm.addPreset(name,kind);if(kind==PresetKind.RIG)rig=name else bait=name;addingPreset=null}}

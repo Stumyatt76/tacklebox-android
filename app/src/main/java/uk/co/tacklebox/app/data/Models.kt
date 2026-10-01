@@ -82,6 +82,7 @@ data class SessionRow(@Embedded val item: FishingSession, @Relation(parentColumn
     @Transaction @Query("SELECT * FROM FishingSession ORDER BY startAt DESC") fun sessions(): Flow<List<SessionRow>>
     @Insert suspend fun addSession(value: FishingSession): Long
     @Query("UPDATE FishingSession SET endAt=:at WHERE id=:id") suspend fun stopSession(id:Long, at:Instant=Instant.now())
+    @Query("UPDATE FishingSession SET notes=:notes WHERE id=:id") suspend fun updateSessionNotes(id:Long, notes:String):Int
     @Query("SELECT * FROM GearItem ORDER BY category,name") fun gear(): Flow<List<GearItem>>
     @Insert suspend fun addGear(value:GearItem)
     @Delete suspend fun deleteGear(value:GearItem)

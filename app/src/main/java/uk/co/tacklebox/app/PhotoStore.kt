@@ -86,7 +86,8 @@ object PhotoStore {
     fun decodeOriented(context: Context, uri: String, maxEdge: Int): Bitmap? = runCatching {
         val location = Uri.parse(uri)
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(location)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return@runCatching null
+        val boundsStream = context.contentResolver.openInputStream(location) ?: return@runCatching null
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
         val longest = maxOf(bounds.outWidth, bounds.outHeight)
         var sample = 1

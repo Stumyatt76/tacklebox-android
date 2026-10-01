@@ -100,9 +100,8 @@ fun sessionDuration(start:Instant,end:Instant?,now:Instant=Instant.now()):String
     val unit=s.settings.unitSystem
     val catches=s.catches.filter{it.item.sessionId==id}.sortedBy{it.item.caughtAt}
     val bests=remember(s.catches){CatchFilter.personalBests(s.catches)}
-    var notes by remember(id){mutableStateOf(row?.item?.notes.orEmpty())}
-    // Saved as the angler types, as the iOS field does, after a short pause rather than on every keystroke.
-    LaunchedEffect(notes){if(row!=null&&notes!=row.item.notes){delay(400);vm.saveSession(row.item.copy(notes=notes))}}
+    var notes by rememberSaveable(id,row?.item?.id){mutableStateOf(row?.item?.notes.orEmpty())}
+    // Submit each edit to the view model immediately, so leaving this screen cannot cancel a pending debounce.
     PushedScreen("",onBack={nav.popBackStack()},actions={if(row!=null)TextButton({editing=true},Modifier.testTag("editSession")){Text("Edit session",color=BrassSoft)}},
         eyebrow=row?.item?.startAt?.atZone(ZoneId.systemDefault())?.toLocalDate()?.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)),heading=row?.let{it.water?.name?:"Open Session"}){
         if(row==null){item{Empty("Session unavailable","It may have been removed from the journal.")};return@PushedScreen}
@@ -118,7 +117,7 @@ fun sessionDuration(start:Instant,end:Instant?,now:Instant=Instant.now()):String
             Stat(catches.mapNotNull{it.item.weightGrams}.sum().weight(unit),"Total weight",Modifier.weight(1f))
             Stat(sessionDuration(row.item.startAt,row.item.endAt),"Duration",Modifier.weight(1f))}}
         item{SectionLabel("Session notes")}
-        item{HeritageCard{OutlinedTextField(notes,{notes=it},placeholder={Text("Add notes from the bank…")},minLines=4,modifier=Modifier.fillMaxWidth().testTag("sessionNotes"))}}
+        item{HeritageCard{OutlinedTextField(notes,{notes=it;vm.saveSessionNotes(row.item.id,it)},placeholder={Text("Add notes from the bank…")},minLines=4,modifier=Modifier.fillMaxWidth().testTag("sessionNotes"))}}
         item{SectionLabel("Catch timeline")}
         items(catches,key={it.item.id}){fish->HeritageCard(onClick={nav.navigate("catch/"+fish.item.id)}){Row(verticalAlignment=Alignment.CenterVertically){
             CatchThumbnail(fish);Spacer(Modifier.width(12.dp))
@@ -130,7 +129,7 @@ fun sessionDuration(start:Instant,end:Instant?,now:Instant=Instant.now()):String
             Icon(Icons.Default.ChevronRight,null,tint=Dim,modifier=Modifier.size(16.dp))}}}
         item{TextButton({confirmDelete=true},Modifier.fillMaxWidth().height(44.dp).testTag("deleteSession"),colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error)){Text("Delete this session",fontWeight=FontWeight.SemiBold)}}
     }
-    if(editing&&row!=null)SessionEditor(row,s.waters,{editing=false}){vm.saveSession(it){editing=false}}
+    if(editing&&row!=null)SessionEditor(row.copy(item=row.item.copy(notes=notes)),s.waters,{editing=false}){edited->vm.saveSession(edited){notes=edited.notes;editing=false}}
     if(assigning&&row!=null)WaterSelectionSheet(vm,s.waters,"Choose Water","Assign water",initialWaterId=row.item.waterId,onDismiss={assigning=false}){vm.assignSessionWater(row.item,it)}
     if(confirmDelete&&row!=null)AlertDialog(onDismissRequest={confirmDelete=false},title={Text("Delete this session?")},
         text={Text(deleteSessionMessage(catches.size))},

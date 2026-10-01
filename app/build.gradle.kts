@@ -18,18 +18,27 @@ fun signingValue(key: String, env: String): String? =
     keystoreProps.getProperty(key) ?: System.getenv(env)
 val releaseStoreFile = signingValue("storeFile", "KEYSTORE_FILE")
 val hasReleaseSigning = releaseStoreFile != null
+// Public licensing key: local configuration or CI, never a private signing key.
+val localProps = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) localFile.inputStream().use { load(it) }
+}
+val playBillingPublicKey = (providers.gradleProperty("tackleboxPlayBillingPublicKey").orNull
+    ?: System.getenv("TACKLEBOX_PLAY_BILLING_PUBLIC_KEY")
+    ?: localProps.getProperty("tackleboxPlayBillingPublicKey")
+    ?: "").trim()
 
 android {
     namespace = "uk.co.tacklebox.app"
     compileSdk = 36
     defaultConfig {
         buildConfigField("String", "INATURALIST_CLIENT_ID", "\"" + (providers.gradleProperty("tackleboxINaturalistClientId").orNull ?: "") + "\"")
-        buildConfigField("String", "PLAY_BILLING_PUBLIC_KEY", "\"" + (providers.gradleProperty("tackleboxPlayBillingPublicKey").orNull ?: "") + "\"")
+        buildConfigField("String", "PLAY_BILLING_PUBLIC_KEY", "\"$playBillingPublicKey\"")
         applicationId = "uk.co.tacklebox.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "2.3"
+        versionCode = 15
+        versionName = "2.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -55,14 +64,14 @@ android {
 // A release without the Play licensing public key cannot verify or sell Unlimited: after two sessions every user is
 // locked out with "Purchase verification is not configured yet." Refuse to build one. Debug builds stay buildable
 // without the key so contributors and PR CI are unaffected.
-val playBillingPublicKey = providers.gradleProperty("tackleboxPlayBillingPublicKey").orNull.orEmpty()
 gradle.taskGraph.whenReady {
     val releaseTasks = setOf("assembleRelease", "bundleRelease", "packageRelease", "packageReleaseBundle")
     val buildingRelease = allTasks.any { it.project == project && it.name in releaseTasks }
     if (buildingRelease && playBillingPublicKey.isBlank()) {
         throw GradleException(
             "Release builds need the Play billing public key: pass -PtackleboxPlayBillingPublicKey=<key> " +
-                "(or set it in gradle.properties). Without it the app cannot verify or sell Unlimited."
+                "(or set it in local.properties, gradle.properties or TACKLEBOX_PLAY_BILLING_PUBLIC_KEY). " +
+                "Without it the app cannot verify or sell Unlimited."
         )
     }
 }

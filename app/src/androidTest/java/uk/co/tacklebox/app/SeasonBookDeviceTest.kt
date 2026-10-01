@@ -19,6 +19,31 @@ import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
 class SeasonBookDeviceTest {
+    @Test fun validPhotoImportsAreSampledAndReadableForSharing() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        val file=File(context.cacheDir,"qa-import-source.png")
+        val original=Bitmap.createBitmap(2400,1200,Bitmap.Config.ARGB_8888)
+        var imported:String?=null
+        try {
+            file.outputStream().use { original.compress(Bitmap.CompressFormat.PNG,100,it) }
+            imported=PhotoStore.import(context,Uri.fromFile(file))
+            assertTrue(PhotoStore.isReadable(context,imported))
+            val decoded=requireNotNull(PhotoStore.decodeOriented(context,imported,1080))
+            try { assertEquals(1080,decoded.width);assertEquals(540,decoded.height) }
+            finally { decoded.recycle() }
+        } finally {
+            original.recycle();file.delete()
+            imported?.let { PhotoStore.deleteOwned(it,context.filesDir) }
+        }
+    }
+    @Test fun invalidPhotoIsRejectedWithoutCreatingAnImport() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        val file=File(context.cacheDir,"qa-invalid-image").apply { writeText("not an image") }
+        try {
+            assertNull(PhotoStore.decodeOriented(context,Uri.fromFile(file).toString(),1080))
+            assertTrue(runCatching { PhotoStore.import(context,Uri.fromFile(file)) }.isFailure)
+        } finally { file.delete() }
+    }
     @Test fun nativePdfPaginatesAndCreatesReviewArtifacts() {
         val context=InstrumentationRegistry.getInstrumentation().targetContext
         val directory=File(context.filesDir,"Tacklebox-QA").apply { mkdirs() }

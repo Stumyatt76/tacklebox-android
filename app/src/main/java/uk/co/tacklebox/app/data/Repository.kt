@@ -116,6 +116,9 @@ class TackleboxRepository internal constructor(private val db: TackleboxDatabase
         if(!unlimited)dao.saveSettings(current.copy(freeSessionsStarted=current.freeSessionsStarted+1))
         dao.addSession(FishingSession(waterId=waterId,isTrialSession=!unlimited,startAt=minOf(startAt,Instant.now())))
     }
+    suspend fun saveSessionNotes(id:Long, notes:String) {
+        check(dao.updateSessionNotes(id,notes)==1) { "This session is no longer in the journal." }
+    }
     suspend fun saveSession(value:FishingSession) = db.withTransaction {
         val current=dao.sessions().first().firstOrNull { it.item.id==value.id }
             ?: error("This session is no longer in the journal.")

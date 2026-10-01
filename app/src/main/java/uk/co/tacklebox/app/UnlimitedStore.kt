@@ -38,7 +38,7 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
                 else @Suppress("DEPRECATION") pm.getInstallerPackageName(context.packageName)
             includedWithOriginalPurchase(installer,pm.getPackageInfo(context.packageName,0).firstInstallTime)
         }.getOrDefault(false)
-        /** Once granted, the decision is kept: a later reinstall on this device that resets `firstInstallTime` must not take it away. */
+        /** Keeps access across updates. Reinstalls require the verified migration in LegacyPurchaseRecovery. */
         fun grandfathered(remembered:Boolean,computedNow:Boolean):Boolean=remembered||computedNow
     }
     private val preferences=context.getSharedPreferences("tacklebox-purchases",Context.MODE_PRIVATE)
@@ -94,7 +94,10 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result,purchases->
             if(result.responseCode==BillingClient.BillingResponseCode.OK) {
                 val owned=purchases.firstOrNull(::verified)
-                if(owned==null) { preferences.edit().remove("receipt").remove("signature").apply();state.value=state.value.copy(unlimited=includedWithPurchase,busy=false,message=if(restoring)"No verified Unlimited purchase was found for this Google Play account." else state.value.message) }
+                if(owned==null) { preferences.edit().remove("receipt").remove("signature").apply();state.value=state.value.copy(unlimited=includedWithPurchase,busy=false,message=if(restoring) {
+                    if(includedWithPurchase)"Unlimited is included with this installation's original purchase. Use original purchase recovery below before changing phones."
+                    else "No verified Unlimited purchase was found for this Google Play account. If you bought the original paid app, use original purchase recovery below."
+                } else state.value.message) }
                 else accept(owned)
                 restoring=false
                 if(purchases.any { PRODUCT_ID in it.products && it.purchaseState==Purchase.PurchaseState.PENDING })state.value=state.value.copy(message="Purchase pending approval. Unlimited unlocks when Google Play confirms it.")
