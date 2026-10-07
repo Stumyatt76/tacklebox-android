@@ -93,6 +93,7 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
 
 @Composable fun TackleboxRoot(vm:MainViewModel=viewModel(),requestedRoute:String?=null,onRouteConsumed:()->Unit={}){
     val state by vm.state.collectAsStateWithLifecycle(); val nav=rememberNavController()
+    val offerStore by vm.store.state.collectAsStateWithLifecycle()
     val back by nav.currentBackStackEntryAsState(); val route=back?.destination?.route
     // Every notice carries its own title — "Couldn't save this catch", "Session unavailable", "Photo backup" — as
     // iOS's alerts do. The free-session gate is a sheet on the capture screen (FreeSessionSheet), not a dialog here.
@@ -117,6 +118,34 @@ val tabs=listOf(Tab("vault","Vault",Icons.Outlined.Shield),Tab("waters","Waters"
         LaunchedEffect(requestedRoute){requestedRoute?.let{r->
             nav.navigate(r){launchSingleTop=true;if(tabs.any{it.route==r}){popUpTo("vault"){saveState=true};restoreState=true}}
             onRouteConsumed()}}
+        OfferAnnouncements(offerStore,state.settings.freeSessionsStarted){nav.navigate("unlimited"){launchSingleTop=true}}
+    }
+}
+// Store policy keeps pricing off the Play graphics, so the introductory launch price is surfaced in the app: once
+// on first run after onboarding, and again the first time both free sessions are used. Each shows once, only while
+// the discount is live and the angler has not already unlocked Unlimited.
+@Composable fun OfferAnnouncements(store:StoreState,freeUsed:Int,onSeeUnlimited:()->Unit){
+    val context=LocalContext.current
+    val prefs=remember{context.getSharedPreferences("tacklebox-ui",android.content.Context.MODE_PRIVATE)}
+    var which by rememberSaveable{mutableStateOf<String?>(null)}
+    LaunchedEffect(store.introActive,store.unlimited,store.price,freeUsed){
+        which=if(!store.introActive||store.unlimited||store.price==null)null
+        else if(!prefs.getBoolean("seenLaunchOffer",false))"launch"
+        else if(freeUsed>=SessionAllowance.FREE_LIMIT && !prefs.getBoolean("seenAllowanceOffer",false))"allowance"
+        else null
+    }
+    which?.let{w->
+        val flag=if(w=="launch")"seenLaunchOffer" else "seenAllowanceOffer"
+        val dismiss={prefs.edit().putBoolean(flag,true).apply();which=null}
+        val priceLine=store.price+(store.regularPrice?.let{" (normally $it)"}?:"")
+        AlertDialog(onDismissRequest=dismiss,
+            title={Text(if(w=="launch")"Launch offer" else "Your free sessions are used")},
+            text={Text(if(w=="launch")
+                "Two free sessions are always included. For a limited time, unlock Unlimited sessions at an introductory price of $priceLine — one purchase, no subscription."
+              else
+                "You've used both free sessions. Your catches, photos and exports stay available. Unlock Unlimited at the introductory price of $priceLine while the launch offer lasts — one purchase, no subscription.")},
+            confirmButton={TextButton({dismiss();onSeeUnlimited()}){Text("See Unlimited")}},
+            dismissButton={TextButton(dismiss){Text("Maybe later")}})
     }
 }
 // The log button is docked into the bar rather than floated over the content: a centre-docked FAB sat on top of the
