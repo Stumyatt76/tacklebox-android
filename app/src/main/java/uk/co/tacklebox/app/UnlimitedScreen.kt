@@ -38,7 +38,16 @@ import uk.co.tacklebox.app.ui.*
             Box(Modifier.size(44.dp).background(Inset,CircleShape),contentAlignment=Alignment.Center) { Icon(if(state.unlimited)Icons.Default.Verified else Icons.Default.CalendarMonth,null,tint=Teal) }
             Spacer(Modifier.width(12.dp))
             Text(if(state.unlimited)"Unlimited sessions" else SessionAllowance.label(s.settings.freeSessionsStarted),fontWeight=FontWeight.SemiBold) } } }
-        if(!state.unlimited) item { Button({activity?.let(vm.store::purchase)},Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp),enabled=state.price!=null && activity!=null && !state.busy && BuildConfig.PLAY_BILLING_PUBLIC_KEY.isNotBlank()) { Text(state.price?.let { "Unlock Unlimited · $it" } ?: "Store unavailable",fontWeight=FontWeight.Bold) } }
+        if(!state.unlimited) item { Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Button({activity?.let(vm.store::purchase)},Modifier.fillMaxWidth().height(52.dp),shape=RoundedCornerShape(14.dp),enabled=state.price!=null && activity!=null && !state.busy && BuildConfig.PLAY_BILLING_PUBLIC_KEY.isNotBlank()) { Text(state.price?.let { "Unlock Unlimited · $it" } ?: "Store unavailable",fontWeight=FontWeight.Bold) }
+            if(state.introActive && state.regularPrice!=null) {
+                Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Text("INTRODUCTORY OFFER",color=Brass,fontWeight=FontWeight.Bold,style=MaterialTheme.typography.labelMedium)
+                    Text("normally ${state.regularPrice}",color=Muted,style=MaterialTheme.typography.bodyMedium,textDecoration=androidx.compose.ui.text.style.TextDecoration.LineThrough)
+                }
+                Text("Limited-time launch price — reverts to ${state.regularPrice} afterwards.",color=Muted,style=MaterialTheme.typography.bodyMedium)
+            }
+        } }
         item { TextButton({vm.store.restore()},Modifier.fillMaxWidth().height(44.dp).background(Inset,RoundedCornerShape(12.dp)),enabled=!state.busy) { Text("Restore purchases",color=BrassSoft,fontWeight=FontWeight.SemiBold) } }
         item { HeritageCard {
             Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {

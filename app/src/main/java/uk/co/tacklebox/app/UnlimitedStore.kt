@@ -18,7 +18,7 @@ object SessionAllowance {
     fun label(used:Int):String { val left=maxOf(0,FREE_LIMIT-used);return "$left free ${if(left==1)"session" else "sessions"} remaining" }
     fun canStart(used:Int,unlimited:Boolean)=unlimited || used<FREE_LIMIT
 }
-data class StoreState(val unlimited:Boolean=false,val price:String?=null,val busy:Boolean=false,val message:String?=null,val includedWithPurchase:Boolean=false)
+data class StoreState(val unlimited:Boolean=false,val price:String?=null,val regularPrice:String?=null,val introActive:Boolean=false,val busy:Boolean=false,val message:String?=null,val includedWithPurchase:Boolean=false)
 
 /** One non-consumable. Signed receipts are checked again before using an offline entitlement. */
 class UnlimitedStore(context:Context):PurchasesUpdatedListener {
@@ -88,8 +88,16 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
         val query=QueryProductDetailsParams.newBuilder().setProductList(listOf(QueryProductDetailsParams.Product.newBuilder().setProductId(PRODUCT_ID).setProductType(BillingClient.ProductType.INAPP).build())).build()
         client.queryProductDetailsAsync(query) { result,details->
             product=if(result.responseCode==BillingClient.BillingResponseCode.OK)details.productDetailsList.firstOrNull() else null
-            val price=product?.oneTimePurchaseOfferDetailsList?.firstOrNull()?.formattedPrice
-            state.value=state.value.copy(price=price,message=if(price==null)"Unlimited is not available from Google Play yet. Please try again later." else if(BuildConfig.PLAY_BILLING_PUBLIC_KEY.isBlank())"Purchase verification is not configured yet." else state.value.message)
+            // A one-time product can carry several offers (the full-price base plus a limited-time introductory
+            // discount). Charge the cheapest the buyer is eligible for, and keep the dearest as the "normally" price
+            // so the paywall can show the introductory saving.
+            val offers=product?.oneTimePurchaseOfferDetailsList.orEmpty()
+            val cheapest=offers.minByOrNull { it.priceAmountMicros }
+            val dearest=offers.maxByOrNull { it.priceAmountMicros }
+            val price=cheapest?.formattedPrice
+            val regular=dearest?.formattedPrice
+            val intro=cheapest!=null && dearest!=null && cheapest.priceAmountMicros<dearest.priceAmountMicros
+            state.value=state.value.copy(price=price,regularPrice=regular,introActive=intro,message=if(price==null)"Unlimited is not available from Google Play yet. Please try again later." else if(BuildConfig.PLAY_BILLING_PUBLIC_KEY.isBlank())"Purchase verification is not configured yet." else state.value.message)
         }
         client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build()) { result,purchases->
             if(result.responseCode==BillingClient.BillingResponseCode.OK) {
@@ -117,7 +125,8 @@ class UnlimitedStore(context:Context):PurchasesUpdatedListener {
     fun purchase(activity:Activity) {
         if(state.value.busy)return
         val details=product ?: return
-        val offer=details.oneTimePurchaseOfferDetailsList?.firstOrNull() ?: return
+        // Launch with the cheapest eligible offer so an active introductory discount is actually applied.
+        val offer=details.oneTimePurchaseOfferDetailsList?.minByOrNull { it.priceAmountMicros } ?: return
         if(BuildConfig.PLAY_BILLING_PUBLIC_KEY.isBlank()){state.value=state.value.copy(message="Purchase verification is not configured yet.");return}
         state.value=state.value.copy(busy=true,message=null)
         val builder=BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(details)
